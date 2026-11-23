@@ -3,6 +3,7 @@
   coli carta add DIR            register a library folder        coli carta folders
   coli carta remove DIR         forget it (files untouched)      coli carta index [DIR]
   coli carta list [--group G]   documents + location             coli carta problems
+  coli carta watch [--interval 30]  keep the index current
   coli carta search "query" [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path TEXT] [--group G]
   coli carta group set NAME PATH_OR_GLOB... [-d TEXT] [--add]    coli carta group list|show|rm NAME
   coli carta group from-search NAME "query"                      snapshot search results as a group
@@ -19,11 +20,13 @@ def _kb(v): return None if v is None else int(v * 1024)
 def build_parser():
     ap = argparse.ArgumentParser(prog="coli carta", description="CartaColibri — local AI library (RAG-fetch + RAG-CARTA)")
     ap.add_argument("--home", help="state directory (default ~/.cartacolibri or $CARTACOLIBRI_HOME)")
+    ap.add_argument("--ocr", action="store_true", help="also read images and scanned PDF pages with tesseract (CARTACOLIBRI_OCR=1)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for n in ("add", "remove"): sub.add_parser(n).add_argument("folder")
     sub.add_parser("folders")
     sub.add_parser("index").add_argument("folder", nargs="?")
     sub.add_parser("problems")
+    p = sub.add_parser("watch", help="keep the index current: re-scan the library folders every N seconds"); p.add_argument("--interval", type=int, default=30)
     p = sub.add_parser("list"); p.add_argument("--group")
     p = sub.add_parser("search"); p.add_argument("query")
     p.add_argument("--ext", help="comma-separated, e.g. pdf,txt"); p.add_argument("--min-kb", type=float)
@@ -44,7 +47,7 @@ def build_parser():
 
 def main(argv=None):
     a = build_parser().parse_args(argv)
-    lib = ragfetch.Library(a.home)
+    lib = ragfetch.Library(a.home, ocr=a.ocr)
     out = print
     if a.cmd == "add":
         out("registered", lib.add_root(a.folder)); out(lib.update([a.folder]))
@@ -52,6 +55,10 @@ def main(argv=None):
     elif a.cmd == "folders":
         for r in lib.roots(): out(r)
     elif a.cmd == "index": out(lib.update([a.folder] if a.folder else None, log=lambda m: print(m, file=sys.stderr)))
+    elif a.cmd == "watch":
+        out(f"watching {len(lib.roots())} folder(s) every {a.interval}s — Ctrl+C to stop")
+        try: lib.watch(a.interval, log=lambda st: print(st, flush=True))
+        except KeyboardInterrupt: pass
     elif a.cmd == "problems":
         for p in lib.problems(): out(f"{p['path']}\n    {p['reason']}")
     elif a.cmd == "list":

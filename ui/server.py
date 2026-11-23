@@ -296,6 +296,7 @@ def _alive(pid):
 
 
 def main():
+    carta_api.start_watch()
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8790)
     ap.add_argument("--host", default="127.0.0.1")

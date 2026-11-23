@@ -43,4 +43,4 @@ CartaColibri is a fork of [Colibrì](https://github.com/JustVugg/colibri) by Jus
 
 ## More
 
-[Full documentation](../cartacolibri.md) · [Colibrì engine README](../../README.colibri.md) · [Contributing](../../CONTRIBUTING-CARTA.md)
+[Full documentation](../cartacolibri.md) · [Colibrì engine README](../../README.colibri.md) · [Contributing](../../CONTRIBUTING-CARTA.md) · [📄 Illustrated PDF tutorial](CartaColibri-Tutorial.en.pdf)

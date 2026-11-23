@@ -175,6 +175,36 @@ class Carta(unittest.TestCase):
         c, j = carta_api.handle("POST", "/carta/run", "", json.dumps({"task": "summarize", "ids": ids}).encode(), "http://127.0.0.1:9")
         self.assertEqual(c, 502)
 
+    def test_epub_xlsx_and_stem_fallback(self):
+        with zipfile.ZipFile(os.path.join(self.lib_dir, "carte.epub"), "w") as z:
+            z.writestr("OEBPS/c1.xhtml", "<html><body><p>Capitolul despre pelicani migratori</p></body></html>")
+        with zipfile.ZipFile(os.path.join(self.lib_dir, "tabel.xlsx"), "w") as z:
+            z.writestr("xl/sharedStrings.xml", '<sst xmlns="x"><si><t>Furnizor Alfa</t></si></sst>')
+            z.writestr("xl/worksheets/sheet1.xml", '<worksheet xmlns="x"><sheetData><row><c t="s"><v>0</v></c><c><v>1250</v></c></row></sheetData></worksheet>')
+        self.lib.update()
+        self.assertTrue(self.lib.search("pelicani")); self.assertTrue(self.lib.search("furnizor 1250"))
+        self.assertTrue(self.lib.search("migratoare"))            # no exact word: the stem-prefix fallback finds "migratori"
+
+    def test_watch_picks_up_changes(self):
+        import threading
+        stop = threading.Event(); seen = []
+        t = threading.Thread(target=self.lib.watch, args=(0.05, stop, seen.append)); t.start()
+        time.sleep(0.15); w(os.path.join(self.lib_dir, "nou.txt"), "document aparut in timpul supravegherii")
+        time.sleep(0.6); stop.set(); t.join()
+        self.assertTrue(any(st["added"] for st in seen))
+
+    @unittest.skipUnless(ragfetch.ocr_available() and __import__("shutil").which("pdftoppm"), "tesseract/pdftoppm not installed")
+    def test_scanned_pdf_ocr(self):
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.new("RGB", (1200, 300), "white"); d = ImageDraw.Draw(img)
+        try: f = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 90)
+        except OSError: f = ImageFont.load_default()
+        d.text((40, 90), "HUMMINGBIRD LIBRARY", fill="black", font=f)
+        p = os.path.join(self.lib_dir, "scan.pdf"); img.save(p, "PDF", resolution=150)
+        self.assertFalse(ragfetch.Library(os.path.join(self.tmp.name, "noocr")).update([self.lib_dir]) and False)
+        lib = ragfetch.Library(os.path.join(self.tmp.name, "ocr"), ocr=True); lib.update([self.lib_dir])
+        self.assertTrue(lib.search("hummingbird")); lib.db.close()
+
 
 if __name__ == "__main__":
     unittest.main()

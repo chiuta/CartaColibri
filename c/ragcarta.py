@@ -69,7 +69,7 @@ def _mock(user):
         if line.startswith("### [S"):
             keep.append(line)
         elif len(line) > 40 and sum(1 for k in keep if not k.startswith("###")) < 40:
-            keep.append("- " + re.split(r"(?<=[.!?])\s", line)[0][:220])
+            keep.append("- " + re.split(r"(?<=[.!?])\s", line.lstrip("-* "))[0][:220])
     return "\n".join(keep[:30]) or "(no text)"
 
 
@@ -127,13 +127,13 @@ def run(lib, task, docs, request="", backend=None, fields=None, fmt="table", bud
                          f"[{labels[d['id']]}].{focus}", b) for b in batches]
             if len(notes) > 1:
                 notes = [backend.complete(SYSTEM, "Merge these partial summaries into one concise summary of the "
-                             f"document; keep the citation [{labels[d['id']]}].\n\n" + "\n\n".join(notes))]
+                             f"document; keep the citation [{labels[d['id']]}].\n\n<<SOURCES>>\n" + "\n\n".join(notes) + "\n<<END>>")]
             parts.append(f"## [{labels[d['id']]}] {os.path.basename(d['path'])}\n\n{notes[0] if notes else '(no text)'}")
         body = "\n\n".join(parts)
         if len(docs) > 1:
             body = "## Overview\n\n" + backend.complete(
                 SYSTEM, "Write a short overview (5-8 bullet points) of what these per-document summaries cover, "
-                        "keeping the [S#] citations.\n\n" + "\n\n".join(parts)) + "\n\n" + body
+                        "keeping the [S#] citations.\n\n<<SOURCES>>\n" + "\n\n".join(parts) + "\n<<END>>") + "\n\n" + body
     elif task == "extract":
         spec = ", ".join(fields) if fields else request
         if not spec: raise ValueError("extract needs --fields (comma-separated) or a request")
@@ -155,7 +155,7 @@ def run(lib, task, docs, request="", backend=None, fields=None, fmt="table", bud
         body = backend.complete(SYSTEM,
             f"Question/theme: {request}\n\nUsing ONLY the notes below, write an integrated synthesis: group ideas by "
             "theme, state the points the sources share, and flag differences or contradictions between them. "
-            "Cite every claim with [S#].\n\n" + "\n\n".join(notes))
+            "Cite every claim with [S#].\n\n<<SOURCES>>\n" + "\n\n".join(notes) + "\n<<END>>")
     return f"{body.strip()}\n\n---\n**Sources**\n{_sources_block(docs, labels)}\n"
 
 

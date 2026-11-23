@@ -123,6 +123,17 @@ X = {  # key -> {lang: text}
  "pt": "Portátil (Windows, Linux, macOS): descomprime, executa o lançador e já está.",
  "de": "Portabel (Windows, Linux, macOS): entpacken, Starter ausführen, fertig.",
  "hu": "Hordozható (Windows, Linux, macOS): kicsomagolod, elindítod, kész."},
+"h_demo": {"en": "See it in action", "ro": "Vezi-o în acțiune", "fr": "Vois-la en action", "it": "Guardala in azione", "es": "Mírala en acción", "pt": "Vê-a em ação", "de": "Sieh sie in Aktion", "hu": "Nézd meg működés közben"},
+"demo_sub": {
+ "en": "Short demo with subtitles in 8 languages (pick them in the player's subtitle menu).",
+ "ro": "Demo scurt cu subtitrări în 8 limbi (alege-le din meniul de subtitrări al playerului).",
+ "fr": "Courte démo sous-titrée en 8 langues (choisis-les dans le menu des sous-titres du lecteur).",
+ "it": "Breve demo con sottotitoli in 8 lingue (scegli dal menu dei sottotitoli del player).",
+ "es": "Demo breve con subtítulos en 8 idiomas (elígelos en el menú de subtítulos del reproductor).",
+ "pt": "Demonstração curta com legendas em 8 línguas (escolhe-as no menu de legendas do leitor).",
+ "de": "Kurze Demo mit Untertiteln in 8 Sprachen (im Untertitel-Menü des Players wählbar).",
+ "hu": "Rövid bemutató 8 nyelvű felirattal (a lejátszó feliratmenüjében választhatsz)."},
+"tut": {"en": "Illustrated PDF tutorial", "ro": "Tutorial PDF ilustrat", "fr": "Tutoriel PDF illustré", "it": "Tutorial PDF illustrato", "es": "Tutorial PDF ilustrado", "pt": "Tutorial PDF ilustrado", "de": "Bebilderte PDF-Anleitung", "hu": "Illusztrált PDF-útmutató"},
 }
 START_CODE = """```bash
 git clone https://github.com/chiuta/CartaColibri
@@ -181,7 +192,7 @@ def md_readme(lang, root=False):
 
 ## {t('h_docs')}
 
-{t_docs}
+{t_docs} · [📄 {t('tut')}]({'docs/cartacolibri/' if root else ''}CartaColibri-Tutorial.{lang}.pdf)
 """
 
 
@@ -220,7 +231,11 @@ footer{{border-top:1px solid var(--line);padding:26px 5vw;color:var(--mute);text
 <nav><b>CartaColibri</b><a href="{REPO}">GitHub</a><select id="l" aria-label="Language"></select></nav>
 <header class="hero"><img src="cartacolibri-logo.png" alt="CartaColibri — Local AI Library"><h1 id="tagline"></h1><p id="intro"></p>
 <a class="btn a" href="{REPO}/releases" id="dl"></a><a class="btn" href="{REPO}">GitHub</a><p id="dl_sub" style="font-size:15px"></p></header>
-<main><h2 id="h_what"></h2><div class="grid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div></div>
+<main><h2 id="h_demo"></h2><p id="demo_sub" style="color:var(--mute)"></p>
+<video id="vid" controls preload="metadata" poster="img/en-4.png" style="width:100%;border-radius:14px;border:1px solid var(--line)"><source src="media/cartacolibri-demo.mp4" type="video/mp4">{"".join(f'<track kind="subtitles" src="media/demo.{l}.vtt" srclang="{l}" label="{NAMES[l]}">' for l in LANGS)}</video>
+<div class="grid" style="margin-top:16px"><img id="g1" style="width:100%;border-radius:12px;border:1px solid var(--line)"><img id="g2" style="width:100%;border-radius:12px;border:1px solid var(--line)"><img id="g4" style="width:100%;border-radius:12px;border:1px solid var(--line)"></div>
+<p style="margin-top:14px"><a id="tutpdf" class="btn" href="#"></a></p>
+<h2 id="h_what"></h2><div class="grid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div></div>
 <h2 id="h_layers"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" style="text-align:center;color:var(--mute)"></p>
 <h2 id="h_start"></h2><p id="start1"></p><pre>git clone https://github.com/chiuta/CartaColibri
 cd CartaColibri
@@ -235,8 +250,11 @@ coli carta synthesize "payment terms" --group Contracts --save --mock</pre>
 <script>
 const D={data},N={names};let L=(()=>{{try{{const s=localStorage.getItem('cc.lang');if(s&&N[s])return s}}catch(e){{}};const n=(navigator.language||'en').slice(0,2);return N[n]?n:'en'}})();
 const sel=document.getElementById('l');sel.innerHTML=Object.entries(N).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('');
-function go(){{document.documentElement.lang=L;sel.value=L;for(const k of ['tagline','intro','h_what','f1','f2','f3','f4','h_layers','layers','h_start','start1','start2','h_lic','lic'])document.getElementById(k).innerHTML=D[k][L];
-document.getElementById('dl').textContent=D.dl[L];document.getElementById('dl_sub').innerHTML=D.dl_sub[L];}}
+function go(){{document.documentElement.lang=L;sel.value=L;for(const k of ['tagline','intro','h_demo','demo_sub','h_what','f1','f2','f3','f4','h_layers','layers','h_start','start1','start2','h_lic','lic'])document.getElementById(k).innerHTML=D[k][L];
+document.getElementById('dl').textContent=D.dl[L];
+const tp=document.getElementById('tutpdf');tp.textContent='📄 '+D.tut[L];tp.href='media/CartaColibri-Tutorial.'+L+'.pdf';
+[['g1',1],['g2',2],['g4',4]].forEach(([id,n])=>document.getElementById(id).src='img/'+L+'-'+n+'.png');
+const tr=[...document.querySelectorAll('#vid track')];tr.forEach(t=>t.track.mode=t.srclang===L?'showing':'disabled');document.getElementById('dl_sub').innerHTML=D.dl_sub[L];}}
 sel.onchange=()=>{{L=sel.value;try{{localStorage.setItem('cc.lang',L)}}catch(e){{}}go()}};go();
 </script></body></html>
 """
@@ -249,6 +267,11 @@ def main():
     open(f"{ROOT}/README.md", "w", encoding="utf-8").write(md_readme("en", root=True))
     os.makedirs(f"{ROOT}/site-carta", exist_ok=True)
     open(f"{ROOT}/site-carta/index.html", "w", encoding="utf-8").write(site())
+    import shutil
+    os.makedirs(f"{ROOT}/site-carta/img", exist_ok=True); os.makedirs(f"{ROOT}/site-carta/media", exist_ok=True)
+    for src, dst in [(f"{ROOT}/docs/cartacolibri/img/{l}-{n}.png", f"{ROOT}/site-carta/img/{l}-{n}.png") for l in LANGS for n in (1, 2, 3, 4)] + \
+                    [(f"{ROOT}/docs/cartacolibri/CartaColibri-Tutorial.{l}.pdf", f"{ROOT}/site-carta/media/CartaColibri-Tutorial.{l}.pdf") for l in LANGS]:
+        if os.path.exists(src): shutil.copyfile(src, dst)
     for f in ("cartacolibri-logo.png", "cartacolibri-mark.png"):
         with open(f"{ROOT}/assets/{f}", "rb") as a, open(f"{ROOT}/site-carta/{f}", "wb") as b: b.write(a.read())
     miss = [(k, l) for k in X for l in LANGS if not X[k].get(l)]

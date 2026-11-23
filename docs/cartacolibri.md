@@ -89,7 +89,16 @@ against a mock and a fake HTTP gateway, CLI end-to-end).
 (`CartaColibriPortable.bat` / `.sh`, `Data/` holds the index, groups, outputs and models; nothing is written outside the folder).
 The *Tag a CartaColibri release* workflow does it and drafts the pre-release.
 
+## Also included
+
+* **OCR** (needs `tesseract`; `--ocr` or `CARTACOLIBRI_OCR=1`): images and scanned PDF pages (via `pdftoppm`) are read and indexed; uploads can
+  also save the text (TXT) and a searchable PDF.
+* **Extractors** for `.epub` and `.xlsx`; a typo/inflection-tolerant stem-prefix fallback when a search finds nothing.
+* **Folder watching**: `coli carta watch --interval 30`, or `CARTACOLIBRI_WATCH=30` for the UI server.
+* **Chat composer**: “Upload to library” in the `+` menu of the chat page.
+* **Tutorials**: illustrated PDFs in 8 languages (`docs/cartacolibri/CartaColibri-Tutorial.<lang>.pdf`) and a demo video with 8 subtitle
+  tracks (`site-carta/media/`), both rebuilt with `scripts/capture_carta_demo.py` + `scripts/gen_carta_tutorial.py`.
+
 ## Not yet (next iterations)
 
-OCR of scanned PDF pages, embeddings / hybrid retrieval, folder watching, `.epub` / `.xlsx` extractors,
-video tutorials and the illustrated PDF guide, the “Document upload to library” button inside the chat composer.
+Embeddings / true hybrid retrieval, a voice-over for the demo video, a CartaColibri-specific Windows installer.

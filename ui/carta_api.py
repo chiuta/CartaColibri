@@ -53,3 +53,16 @@ def handle(method, path, query, body, backend_url, filename=None):
         return 400, {"error": f"{type(e).__name__}: {e}"}
     finally:
         lib.db.close()
+
+
+def start_watch():
+    """Opt-in folder watching for the UI server: CARTACOLIBRI_WATCH=<seconds> (e.g. 30)."""
+    import threading
+    try:
+        n = int(os.environ.get("CARTACOLIBRI_WATCH", "0"))
+    except ValueError:
+        n = 0
+    if n > 0:
+        lib = ragfetch.Library(os.environ.get("CARTACOLIBRI_HOME"))
+        threading.Thread(target=lib.watch, args=(n,), daemon=True).start()
+        lib.db.close()

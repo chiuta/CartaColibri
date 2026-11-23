@@ -1323,6 +1323,14 @@ const docIn=document.createElement('input');docIn.type='file';docIn.multiple=tru
 docIn.accept='.pdf,.docx,.odt,.pptx,.txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.html,.htm,.xml,.log,.yaml,.yml,.toml,.ini,.py,.js,.ts,.c,.h,.cpp,.java,.go,.rs,.sh,.sql,.tex,.rst,.srt,text/*';
 document.body.appendChild(docIn);
 $('#plusPop [data-k=attach]').insertAdjacentHTML('afterend','<button data-k="doc"><svg class="ic ic--sm"><use href="#i-file"/></svg>Allega un documento<small>PDF, Word, testo</small></button>');
+/* CartaColibri: "document upload to library" — straight into the local library (ui/carta_api.py), indexed for RAG-fetch / RAG-CARTA */
+Object.entries({en:['Carica nella biblioteca','Upload to library','Indicizzato per la ricerca e RAG-CARTA','Indexed for search and RAG-CARTA','Salvato nella biblioteca','Saved to the library'],
+  de:['Carica nella biblioteca','In die Bibliothek hochladen','Indicizzato per la ricerca e RAG-CARTA','Für Suche und RAG-CARTA indiziert','Salvato nella biblioteca','In der Bibliothek gespeichert'],
+  'pt-BR':['Carica nella biblioteca','Enviar para a biblioteca','Indicizzato per la ricerca e RAG-CARTA','Indexado para busca e RAG-CARTA','Salvato nella biblioteca','Salvo na biblioteca']}).forEach(([l,a])=>{if(I18N[l])for(let i=0;i<a.length;i+=2)I18N[l][a[i]]=a[i+1]});
+$('#plusPop [data-k=doc]').insertAdjacentHTML('afterend','<button data-k="lib"><svg class="ic ic--sm"><use href="#i-file"/></svg>Carica nella biblioteca<small>Indicizzato per la ricerca e RAG-CARTA</small></button>');
+const libIn=document.createElement('input');libIn.type='file';libIn.multiple=true;libIn.hidden=true;document.body.appendChild(libIn);
+libIn.onchange=async()=>{const fs=[...libIn.files];libIn.value='';for(const f of fs){try{const r=await fetch(url('/carta/upload'),{method:'POST',headers:{'X-Colibri-UI':'1','X-File-Name':encodeURIComponent(f.name)},body:f});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));say('Salvato nella biblioteca'+': '+f.name,2600)}catch(e){say(f.name+': '+(e.message||e),4200)}}};
 function docTok(n){return Math.round(n/3.6)}
 function docLabel(d){const p=[];if(d.pages)p.push(d.pages+(d.pages===1?' pagina':' pagine'));if(d.text)p.push('~'+docTok(d.text.length).toLocaleString(LOC)+' token');if(d.images&&d.images.length)p.push(d.images.length+(d.images.length===1?' scansione':' scansioni'));return p.join(' · ')}
 async function readDoc(f){const r=await fetch(url('/doc/extract'),{method:'POST',headers:{'X-Colibri-UI':'1','Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(f.name)},body:f});
@@ -1346,7 +1354,7 @@ document.addEventListener('drop',e=>{const fs=[...(e.dataTransfer&&e.dataTransfe
   if(rest.length)addDocs(rest)});
 $('#plusPop').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;$('#plusPop').classList.remove('open');
   if(b.dataset.k==='attach'&&readsImages())fileIn.click();
-  if(b.dataset.k==='doc')docIn.click();
+  if(b.dataset.k==='doc')docIn.click();if(b.dataset.k==='lib')libIn.click();
   if(b.dataset.k==='reason'){ST.reason=!ST.reason;saveST();renderPlus();renderSettings()}
   if(b.dataset.k==='web'){ST.web=!ST.web;saveST();renderPlus()}});
 $('#modeOff').onclick=()=>{app.dataset.mode='text'};

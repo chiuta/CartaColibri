@@ -43,4 +43,4 @@ A CartaColibri a JustVugg [Colibrì](https://github.com/JustVugg/colibri) projek
 
 ## Továbbiak
 
-[Teljes dokumentáció](../cartacolibri.md) · [A Colibrì motor README-je](../../README.colibri.md) · [Közreműködés](../../CONTRIBUTING-CARTA.md)
+[Teljes dokumentáció](../cartacolibri.md) · [A Colibrì motor README-je](../../README.colibri.md) · [Közreműködés](../../CONTRIBUTING-CARTA.md) · [📄 Illusztrált PDF-útmutató](CartaColibri-Tutorial.hu.pdf)

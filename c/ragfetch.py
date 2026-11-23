@@ -16,7 +16,7 @@ STATE_DIR_NAME = "_cartacolibri"          # also skipped while scanning, so outp
 P1_EXT = {".txt", ".md", ".markdown", ".rst", ".log", ".pdf"}
 P2_EXT = {".csv", ".json", ".jsonl", ".yaml", ".yml", ".html", ".htm", ".rtf",
           ".docx", ".odt", ".pptx"}
-DEFAULT_EXT = P1_EXT | P2_EXT
+DEFAULT_EXT = P1_EXT | P2_EXT | {".epub", ".xlsx"}
 IMG_EXT = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}   # indexed only with OCR (tesseract) available
 MAX_ZIP_PART = 100 * 1024 * 1024        # a docx/odt/pptx part larger than this once unpacked is refused (zip bomb)
 SKIP_DIRS = {STATE_DIR_NAME, ".cartacolibri", ".git", "__pycache__", "node_modules", ".venv", "venv", ".cache"}
@@ -90,7 +90,25 @@ def _zip_read(z, name):
     return z.read(name)
 
 
-def _pdf_pages(path):
+def _ocr_pdf_page(path, n):
+    """Render page n (1-based) with pdftoppm and read it with tesseract; '' when either tool is missing."""
+    if not (ocr_available() and shutil.which("pdftoppm")): return ""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        base = os.path.join(d, "p")
+        subprocess.run(["pdftoppm", "-r", "200", "-f", str(n), "-l", str(n), "-png", path, base], capture_output=True, timeout=300)
+        pngs = sorted(f for f in os.listdir(d) if f.endswith(".png"))
+        return ocr_image(os.path.join(d, pngs[0])) if pngs else ""
+
+
+def _pdf_pages(path, ocr=False):
+    pages = _pdf_pages_raw(path)
+    if ocr:
+        pages = [(loc, text if len(text.strip()) >= 20 else _ocr_pdf_page(path, i + 1) or text) for i, (loc, text) in enumerate(pages)]
+    return pages
+
+
+def _pdf_pages_raw(path):
     try:
         import pypdf
         r = pypdf.PdfReader(path)
@@ -111,10 +129,41 @@ def _pdf_pages(path):
     raise ValueError("no PDF reader (pip install pypdf, or install poppler-utils)")
 
 
-def extract(path, ext):
+def _xlsx_text(z):
+    shared = []
+    if "xl/sharedStrings.xml" in z.namelist():
+        for ev, el in ET.iterparse(__import__("io").BytesIO(_zip_read(z, "xl/sharedStrings.xml")), events=("end",)):
+            if el.tag.rsplit("}", 1)[-1] == "si": shared.append("".join(t.text or "" for t in el.iter() if t.tag.rsplit("}", 1)[-1] == "t"))
+    sheets = sorted((n for n in z.namelist() if re.match(r"xl/worksheets/sheet\d+\.xml$", n)), key=lambda n: int(re.findall(r"\d+", n)[0]))
+    out = []
+    for i, n in enumerate(sheets):
+        rows = []
+        for ev, row in ET.iterparse(__import__("io").BytesIO(_zip_read(z, n)), events=("end",)):
+            if row.tag.rsplit("}", 1)[-1] != "row": continue
+            cells = []
+            for c in row:
+                v = next((x.text for x in c if x.tag.rsplit("}", 1)[-1] == "v"), None)
+                if v is None: v = "".join(t.text or "" for t in c.iter() if t.tag.rsplit("}", 1)[-1] == "t")
+                elif c.get("t") == "s" and v.isdigit() and int(v) < len(shared): v = shared[int(v)]
+                if v: cells.append(v)
+            if cells: rows.append(" | ".join(cells))
+            row.clear()
+        out.append((f"sheet {i+1}", "\n".join(rows)))
+    return out
+
+
+def extract(path, ext, ocr=False):
     """-> list of (location, text). Raises on a file that cannot be read."""
     if ext == ".pdf":
-        return _pdf_pages(path)
+        return _pdf_pages(path, ocr)
+    if ext == ".xlsx":
+        with zipfile.ZipFile(path) as z: return _xlsx_text(z)
+    if ext == ".epub":
+        with zipfile.ZipFile(path) as z:
+            parts = []
+            for n in sorted(x for x in z.namelist() if x.lower().endswith((".xhtml", ".html", ".htm"))):
+                p = _Html(); p.feed(_decode(_zip_read(z, n))); parts.append((os.path.splitext(os.path.basename(n))[0], "".join(p.out)))
+            return parts
     if ext in IMG_EXT:
         return [("OCR", ocr_image(path))]
     if ext in (".docx", ".odt", ".pptx"):
@@ -159,7 +208,8 @@ class Library:
     def __init__(self, home=None, extensions=None, ocr=False):
         self.home = state_dir(home)
         self.exts = {e if e.startswith(".") else "." + e for e in (extensions or DEFAULT_EXT)}
-        if ocr and ocr_available(): self.exts |= IMG_EXT
+        self.ocr = bool((ocr or os.environ.get("CARTACOLIBRI_OCR") == "1") and ocr_available())
+        if self.ocr: self.exts |= IMG_EXT
         self.db = sqlite3.connect(os.path.join(self.home, "index.sqlite"))
         self.db.row_factory = sqlite3.Row
         self.db.executescript("""
@@ -253,7 +303,7 @@ class Library:
                     if row and row["sha1"] == sha:                     # touched, not changed
                         self.db.execute("UPDATE docs SET mtime_ns=? WHERE id=?", (st.st_mtime_ns, row["id"]))
                         stats["unchanged"] += 1; continue
-                    parts = extract(p, ext)
+                    parts = extract(p, ext, self.ocr)
                     if row: self._drop(row["id"]); stats["updated"] += 1
                     else: stats["added"] += 1
                     total, seq = 0, 0
@@ -277,6 +327,18 @@ class Library:
                     self._drop(r["id"]); stats["removed"] += 1
             self.db.commit()
         return stats
+
+    def watch(self, interval=30, stop=None, log=None):
+        """Folder watching by polling: re-run the incremental update every `interval` seconds (cheap: size+mtime)."""
+        import threading
+        stop = stop or threading.Event()
+        lib = Library(self.home, self.exts, self.ocr)          # own connection: this runs in another thread
+        try:
+            while not stop.wait(interval):
+                st = lib.update()
+                if log and (st["added"] or st["updated"] or st["removed"]): log(st)
+        finally:
+            lib.db.close()
 
     def problems(self):
         return [dict(r) for r in self.db.execute("SELECT path,reason FROM problems ORDER BY path")]
@@ -319,6 +381,11 @@ class Library:
             words = [w for w in re.findall(r"\w+", query, re.UNICODE) if w not in ("AND", "OR", "NOT", "NEAR")]
             if not words: return []
             rows = self.db.execute(sql, (" ".join('"%s"' % w for w in words),)).fetchall()   # quoted: AND/OR/NEAR are words now
+        if not rows:       # typo/inflection tolerant fallback: every word cut to its stem, matched as a prefix
+            stems = [w[:max(4, int(len(w) * 0.7))] + "*" for w in re.findall(r"\w+", query, re.UNICODE) if w not in ("AND", "OR", "NOT", "NEAR")]
+            if stems:
+                try: rows = self.db.execute(sql, (" ".join(stems),)).fetchall()
+                except sqlite3.OperationalError: rows = []
         best, hits = {}, {}
         for r in rows:
             hits[r["doc_id"]] = hits.get(r["doc_id"], 0) + 1
@@ -332,8 +399,11 @@ class Library:
             if max_size is not None and d["size"] > max_size: continue
             if path_like and path_like.lower() not in d["path"].lower(): continue
             out.append(dict(id=did, path=d["path"], ext=d["ext"], size=d["size"], loc=r["loc"],
-                            snippet=r["snip"].replace("\n", " "), score=round(-r["score"], 3), matches=hits[did]))
+                            snippet=r["snip"].replace("\n", " "), score=-r["score"], matches=hits[did]))
         out.sort(key=lambda x: -x["score"])
+        top = out[0]["score"] if out else 0
+        for h in out:      # DocFetcher-style "Score [%]"; on a tiny corpus bm25 is ~0, so fall back to the match count
+            h["score"] = round(100 * h["score"] / top) if top > 1e-9 else round(100 * h["matches"] / max(x["matches"] for x in out))
         return out[:limit]
 
     def text_of(self, doc_id):
