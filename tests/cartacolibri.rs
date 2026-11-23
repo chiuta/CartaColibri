@@ -583,3 +583,46 @@ fn ask_page_cites_the_page() {
     assert!(t.contains("[S1] https://exemplu.local/c"), "{t}");
     assert!(carta::ask_page(&Backend::mock(), "  ", "t", "u", "x").is_err());
 }
+
+#[test]
+fn grab_status_dedupe_and_change_detection() {
+    use cartacolibri::grab;
+    let fx = fixture();
+    let mut lib = open(&fx);
+    let url = "https://exemplu.local/pagina";
+    let v1 = grab::save(
+        &mut lib,
+        url,
+        "Pagina",
+        "Text inițial despre colibri și zborul lor lung.",
+    )
+    .unwrap();
+    let st = grab::status(
+        &lib.home,
+        url,
+        "Text inițial despre colibri   și zborul lor lung.",
+    )
+    .unwrap();
+    assert_eq!(
+        st["changed"], false,
+        "whitespace does not count as a change"
+    );
+    assert_eq!(
+        grab::status(&lib.home, url, "Text complet schimbat acum.").unwrap()["changed"],
+        true
+    );
+    assert!(grab::status(&lib.home, "https://alt.local/", "x").is_none());
+    let v2 = grab::save(
+        &mut lib,
+        url,
+        "Pagina",
+        "Text nou despre tigri și savane întinse.",
+    )
+    .unwrap();
+    assert_eq!(
+        v1["saved"], v2["saved"],
+        "same address refreshes the same file"
+    );
+    assert!(s(&lib, "tigri").len() == 1 && s(&lib, "inițial").is_empty());
+    assert_eq!(lib.documents(None).unwrap().len(), 1);
+}

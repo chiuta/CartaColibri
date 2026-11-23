@@ -71,7 +71,36 @@ pub fn fetch(url: &str) -> Result<(String, String), String> {
     }
 }
 
-/// Save a page/clip as `web/<slug>.md` inside the library uploads and index it.
+fn norm_hash(text: &str) -> String {
+    use sha1::{Digest, Sha1};
+    let n = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    hex::encode(Sha1::digest(n.as_bytes()))
+}
+
+fn web_json(home: &std::path::Path) -> std::path::PathBuf {
+    home.join("web.json")
+}
+
+fn load_web(home: &std::path::Path) -> std::collections::BTreeMap<String, Value> {
+    std::fs::read_to_string(web_json(home))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+/// Is this address already in the library, and does the page differ from the saved copy?
+pub fn status(home: &std::path::Path, url: &str, text: &str) -> Option<Value> {
+    let e = load_web(home).get(url).cloned()?;
+    let path = e["path"].as_str()?.to_string();
+    if !std::path::Path::new(&path).is_file() {
+        return None;
+    }
+    let changed = !text.trim().is_empty() && e["hash"].as_str() != Some(norm_hash(text).as_str());
+    Some(json!({"path": path, "saved_at": e["saved_at"], "changed": changed}))
+}
+
+/// Save a page/clip as Markdown inside the library uploads and index it.
+/// Saving an address that is already in the library refreshes that file instead of adding a copy.
 pub fn save(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<Value, String> {
     let clean = Regex::new(r"\n{3,}")
         .unwrap()
@@ -89,7 +118,33 @@ pub fn save(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<Val
         "# {}\n\nSource: {url}\n\n{clean}\n",
         if title.is_empty() { url } else { title }
     );
-    let r = lib.add_upload(&name, doc.as_bytes(), &[])?;
+    let mut web = load_web(&lib.home);
+    let known = web
+        .get(url)
+        .and_then(|e| e["path"].as_str())
+        .map(String::from)
+        .filter(|p| std::path::Path::new(p).is_file());
+    let r = match known {
+        Some(p) => {
+            std::fs::write(&p, doc.as_bytes()).map_err(|e| e.to_string())?;
+            let dir = lib.upload_dir()?.to_string_lossy().into_owned();
+            let st = lib.update(Some(&[dir]), &mut |_| {})?;
+            json!({"saved": p, "index": st})
+        }
+        None => lib.add_upload(&name, doc.as_bytes(), &[])?,
+    };
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    web.insert(
+        url.to_string(),
+        json!({"path": r["saved"], "saved_at": secs, "hash": norm_hash(&clean)}),
+    );
+    let _ = std::fs::write(
+        web_json(&lib.home),
+        serde_json::to_string_pretty(&web).unwrap_or_default(),
+    );
     Ok(
         json!({"title": title, "url": url, "chars": clean.chars().count(), "saved": r["saved"], "index": r["index"]}),
     )

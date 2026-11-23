@@ -12,7 +12,7 @@ A CartaColibri egy helyi MI-könyvtár a Colibrì motorra építve. Indexeli a k
 - **RAG-fetch** — DocFetcher-stílusú inkrementális teljes szövegű index (szavak, „kifejezések”, előtag*, AND/OR/NOT, szűrés típus, méret, hely szerint) és újrafelhasználható fájl**csoportok**.
 - **RAG-CARTA** — három helyi feladat egy csoporton: **összefoglalás**, **kinyerés** (táblázat vagy JSON, találgatás helyett „NOT FOUND”), **szintézis** (témák, közös pontok, ellentmondások). Minden válasz idézi az [S1], [S2]… jelöléseket és felsorolja a forrásokat.
 - **Alapból privát** — nincs felhő, nincs telemetria; az eredetiket csak olvassa. 8 nyelv: EN, RO, FR, IT, ES, PT, DE, HU.
-- **web-grab** — egy kis Rust böngésző (clean-room, a Falkon helyett), amely bármely oldalt vagy kijelölést letisztított szövegként ment a könyvtárba a címével forrásként, és megkérdezheted róla a helyi Colibrìt; vagy egy parancs, illetve bookmarklet bármely más böngészőben.
+- **web-grab** — egy kis Rust böngésző (clean-room, a Falkon helyett) lapokkal, amely ismeri a könyvtáradat: jelvény, ha az oldal már mentve van (és ha megváltozott), kapcsolódó dokumentumok böngészés közben, mentés egy kattintással, kérdések a helyi Colibrìhez egy oldalról — vagy az összes nyitott lapról, hivatkozásokkal. Egy parancs és egy bookmarklet a többi böngészőt fedi le.
 
 ## Gyors kezdés
 

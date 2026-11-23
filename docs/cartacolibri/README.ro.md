@@ -12,7 +12,7 @@ CartaColibri este o bibliotecă AI locală construită pe motorul Colibrì. Inde
 - **RAG-fetch** — index full-text incremental în stil DocFetcher (cuvinte, „expresii”, prefix*, AND/OR/NOT, filtre după tip, mărime, locație) și **grupuri** reutilizabile de fișiere.
 - **RAG-CARTA** — trei taskuri locale pe un grup: **rezumă**, **extrage** (tabel sau JSON, „NOT FOUND” în loc de presupuneri), **sintetizează** (teme, puncte comune, contradicții). Fiecare răspuns citează [S1], [S2]… și își listează sursele.
 - **Privat prin construcție** — fără cloud, fără telemetrie; originalele sunt doar citite. 8 limbi: EN, RO, FR, IT, ES, PT, DE, HU.
-- **web-grab** — un mic browser în Rust (clean-room, înlocuiește Falkon) care salvează orice pagină sau selecție în bibliotecă, ca text curat, cu adresa ca sursă, și te lasă să întrebi Colibrì local despre ea; sau folosești o comandă ori un bookmarklet în orice alt browser.
+- **web-grab** — un mic browser în Rust (clean-room, înlocuiește Falkon), cu taburi, care îți cunoaște biblioteca: insignă când pagina e deja salvată (și când s-a schimbat), documente înrudite în timp ce navighezi, salvare dintr-un clic, întrebări către Colibrì local despre o pagină — sau peste toate taburile deschise, cu citări. O comandă și un bookmarklet acoperă alte browsere.
 
 ## Pornire rapidă
 
