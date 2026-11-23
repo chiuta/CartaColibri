@@ -390,3 +390,23 @@ pub fn save(
     std::fs::write(&p, format!("{head}{text}")).map_err(|e| e.to_string())?;
     Ok(p.to_string_lossy().into_owned())
 }
+
+/// Ask a question about ONE page (used by the web-grab browser): the page is source [S1].
+pub fn ask_page(
+    be: &Backend,
+    question: &str,
+    title: &str,
+    url: &str,
+    text: &str,
+) -> Result<String, String> {
+    if question.trim().is_empty() {
+        return Err("empty question".into());
+    }
+    let body: String = text.chars().take(CTX_CHARS).collect();
+    let prompt = format!(
+        "Question: {question}\n\nAnswer using ONLY the page below and cite it as [S1]. If the page does not say, say so.\n\n{}",
+        wrap(&[format!("### [S1] {title}\n{body}")])
+    );
+    let ans = be.complete(SYSTEM, &prompt)?;
+    Ok(format!("{}\n\n[S1] {url}", ans.trim()))
+}

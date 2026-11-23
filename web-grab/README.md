@@ -1,17 +1,18 @@
 # web-grab
 
-Bring web pages into your CartaColibri library — 100 % local, the address is kept as the source so
+Bring web pages into your CartaColibri library — 100 % local; the address is kept as the source so
 RAG-CARTA citations lead back to the page.
 
-| Way | How | Status |
+| Way | How | Tested |
 |---|---|---|
-| Command line | `cartacolibri grab https://example.org/article` | tested (CI) |
-| Bookmarklet (any browser, **Falkon included**) | `cartacolibri bookmarklet` prints a `javascript:` link; save it as a bookmark, then click it on any page (a text selection is saved instead of the whole page) | the `/carta/clip` endpoint is tested; page CSP can block it on a few strict sites |
-| Falkon plugin | `falkon/` — a Python plugin template adding **Save to CartaColibri** | **template, not yet run against a real Falkon build** — see the notes inside |
-| API | `POST /carta/grab {"url": "...", "title": "...", "text": "..."}` (UI header required) or `POST /carta/clip?token=…` | tested |
+| **Browser** `cartacolibri-browser [URL]` | A small Rust browser on the system webview (WebKitGTK / WebView2 / WKWebView). A bar on every page: back / forward / reload, address bar (type **words** to search your library instead of the web), 💾 save the page or your selection, ✨ ask your local Colibrì about the page (`--mock` for an offline answer, `--gateway URL`). Replaces the Falkon plugin idea: no Falkon code, MIT. | Linux: CI self-test under Xvfb (`--selftest-save`). Windows / macOS: compiled in CI, **not yet run by hand** |
+| Command line | `cartacolibri grab https://example.org/article` | CI |
+| Bookmarklet (any other browser) | `cartacolibri bookmarklet` prints a `javascript:` link; save it as a bookmark and click it on a page (a selection is saved instead of the whole page) | the `/carta/clip` endpoint is tested; a page's CSP can block it |
+| API | `POST /carta/grab`, `POST /carta/clip?token=…` | CI |
 
-The token for `/carta/clip` lives in `<home>/clip.token` (printed by `cartacolibri serve`). It is the only
-route that accepts cross-origin calls, and only with that secret.
-
-Falkon (https://www.falkon.org) is GPL-3.0. This module never links or copies Falkon code: the plugin is a
-separate, optional file that talks to CartaColibri over local HTTP, so CartaColibri itself stays MIT.
+Browser notes
+- The bar is injected into every page inside a closed shadow root; its messages to the app carry a random per-run
+  nonce, so page scripts cannot trigger saves or questions.
+- No tabs yet: links that want a new window open in the same view. No extensions, no sync, no telemetry.
+- Build: `cargo build --release -p cartacolibri-browser` (Linux needs `libwebkit2gtk-4.1-dev`; Windows needs the WebView2 runtime).
+- Pages are decoded as the site declares; a page without a charset can show wrong accents.

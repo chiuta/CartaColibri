@@ -51,7 +51,7 @@ DisplayVersion={v}
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--version", default="dev"); ap.add_argument("--binary", required=True); ap.add_argument("--target", default="local")
+    ap = argparse.ArgumentParser(); ap.add_argument("--version", default="dev"); ap.add_argument("--binary", required=True); ap.add_argument("--target", default="local"); ap.add_argument("--browser", help="optional: compiled cartacolibri-browser binary to include")
     a = ap.parse_args()
     win = a.binary.endswith(".exe")
     os.makedirs(os.path.join(ROOT, "dist"), exist_ok=True)
@@ -66,6 +66,7 @@ def main():
         put(BAT.replace("\n", "\r\n"), "CartaColibriPortable.bat") if win else put(SH, "CartaColibriPortable.sh", 0o755)
         put(INI.format(v=a.version.split("-")[0]), "App/AppInfo/appinfo.ini")
         add(a.binary, "App/CartaColibri/" + ("cartacolibri.exe" if win else "cartacolibri"), 0o755)
+        if a.browser: add(a.browser, "App/CartaColibri/" + ("cartacolibri-browser.exe" if win else "cartacolibri-browser"), 0o755)
         for f in ("LICENSE", "README.md"): add(os.path.join(ROOT, f), "App/CartaColibri/" + f)
         for dp, _, fn in os.walk(os.path.join(ROOT, "web-grab")):
             for f in fn: add(os.path.join(dp, f), "App/CartaColibri/" + os.path.relpath(os.path.join(dp, f), ROOT).replace(os.sep, "/"))

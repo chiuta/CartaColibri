@@ -12,7 +12,7 @@ CartaColibri ist eine lokale KI-Bibliothek auf Basis der Colibrì-Engine. Sie in
 - **RAG-fetch** — inkrementeller Volltextindex im DocFetcher-Stil (Wörter, „Phrasen“, Präfix*, AND/OR/NOT, Filter nach Typ, Größe, Ort) und wiederverwendbare **Gruppen** von Dateien.
 - **RAG-CARTA** — drei lokale Aufgaben auf einer Gruppe: **zusammenfassen**, **extrahieren** (Tabelle oder JSON, „NOT FOUND“ statt Vermutungen), **synthetisieren** (Themen, Gemeinsamkeiten, Widersprüche). Jede Antwort zitiert [S1], [S2] … und listet ihre Quellen.
 - **Privat von Grund auf** — keine Cloud, keine Telemetrie; Originale werden nur gelesen. 8 Sprachen: EN, RO, FR, IT, ES, PT, DE, HU.
-- **web-grab** — speichere jede Webseite (oder nur deine Auswahl) als sauberen Text in der Bibliothek, die Adresse bleibt als Quelle erhalten; ein Befehl, ein Bookmarklet für jeden Browser (auch Falkon) oder eine Falkon-Plugin-Vorlage.
+- **web-grab** — ein kleiner Browser in Rust (Clean-Room, ersetzt Falkon), der jede Seite oder Auswahl als sauberen Text mit Adresse als Quelle in der Bibliothek speichert und dich dein lokales Colibrì dazu befragen lässt; oder ein Befehl bzw. ein Bookmarklet in jedem anderen Browser.
 
 ## Schnellstart
 
@@ -33,7 +33,8 @@ cartacolibri add ~/Documents
 cartacolibri search "contract*" --ext pdf,docx
 cartacolibri group set Contracts ~/Documents/contracts
 cartacolibri synthesize "payment terms" --group Contracts --save --mock
-cartacolibri grab https://example.org/article      # web-grab
+cartacolibri grab https://example.org/article      # web-grab (command line)
+cartacolibri-browser https://example.org           # web-grab (browser)
 ```
 
 ## Wie alles zusammenspielt
@@ -42,7 +43,7 @@ Ebene 0 — deine Ordner (nur lesend) → RAG-fetch — Index, Suche, Gruppen �
 
 ## Lizenz und Danksagung
 
-CartaColibri steht unter der **MIT-Lizenz**. Es ist eine Clean-Room-Implementierung in Rust: Sie spricht mit der [Colibrì](https://github.com/JustVugg/colibri)-Engine (JustVugg, Apache-2.0) nur über deren öffentliches HTTP-Gateway und enthält keinen Code daraus. Die Index- und Suchschicht folgt dem im öffentlichen DocFetcher-Handbuch beschriebenen Verhalten; DocFetcher-Code wird nicht verwendet. Die optionale Falkon-Plugin-Vorlage ist eine separate Datei, die nur per lokalem HTTP mit CartaColibri spricht.
+CartaColibri steht unter der **MIT-Lizenz**. Es ist eine Clean-Room-Implementierung in Rust: Sie spricht mit der [Colibrì](https://github.com/JustVugg/colibri)-Engine (JustVugg, Apache-2.0) nur über deren öffentliches HTTP-Gateway und enthält keinen Code daraus. Die Index- und Suchschicht folgt dem im öffentlichen DocFetcher-Handbuch beschriebenen Verhalten; DocFetcher-Code wird nicht verwendet. Der web-grab-Browser nutzt die Webview des Betriebssystems und enthält keinen Falkon-Code.
 
 ## Mehr
 

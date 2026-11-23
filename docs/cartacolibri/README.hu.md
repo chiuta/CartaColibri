@@ -12,7 +12,7 @@ A CartaColibri egy helyi MI-könyvtár a Colibrì motorra építve. Indexeli a k
 - **RAG-fetch** — DocFetcher-stílusú inkrementális teljes szövegű index (szavak, „kifejezések”, előtag*, AND/OR/NOT, szűrés típus, méret, hely szerint) és újrafelhasználható fájl**csoportok**.
 - **RAG-CARTA** — három helyi feladat egy csoporton: **összefoglalás**, **kinyerés** (táblázat vagy JSON, találgatás helyett „NOT FOUND”), **szintézis** (témák, közös pontok, ellentmondások). Minden válasz idézi az [S1], [S2]… jelöléseket és felsorolja a forrásokat.
 - **Alapból privát** — nincs felhő, nincs telemetria; az eredetiket csak olvassa. 8 nyelv: EN, RO, FR, IT, ES, PT, DE, HU.
-- **web-grab** — bármely weboldalt (vagy csak a kijelölésedet) letisztított szövegként mentheted a könyvtárba, a címe forrásként megmarad; egy parancs, egy bármely böngészőben (Falkonban is) működő bookmarklet vagy egy Falkon-bővítmény sablon.
+- **web-grab** — egy kis Rust böngésző (clean-room, a Falkon helyett), amely bármely oldalt vagy kijelölést letisztított szövegként ment a könyvtárba a címével forrásként, és megkérdezheted róla a helyi Colibrìt; vagy egy parancs, illetve bookmarklet bármely más böngészőben.
 
 ## Gyors kezdés
 
@@ -33,7 +33,8 @@ cartacolibri add ~/Documents
 cartacolibri search "contract*" --ext pdf,docx
 cartacolibri group set Contracts ~/Documents/contracts
 cartacolibri synthesize "payment terms" --group Contracts --save --mock
-cartacolibri grab https://example.org/article      # web-grab
+cartacolibri grab https://example.org/article      # web-grab (command line)
+cartacolibri-browser https://example.org           # web-grab (browser)
 ```
 
 ## Hogyan áll össze
@@ -42,7 +43,7 @@ cartacolibri grab https://example.org/article      # web-grab
 
 ## Licenc és köszönet
 
-A CartaColibri **MIT licenc** alatt jelenik meg. Clean-room Rust implementáció: a [Colibrì](https://github.com/JustVugg/colibri) motorral (JustVugg, Apache-2.0) kizárólag a nyilvános HTTP-átjárón át beszél, és nem tartalmaz belőle kódot. Az index- és keresőréteg a DocFetcher nyilvános kézikönyvében leírt viselkedést követi; DocFetcher-kód nincs benne. Az opcionális Falkon-bővítmény sablon különálló fájl, amely csak helyi HTTP-n át beszél a CartaColibrivel.
+A CartaColibri **MIT licenc** alatt jelenik meg. Clean-room Rust implementáció: a [Colibrì](https://github.com/JustVugg/colibri) motorral (JustVugg, Apache-2.0) kizárólag a nyilvános HTTP-átjárón át beszél, és nem tartalmaz belőle kódot. Az index- és keresőréteg a DocFetcher nyilvános kézikönyvében leírt viselkedést követi; DocFetcher-kód nincs benne. A web-grab böngésző az operációs rendszer saját webview-jára épül, és nem tartalmaz Falkon-kódot.
 
 ## Továbbiak
 

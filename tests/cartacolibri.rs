@@ -576,3 +576,10 @@ fn html_text_and_chunking() {
     let ch = extract::chunk(&long, 1400);
     assert!(ch.len() > 4 && ch.iter().all(|c| c.len() <= 1400));
 }
+
+#[test]
+fn ask_page_cites_the_page() {
+    let t = carta::ask_page(&Backend::mock(), "ce sunt colibrii?", "Colibri", "https://exemplu.local/c", "Colibrii sunt păsări mici care zboară înapoi și bat din aripi de peste cincizeci de ori pe secundă.").unwrap();
+    assert!(t.contains("[S1] https://exemplu.local/c"), "{t}");
+    assert!(carta::ask_page(&Backend::mock(), "  ", "t", "u", "x").is_err());
+}

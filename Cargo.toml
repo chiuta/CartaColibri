@@ -9,6 +9,10 @@ repository = "https://github.com/chiuta/CartaColibri"
 readme = "README.md"
 rust-version = "1.90"
 
+[workspace]
+members = [".", "browser"]
+resolver = "3"
+
 [dependencies]
 rusqlite = { version = "0.43", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
