@@ -29,6 +29,7 @@ tiny_http = "0.12"
 ureq = { version = "3", features = ["json"] }
 pdf-extract = "0.9"
 percent-encoding = "2"
+clap_complete = "4.6.12"
 
 [dev-dependencies]
 tempfile = "3"

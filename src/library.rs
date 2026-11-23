@@ -96,6 +96,33 @@ pub struct Hit {
     pub snippet: String,
     pub score: f64,
     pub matches: u32,
+    /// PDF page number when the location is a page ("p.12"), else None.
+    pub page: Option<i64>,
+}
+
+/// Result of [`Library::search_friendly`].
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct FriendlyResult {
+    pub hits: Vec<Hit>,
+    /// Set when the original query found nothing and this corrected query was searched instead.
+    pub corrected: Option<String>,
+    /// "Did you mean" alternatives (full queries), best first.
+    pub suggestions: Vec<String>,
+}
+
+/// Live progress of an index update (see [`Library::update_progress`]).
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct Progress {
+    pub root: String,
+    pub current: String,
+    /// Files in the folder tree looked at so far / in total.
+    pub seen: u32,
+    pub total: u32,
+    /// Added + updated + removed so far.
+    pub changed: u32,
+    pub unchanged: u32,
+    pub skipped: u32,
+    pub failed: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -114,6 +141,8 @@ pub struct Stats {
     pub unchanged: u32,
     pub skipped: u32,
     pub failed: u32,
+    /// Files looked at in total (all folders).
+    pub seen: u32,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -201,7 +230,9 @@ impl Library {
                  size INTEGER, mtime_ns INTEGER, sha1 TEXT, chars INTEGER, pages INTEGER, indexed_at REAL);
              CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(text, doc_id UNINDEXED, loc UNINDEXED, seq UNINDEXED,
                  tokenize='unicode61 remove_diacritics 2');
-             CREATE TABLE IF NOT EXISTS problems(path TEXT PRIMARY KEY, reason TEXT, at REAL);",
+             CREATE TABLE IF NOT EXISTS problems(path TEXT PRIMARY KEY, reason TEXT, at REAL);
+             CREATE INDEX IF NOT EXISTS docs_sha1 ON docs(sha1);
+             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks,'row');",
         )
         .map_err(e)?;
         Ok(Library {
@@ -325,42 +356,136 @@ impl Library {
         Ok(())
     }
 
-    fn walk(root: &Path, out: &mut Vec<PathBuf>) {
-        let Ok(rd) = std::fs::read_dir(root) else {
+    fn walk(
+        dir: &Path,
+        out: &mut Vec<PathBuf>,
+        probs: &mut Vec<(String, String)>,
+        seen_dirs: &mut HashSet<PathBuf>,
+        depth: usize,
+    ) {
+        if depth > 64 {
+            probs.push((
+                dir.to_string_lossy().into_owned(),
+                "Folders are nested too deeply; the rest of this branch was skipped.".into(),
+            ));
             return;
+        }
+        let rd = match std::fs::read_dir(dir) {
+            Ok(r) => r,
+            Err(er) => {
+                probs.push((
+                    dir.to_string_lossy().into_owned(),
+                    format!(
+                        "This folder cannot be opened: {}",
+                        extract::plain_reason("", &er.to_string())
+                    ),
+                ));
+                return;
+            }
         };
         let mut entries: Vec<_> = rd.flatten().collect();
         entries.sort_by_key(|x| x.file_name());
         for en in entries {
             let name = en.file_name().to_string_lossy().into_owned();
             let Ok(ft) = en.file_type() else { continue };
-            if ft.is_dir() {
-                if !SKIP_DIRS.contains(&name.as_str()) && !name.starts_with('.') {
-                    Self::walk(&en.path(), out);
+            let path = en.path();
+            let is_dir = if ft.is_symlink() {
+                // follow links to folders, but never walk the same real folder twice (loops)
+                match std::fs::metadata(&path) {
+                    Ok(m) if m.is_dir() => match std::fs::canonicalize(&path) {
+                        Ok(c) if seen_dirs.insert(c.clone()) => true,
+                        _ => continue,
+                    },
+                    _ => false,
                 }
             } else {
-                out.push(en.path());
+                ft.is_dir()
+            };
+            if is_dir {
+                if !SKIP_DIRS.contains(&name.as_str()) && !name.starts_with('.') {
+                    if !ft.is_symlink()
+                        && let Ok(c) = std::fs::canonicalize(&path)
+                    {
+                        seen_dirs.insert(c);
+                    }
+                    Self::walk(&path, out, probs, seen_dirs, depth + 1);
+                }
+            } else {
+                out.push(path);
             }
         }
     }
 
     /// Incremental: only new/changed files are read; vanished ones are dropped.
     pub fn update(&mut self, roots: Option<&[String]>, log: &mut dyn FnMut(&str)) -> Res<Stats> {
+        self.update_progress(roots, &mut |_| {}, log)
+    }
+
+    /// Like [`update`](Self::update) with a progress callback fired after every file.
+    pub fn update_progress(
+        &mut self,
+        roots: Option<&[String]>,
+        progress: &mut dyn FnMut(&Progress),
+        log: &mut dyn FnMut(&str),
+    ) -> Res<Stats> {
         let mut st = Stats::default();
         let list: Vec<String> = match roots {
             Some(r) => r.to_vec(),
             None => self.roots(),
         };
+        let now_f = || {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs_f64())
+                .unwrap_or(0.0)
+        };
         for root in list {
             let root = self.add_root(&root)?;
             let mut files = vec![];
-            Self::walk(Path::new(&root), &mut files);
+            let mut walk_probs = vec![];
+            let mut seen_dirs = HashSet::new();
+            if let Ok(c) = std::fs::canonicalize(&root) {
+                seen_dirs.insert(c);
+            }
+            Self::walk(
+                Path::new(&root),
+                &mut files,
+                &mut walk_probs,
+                &mut seen_dirs,
+                0,
+            );
             let outputs = self.home.join("outputs"); // RAG-CARTA results are never re-indexed
             files.retain(|p| !p.starts_with(&outputs));
             let mut seen: HashSet<String> = HashSet::new();
             let tx = self.db.unchecked_transaction().map_err(e)?;
+            let prefix = format!("{}{}", root.trim_end_matches('/'), "/");
+            tx.execute(
+                "DELETE FROM problems WHERE substr(path,1,length(?1))=?1",
+                [&prefix],
+            )
+            .map_err(e)?;
+            let note = |tx: &rusqlite::Transaction, path: &str, msg: &str| -> Res<()> {
+                tx.execute(
+                    "INSERT OR REPLACE INTO problems VALUES(?,?,?)",
+                    params![path, msg, now_f()],
+                )
+                .map_err(e)?;
+                Ok(())
+            };
+            for (p, m) in &walk_probs {
+                note(&tx, p, m)?;
+                log(&format!("skip {p}: {m}"));
+            }
+            let mut pr = Progress {
+                root: root.clone(),
+                total: files.len() as u32,
+                ..Default::default()
+            };
             for p in files {
                 let ps = p.to_string_lossy().into_owned();
+                st.seen += 1;
+                pr.seen += 1;
+                pr.current = ps.clone();
                 let name = p
                     .file_name()
                     .map(|n| n.to_string_lossy().into_owned())
@@ -377,13 +502,32 @@ impl Library {
                     || !self.exts.contains(&ext)
                 {
                     st.skipped += 1;
+                    pr.skipped += 1;
+                    progress(&pr);
                     continue;
                 }
-                let Ok(md) = std::fs::metadata(&p) else {
-                    continue;
+                let md = match std::fs::metadata(&p) {
+                    Ok(m) => m,
+                    Err(er) => {
+                        st.failed += 1;
+                        pr.failed += 1;
+                        let msg = extract::plain_reason(&ext, &er.to_string());
+                        note(&tx, &ps, &msg)?;
+                        log(&format!("skip {ps}: {msg}"));
+                        progress(&pr);
+                        continue;
+                    }
                 };
                 if md.len() > MAX_FILE_BYTES {
                     st.skipped += 1;
+                    pr.skipped += 1;
+                    let msg = format!(
+                        "Skipped: the file is very large ({} MB; the limit is {} MB).",
+                        md.len() >> 20,
+                        MAX_FILE_BYTES >> 20
+                    );
+                    note(&tx, &ps, &msg)?;
+                    progress(&pr);
                     continue;
                 }
                 seen.insert(ps.clone());
@@ -395,11 +539,9 @@ impl Library {
                     .unwrap_or(0);
                 let size = md.len() as i64;
                 let row: Option<(i64, i64, i64, String)> = tx
-                    .query_row(
-                        "SELECT id,size,mtime_ns,sha1 FROM docs WHERE path=?",
-                        [&ps],
-                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-                    )
+                    .prepare_cached("SELECT id,size,mtime_ns,sha1 FROM docs WHERE path=?")
+                    .map_err(e)?
+                    .query_row([&ps], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
                     .optional()
                     .map_err(e)?;
                 if let Some((_, s, m, _)) = &row
@@ -407,10 +549,14 @@ impl Library {
                     && *m == mtime
                 {
                     st.unchanged += 1;
+                    pr.unchanged += 1;
+                    progress(&pr);
                     continue;
                 }
+                let mut empty = false;
                 let res: Res<bool> = (|| {
-                    let raw = std::fs::read(&p).map_err(e)?;
+                    let raw = std::fs::read(&p)
+                        .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
                     let sha = hex::encode(<sha1::Sha1 as sha1::Digest>::digest(&raw));
                     if let Some((id, _, _, old)) = &row
                         && *old == sha
@@ -418,10 +564,11 @@ impl Library {
                         tx.execute("UPDATE docs SET mtime_ns=? WHERE id=?", params![mtime, id])
                             .map_err(e)?;
                         st.unchanged += 1;
+                        pr.unchanged += 1;
                         return Ok(false);
                     }
                     drop(raw);
-                    let parts = extract::extract(&p, &ext, self.ocr)?;
+                    let parts = extract::extract_safe(&p, &ext, self.ocr)?;
                     if let Some((id, ..)) = &row {
                         tx.execute("DELETE FROM chunks WHERE doc_id=?", [id])
                             .map_err(e)?;
@@ -430,26 +577,26 @@ impl Library {
                     } else {
                         st.added += 1;
                     }
-                    let now = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .map(|d| d.as_secs_f64())
-                        .unwrap_or(0.0);
+                    pr.changed += 1;
                     tx.execute(
                         "INSERT INTO docs(root,path,ext,size,mtime_ns,sha1,chars,pages,indexed_at) VALUES(?,?,?,?,?,?,0,?,?)",
-                        params![root, ps, ext, size, mtime, sha, parts.len() as i64, now],
+                        params![root, ps, ext, size, mtime, sha, parts.len() as i64, now_f()],
                     )
                     .map_err(e)?;
                     let did = tx.last_insert_rowid();
                     let (mut total, mut seq) = (0usize, 0i64);
-                    for (loc, text) in &parts {
-                        for c in extract::chunk(text, CHUNK_CHARS) {
-                            tx.execute(
+                    {
+                        let mut ins = tx
+                            .prepare_cached(
                                 "INSERT INTO chunks(text,doc_id,loc,seq) VALUES(?,?,?,?)",
-                                params![c, did, loc, seq],
                             )
                             .map_err(e)?;
-                            total += c.chars().count();
-                            seq += 1;
+                        for (loc, text) in &parts {
+                            for c in extract::chunk(text, CHUNK_CHARS) {
+                                ins.execute(params![c, did, loc, seq]).map_err(e)?;
+                                total += c.chars().count();
+                                seq += 1;
+                            }
                         }
                     }
                     tx.execute(
@@ -459,22 +606,23 @@ impl Library {
                     .map_err(e)?;
                     tx.execute("DELETE FROM problems WHERE path=?", [&ps])
                         .map_err(e)?;
+                    empty = total == 0;
                     Ok(true)
                 })();
                 if let Err(msg) = res {
                     st.failed += 1;
+                    pr.failed += 1;
                     let msg: String = msg.chars().take(300).collect();
-                    let now = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .map(|d| d.as_secs_f64())
-                        .unwrap_or(0.0);
-                    tx.execute(
-                        "INSERT OR REPLACE INTO problems VALUES(?,?,?)",
-                        params![ps, msg, now],
-                    )
-                    .map_err(e)?;
+                    note(&tx, &ps, &msg)?;
                     log(&format!("skip {ps}: {msg}"));
+                } else if empty {
+                    note(
+                        &tx,
+                        &ps,
+                        "No readable text was found in this file (empty, or a scan: try OCR).",
+                    )?;
                 }
+                progress(&pr);
             }
             let gone: Vec<(i64, String)> = {
                 let mut q = tx
@@ -491,11 +639,37 @@ impl Library {
                         .map_err(e)?;
                     tx.execute("DELETE FROM docs WHERE id=?", [id]).map_err(e)?;
                     st.removed += 1;
+                    pr.changed += 1;
+                    progress(&pr);
                 }
             }
             tx.commit().map_err(e)?;
         }
         Ok(st)
+    }
+
+    /// Groups of indexed files with identical content (same SHA-1), each group sorted by path.
+    pub fn duplicates(&self) -> Vec<Vec<String>> {
+        let mut q = self
+            .db
+            .prepare(
+                "SELECT sha1, path FROM docs WHERE size>0 AND sha1 IN
+                 (SELECT sha1 FROM docs WHERE size>0 GROUP BY sha1 HAVING count(*)>1)
+                 ORDER BY sha1, path",
+            )
+            .unwrap();
+        let rows: Vec<(String, String)> = q
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .flatten()
+            .collect();
+        let mut by: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (h, p) in rows {
+            by.entry(h).or_default().push(p);
+        }
+        let mut out: Vec<Vec<String>> = by.into_values().collect();
+        out.sort();
+        out
     }
 
     /// Folder watching by polling: re-run the incremental update every `interval` seconds.
@@ -605,6 +779,83 @@ impl Library {
     }
 
     pub fn search(&self, query: &str, f: &Filter) -> Res<Vec<Hit>> {
+        let (hits, _) = self.search_core(query, f, true)?;
+        Ok(hits)
+    }
+
+    fn fetch(&self, m: &str) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
+        let mut q = self.db.prepare_cached(
+            "SELECT doc_id, loc, text, bm25(chunks) FROM chunks WHERE chunks MATCH ?1 ORDER BY bm25(chunks) LIMIT 2000",
+        )?;
+        let rows = q.query_map([m], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+        rows.collect()
+    }
+
+    /// Returns the hits and the FTS match string that actually produced them.
+    fn search_core(&self, query: &str, f: &Filter, fallback: bool) -> Res<(Vec<Hit>, String)> {
+        let word = Regex::new(r"\w+").unwrap();
+        let plain: Vec<&str> = word
+            .find_iter(query)
+            .map(|m| m.as_str())
+            .filter(|w| !matches!(*w, "AND" | "OR" | "NOT" | "NEAR"))
+            .collect();
+        let mut used = Self::fts_query(query)?;
+        let mut rows = match self.fetch(&used) {
+            Ok(r) => r,
+            Err(_) => {
+                // e.g. a dangling AND/NOT: fall back to plain quoted words, never a crash
+                if plain.is_empty() {
+                    return Ok((vec![], used));
+                }
+                used = plain
+                    .iter()
+                    .map(|w| format!("\"{w}\""))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                self.fetch(&used).map_err(e)?
+            }
+        };
+        if rows.is_empty() && fallback && !plain.is_empty() {
+            // inflection tolerant fallback: every word cut to a stem and matched as a prefix,
+            // from the gentlest cut (plural / one-letter endings) to the roughest.
+            let mut tried: Vec<String> = vec![];
+            for level in 0..4 {
+                let stems: Vec<String> = plain
+                    .iter()
+                    .map(|w| {
+                        let n = w.chars().count();
+                        let keep = match level {
+                            0 => n.saturating_sub(1).max(3),
+                            1 => n.saturating_sub(2).max(3),
+                            2 => n.saturating_sub(3).max(3),
+                            _ => 4.max((n as f64 * 0.7) as usize),
+                        }
+                        .min(n);
+                        format!("{}*", w.chars().take(keep).collect::<String>())
+                    })
+                    .collect();
+                let m = stems.join(" ");
+                if tried.contains(&m) {
+                    continue;
+                }
+                rows = self.fetch(&m).unwrap_or_default();
+                tried.push(m.clone());
+                if !rows.is_empty() {
+                    used = m;
+                    break;
+                }
+            }
+        }
+        let terms = match_terms(&used);
+        Ok((self.rows_to_hits(rows, &terms, f)?, used))
+    }
+
+    fn rows_to_hits(
+        &self,
+        rows: Vec<(i64, String, String, f64)>,
+        terms: &[(String, bool)],
+        f: &Filter,
+    ) -> Res<Vec<Hit>> {
         let allowed: Option<HashSet<i64>> = match &f.group {
             Some(g) => Some(self.resolve_group(g)?.into_iter().map(|d| d.id).collect()),
             None => None,
@@ -620,45 +871,6 @@ impl Library {
                 }
             })
             .collect();
-        let sql = "SELECT doc_id, loc, snippet(chunks,0,'[',']',' … ',24), bm25(chunks) FROM chunks WHERE chunks MATCH ?1 ORDER BY bm25(chunks) LIMIT 2000";
-        let run = |m: &str| -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
-            let mut q = self.db.prepare(sql)?;
-            let rows = q.query_map([m], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
-            rows.collect()
-        };
-        let word = Regex::new(r"\w+").unwrap();
-        let plain: Vec<&str> = word
-            .find_iter(query)
-            .map(|m| m.as_str())
-            .filter(|w| !matches!(*w, "AND" | "OR" | "NOT" | "NEAR"))
-            .collect();
-        let mut rows = match run(&Self::fts_query(query)?) {
-            Ok(r) => r,
-            Err(_) => {
-                // e.g. a dangling AND/NOT: fall back to plain quoted words, never a crash
-                if plain.is_empty() {
-                    return Ok(vec![]);
-                }
-                run(&plain
-                    .iter()
-                    .map(|w| format!("\"{w}\""))
-                    .collect::<Vec<_>>()
-                    .join(" "))
-                .map_err(e)?
-            }
-        };
-        if rows.is_empty() && !plain.is_empty() {
-            // typo/inflection tolerant fallback: every word cut to its stem, matched as a prefix
-            let stems: Vec<String> = plain
-                .iter()
-                .map(|w| {
-                    let n = w.chars().count();
-                    let keep = 4.max((n as f64 * 0.7) as usize).min(n);
-                    format!("{}*", w.chars().take(keep).collect::<String>())
-                })
-                .collect();
-            rows = run(&stems.join(" ")).unwrap_or_default();
-        }
         let mut hits: HashMap<i64, u32> = HashMap::new();
         let mut best: Vec<(i64, String, String, f64)> = vec![];
         for r in rows {
@@ -670,7 +882,7 @@ impl Library {
         }
         let docs: HashMap<i64, Doc> = self.all_docs().into_iter().map(|d| (d.id, d)).collect();
         let mut out: Vec<Hit> = vec![];
-        for (did, loc, snip, score) in best {
+        for (did, loc, text, score) in best {
             let Some(d) = docs.get(&did) else { continue };
             if allowed.as_ref().is_some_and(|a| !a.contains(&did)) {
                 continue;
@@ -687,15 +899,17 @@ impl Library {
             {
                 continue;
             }
+            let page = loc.strip_prefix("p.").and_then(|n| n.trim().parse().ok());
             out.push(Hit {
                 id: did,
                 path: d.path.clone(),
                 ext: d.ext.clone(),
                 size: d.size,
                 loc,
-                snippet: snip.replace('\n', " "),
+                snippet: make_snippet(&text, terms),
                 score: -score,
                 matches: hits[&did],
+                page,
             });
         }
         out.sort_by(|a, b| {
@@ -715,6 +929,121 @@ impl Library {
         }
         out.truncate(f.limit.unwrap_or(50));
         Ok(out)
+    }
+
+    /// Search that forgives typos: exact -> corrected spelling -> word stems; if still nothing,
+    /// "did you mean" suggestions are returned.
+    pub fn search_friendly(&self, query: &str, f: &Filter) -> Res<FriendlyResult> {
+        let (hits, _) = self.search_core(query, f, false)?;
+        if !hits.is_empty() {
+            return Ok(FriendlyResult {
+                hits,
+                ..Default::default()
+            });
+        }
+        let suggestions = self.suggest(query);
+        if let Some(best) = suggestions.first()
+            && let Ok((hits, _)) = self.search_core(best, f, false)
+            && !hits.is_empty()
+        {
+            return Ok(FriendlyResult {
+                hits,
+                corrected: Some(best.clone()),
+                suggestions,
+            });
+        }
+        let (hits, _) = self.search_core(query, f, true)?;
+        Ok(FriendlyResult {
+            hits,
+            corrected: None,
+            suggestions,
+        })
+    }
+
+    /// "Did you mean": full queries with unknown words replaced by close words from the
+    /// index vocabulary (edit distance, bounded). Empty when every word is already known.
+    pub fn suggest(&self, query: &str) -> Vec<String> {
+        let word = Regex::new(r"\w+").unwrap();
+        let spans: Vec<(usize, usize, String)> = word
+            .find_iter(query)
+            .filter(|m| !matches!(m.as_str(), "AND" | "OR" | "NOT" | "NEAR"))
+            .map(|m| (m.start(), m.end(), fold(m.as_str())))
+            .collect();
+        if spans.is_empty() {
+            return vec![];
+        }
+        let vocab: Vec<(String, String, i64)> = (|| -> rusqlite::Result<_> {
+            let mut q = self.db.prepare("SELECT term, doc FROM chunks_vocab")?;
+            let v: Vec<(String, String, i64)> = q
+                .query_map([], |r| {
+                    let t: String = r.get(0)?;
+                    Ok((fold(&t), t, r.get(1)?))
+                })?
+                .flatten()
+                .collect();
+            Ok(v)
+        })()
+        .unwrap_or_default();
+        if vocab.is_empty() {
+            return vec![];
+        }
+        // per word: ranked candidates (empty = word is known or nothing is close)
+        let mut cands: Vec<Vec<String>> = vec![];
+        for (_, _, w) in &spans {
+            let n = w.chars().count();
+            let max_d = match n {
+                0..=3 => 0,
+                4..=6 => 1,
+                _ => 2,
+            };
+            if max_d == 0 || vocab.iter().any(|(f, _, _)| f == w) {
+                cands.push(vec![]);
+                continue;
+            }
+            let wc: Vec<char> = w.chars().collect();
+            let mut found: Vec<(usize, i64, &str)> = vec![];
+            for (f, t, docs) in &vocab {
+                let fl = f.chars().count();
+                if fl + max_d < n || n + max_d < fl {
+                    continue;
+                }
+                let fc: Vec<char> = f.chars().collect();
+                if let Some(d) = edit_distance(&wc, &fc, max_d) {
+                    found.push((d, -*docs, t));
+                }
+            }
+            found.sort();
+            found.dedup_by(|a, b| a.2 == b.2);
+            cands.push(found.into_iter().take(4).map(|x| x.2.to_string()).collect());
+        }
+        let first_bad = cands.iter().position(|c| !c.is_empty());
+        let Some(fb) = first_bad else {
+            return vec![];
+        };
+        let build = |pick: &dyn Fn(usize) -> Option<String>| -> String {
+            let mut out = String::new();
+            let mut last = 0;
+            for (i, (s, en, _)) in spans.iter().enumerate() {
+                out.push_str(&query[last..*s]);
+                out.push_str(&pick(i).unwrap_or_else(|| query[*s..*en].to_string()));
+                last = *en;
+            }
+            out.push_str(&query[last..]);
+            out
+        };
+        let mut out: Vec<String> = vec![build(&|i| cands[i].first().cloned())];
+        for alt in cands[fb].iter().skip(1) {
+            out.push(build(&|i| {
+                if i == fb {
+                    Some(alt.clone())
+                } else {
+                    cands[i].first().cloned()
+                }
+            }));
+        }
+        out.retain(|q| q.trim() != query.trim());
+        out.dedup();
+        out
     }
 
     pub fn text_of(&self, doc_id: i64) -> String {
@@ -838,4 +1167,178 @@ impl Library {
             })
             .collect())
     }
+}
+
+/// Lower-case and strip diacritics, one char to one char (ș ş ț ţ ä ö ü é è ñ ã õ ő ű ...).
+pub fn fold_char(c: char) -> char {
+    let c = c.to_lowercase().next().unwrap_or(c);
+    match c {
+        'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'ă' | 'ą' => 'a',
+        'ç' | 'ć' | 'č' | 'ĉ' => 'c',
+        'ď' | 'đ' => 'd',
+        'è' | 'é' | 'ê' | 'ë' | 'ē' | 'ě' | 'ę' | 'ė' => 'e',
+        'ğ' => 'g',
+        'ì' | 'í' | 'î' | 'ï' | 'ī' | 'ı' => 'i',
+        'ł' => 'l',
+        'ñ' | 'ń' | 'ň' => 'n',
+        'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' | 'ő' | 'ō' => 'o',
+        'ř' => 'r',
+        'ș' | 'ş' | 'ś' | 'š' => 's',
+        'ț' | 'ţ' | 'ť' => 't',
+        'ù' | 'ú' | 'û' | 'ü' | 'ű' | 'ū' | 'ů' => 'u',
+        'ý' | 'ÿ' => 'y',
+        'ź' | 'ż' | 'ž' => 'z',
+        c => c,
+    }
+}
+
+pub fn fold(s: &str) -> String {
+    s.chars().map(fold_char).collect()
+}
+
+/// Optimal-string-alignment distance (adjacent swaps count 1); None when above `max`.
+fn edit_distance(a: &[char], b: &[char], max: usize) -> Option<usize> {
+    if a.len().abs_diff(b.len()) > max {
+        return None;
+    }
+    let (n, m) = (a.len(), b.len());
+    let mut d = vec![vec![0usize; m + 1]; n + 1];
+    for (i, row) in d.iter_mut().enumerate() {
+        row[0] = i;
+    }
+    for (j, x) in d[0].iter_mut().enumerate() {
+        *x = j;
+    }
+    for i in 1..=n {
+        for j in 1..=m {
+            let c = usize::from(a[i - 1] != b[j - 1]);
+            d[i][j] = (d[i - 1][j] + 1)
+                .min(d[i][j - 1] + 1)
+                .min(d[i - 1][j - 1] + c);
+            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+                d[i][j] = d[i][j].min(d[i - 2][j - 2] + 1);
+            }
+        }
+    }
+    (d[n][m] <= max).then_some(d[n][m])
+}
+
+/// Words of an FTS match string as (folded word, is_prefix); words after NOT are ignored.
+fn match_terms(m: &str) -> Vec<(String, bool)> {
+    let mut out = vec![];
+    let mut after_not = false;
+    let tok = Regex::new(r#""[^"]*"|\S+"#).unwrap();
+    let word = Regex::new(r"\w+").unwrap();
+    for t in tok.find_iter(m) {
+        let t = t.as_str();
+        if t == "NOT" {
+            after_not = true;
+            continue;
+        }
+        if matches!(t, "AND" | "OR") {
+            continue;
+        }
+        if after_not {
+            after_not = false;
+            continue;
+        }
+        let prefix = t.ends_with('*');
+        let ws: Vec<&str> = word.find_iter(t).map(|w| w.as_str()).collect();
+        for (i, w) in ws.iter().enumerate() {
+            out.push((fold(w), prefix && i + 1 == ws.len()));
+        }
+    }
+    out
+}
+
+/// A sentence-trimmed excerpt of `text` around the first match, every matched word in [brackets].
+fn make_snippet(text: &str, terms: &[(String, bool)]) -> String {
+    let chars: Vec<char> = text
+        .chars()
+        .map(|c| if c.is_whitespace() { ' ' } else { c })
+        .collect();
+    let n = chars.len();
+    // matched word spans
+    let mut spans: Vec<(usize, usize)> = vec![];
+    let mut i = 0;
+    while i < n {
+        if chars[i].is_alphanumeric() || chars[i] == '_' {
+            let s = i;
+            while i < n && (chars[i].is_alphanumeric() || chars[i] == '_') {
+                i += 1;
+            }
+            let w: String = chars[s..i].iter().map(|&c| fold_char(c)).collect();
+            if terms
+                .iter()
+                .any(|(t, pre)| !t.is_empty() && (w == *t || (*pre && w.starts_with(t.as_str()))))
+            {
+                spans.push((s, i));
+            }
+        } else {
+            i += 1;
+        }
+    }
+    let is_end = |k: usize| matches!(chars[k], '.' | '!' | '?' | '…' | ';');
+    let first = spans.first().map(|s| s.0).unwrap_or(0);
+    // start: back to a sentence boundary within 140 chars
+    let mut start = first.saturating_sub(140);
+    let mut k = first;
+    let mut at_boundary = first == 0;
+    while k > start {
+        if is_end(k - 1) && chars.get(k).is_some_and(|c| *c == ' ') {
+            start = k + 1;
+            at_boundary = true;
+            break;
+        }
+        k -= 1;
+    }
+    if !at_boundary && start > 0 {
+        // cut at a word boundary
+        while start < first && chars[start] != ' ' {
+            start += 1;
+        }
+        start += 1;
+    }
+    let start = start.min(first);
+    // end: sentence end after the first match, extended to ~120 chars, capped at 320
+    let mut end = n.min(first + 1);
+    let mut j = first;
+    let mut closed = false;
+    while j < n && j - start < 320 {
+        if is_end(j) && j - start >= 120.min(n) {
+            end = j + 1;
+            closed = true;
+            break;
+        }
+        j += 1;
+    }
+    if !closed {
+        end = if j >= n {
+            n
+        } else {
+            let mut e = j;
+            while e > first && chars[e] != ' ' {
+                e -= 1;
+            }
+            e.max(first + 1)
+        };
+    }
+    let mut out = String::new();
+    if start > 0 {
+        out.push_str("… ");
+    }
+    let mut p = start;
+    for &(s, e2) in spans.iter().filter(|s| s.0 >= start && s.1 <= end) {
+        out.extend(&chars[p..s]);
+        out.push('[');
+        out.extend(&chars[s..e2]);
+        out.push(']');
+        p = e2;
+    }
+    out.extend(&chars[p..end.max(p)]);
+    let mut out = out.trim().to_string();
+    if end < n {
+        out.push_str(" …");
+    }
+    out
 }

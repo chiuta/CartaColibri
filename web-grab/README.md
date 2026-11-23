@@ -3,6 +3,10 @@
 Bring web pages into your CartaColibri library — 100 % local; the address is kept as the source so
 RAG-CARTA citations lead back to the page.
 
+**New to this?** Quickest start: run `cartacolibri start`, then in a second terminal `cartacolibri grab https://example.org/article`
+and look for the page under **Library**. The small browser below is optional. Everything stays on your computer; the only network
+traffic is the page you ask to fetch. Stuck? Run `cartacolibri doctor`, and see the FAQ and troubleshooting table in the [main README](../README.md).
+
 | Way | How | Tested |
 |---|---|---|
 | **Browser** `cartacolibri-browser [URL…]` | A small Rust browser on the system webview (WebKitGTK / WebView2 / WKWebView), with **tabs** (Ctrl+T / Ctrl+W / Ctrl+Tab / Ctrl+L, session restored; `--fresh` to skip). Replaces the Falkon plugin idea: no Falkon code, MIT. See below. | Linux: CI self-tests under Xvfb (save, ask, two tabs asked together). Windows / macOS: compiled in CI, **not yet run by hand** |
@@ -34,3 +38,15 @@ Browser notes
 - Windows / macOS tabs use child webviews with manual resizing — written but not yet run by hand.
 - Build: `cargo build --release -p cartacolibri-browser` (Linux needs `libwebkit2gtk-4.1-dev`; Windows needs the WebView2 runtime).
 - Pages are decoded as the site declares; a page without a charset can show wrong accents.
+
+## Troubleshooting
+
+| Symptom | Likely cause | What to do |
+|---|---|---|
+| `cartacolibri-browser` does not open | A system component is missing | Linux: install `libwebkit2gtk-4.1`. Windows: install the WebView2 runtime. `cartacolibri grab URL` works without it. |
+| The badge never says “already in your library” | The page was saved under another address, or the local app is not running | Run `cartacolibri start` first; save the page once from the browser. |
+| Questions about a page fail | The Colibrì engine is not running | Start it, or use the library page with **Offline mode (no model)**. |
+| Accents look wrong on a page | The site declares no charset | Known limit; the saved text may still be searchable. |
+| A bookmarklet does nothing on some sites | The page’s Content-Security-Policy blocks it | Use the browser or `cartacolibri grab URL` instead. |
+
+Status, honestly: alpha. On Windows and macOS the browser is compiled in CI but has never been run by hand; the GitHub CI itself is not yet verified.

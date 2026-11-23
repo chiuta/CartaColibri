@@ -6,6 +6,23 @@
 
 CartaColibri ist eine lokale KI-Bibliothek auf Basis der Colibrì-Engine. Sie indiziert die Ordner, die du auswählst, lässt dich blitzschnell darin suchen und bittet dann ein lokales Sprachmodell, Dateigruppen zusammenzufassen, Daten daraus zu extrahieren oder sie zu synthetisieren — immer mit Quellenangabe. Nichts verlässt deinen Rechner, und deine Originale werden nie verändert.
 
+## Deine ersten 5 Minuten
+
+Du brauchst keine Vorkenntnisse. Drei Schritte, und du hast deine eigenen Dateien durchsucht und zusammengefasst.
+
+1. **Starte sie.** Entpacke das portable Zip und führe den Starter aus, oder tippe `cartacolibri start` in ein Terminal. Dein Browser zeigt die lokale Seite `http://127.0.0.1:8765/`.
+2. **Füge einen Ordner hinzu.** Öffne auf der Seite **Bibliothek**, gib einen Ordnerpfad wie `~/Documents` ein und klicke auf **Ordner hinzufügen**. Das erste Indizieren eines großen Ordners kann ein paar Minuten dauern. Deine Dateien werden nur gelesen, nie verändert.
+3. **Suchen, dann fragen.** Öffne **RAG-fetch**, suche ein Wort, hake ein paar Dateien an und erstelle eine Gruppe. Öffne dann **RAG-CARTA**, wähle **Zusammenfassen** und klicke auf **Starten**. Noch kein KI-Modell? Aktiviere **Offline-Modus (ohne Modell)** und probiere es trotzdem aus.
+
+Lieber im Terminal? Dieselben drei Schritte:
+
+```bash
+cartacolibri start                 # step 1 - leave this window open (use a second one for the rest)
+cartacolibri add ~/Documents       # step 2
+cartacolibri group set Demo ~/Documents
+cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = no AI model needed
+```
+
 ## Was sie kann
 
 - **Bibliothek** — alle lokalen Dokumente mit ihrem Speicherort; Ordner hinzufügen oder entfernen, Dateien hochladen, ansehen, auf Wunsch OCR-Text speichern.
@@ -40,6 +57,78 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 ## Wie alles zusammenspielt
 
 Ebene 0 — deine Ordner (nur lesend) → RAG-fetch — Index, Suche, Gruppen → RAG-CARTA — KI-Aufgaben über die Colibrì-Engine.
+
+## Häufige Fragen
+
+**Was bedeutet „lokal“?**  
+Alles läuft auf deinem eigenen Rechner: die Seite, der Suchindex und das KI-Modell. Es funktioniert auch ohne Netzwerk. Die einzige Ausnahme ist web-grab, das die Webseiten abruft, die du ihm nennst.
+
+**Werden meine Daten irgendwohin gesendet?**  
+Nein. Keine Cloud, kein Konto, keine Telemetrie, keine Nutzungsstatistik. Das Einzige, was deinen Rechner verlässt, sind die Webseiten, die du web-grab ausdrücklich abrufen lässt. Details unter „Datenschutz und Sicherheit“.
+
+**Colibrì läuft nicht. Kann ich trotzdem loslegen?**  
+Ja. Bibliothek und Suche brauchen nie ein Modell. Für Zusammenfassen, Extrahieren und Synthetisieren aktiviere **Offline-Modus (ohne Modell)** (`--mock` auf der Kommandozeile): Du bekommst eine schlichte Antwort aus deinen Dateien, mit Quellenangaben, aber ohne echte KI-Formulierung. Für richtige Antworten starte die Colibrì-Engine.
+
+**Was ist Colibrì, und brauche ich es?**  
+[Colibrì](https://github.com/JustVugg/colibri) ist eine eigene lokale Engine, die das Sprachmodell ausführt. Du brauchst sie nur für die KI-Antworten. Wähle ein Modell, dessen Datei kleiner ist als dein freier RAM, und fang mit einem kleinen an. Siehe die Doku von Colibrì.
+
+**Welche Dateien kann sie lesen?**  
+Text und Notizen (txt, md, rst, log, csv, json, yaml, html, rtf), PDF, Word-, OpenDocument-, PowerPoint- und Excel-Dateien (docx, odt, pptx, xlsx), epub und, mit aktivierter OCR, Bilder und gescannte PDFs.
+
+**Und Scans und Fotos von Dokumenten?**  
+Schalte OCR ein (`--ocr` oder `CARTACOLIBRI_OCR=1`). Dafür muss `tesseract` auf deinem Rechner installiert sein, für gescannte PDFs außerdem `pdftoppm`. Die Seite sagt dir, wenn tesseract fehlt.
+
+**Wie aktualisiere ich?**  
+Portable Version: das neuere Zip herunterladen und entpacken. Aus dem Quellcode: `git pull`, dann `cargo build --release`. Deine Daten in `~/.cartacolibri` bleiben, wo sie sind, und der Index aktualisiert sich von selbst, nur für Geändertes.
+
+**Wie entferne ich alles?**  
+Lösche den Programmordner und dann den Zustandsordner `~/.cartacolibri` (oder wohin `CARTACOLIBRI_HOME` zeigt). Das ist alles: Deine eigenen Dokumente wurden nie angetastet.
+
+**Gibt es etwas Besonderes unter Windows oder macOS?**  
+Das portable Zip gibt es für beide, aber Linux ist das am besten getestete System. Der web-grab-Browser wird in CI für Windows und macOS kompiliert und wurde dort noch nie von Hand ausgeführt. Unter Windows braucht er die WebView2-Runtime. Wenn dein System dich bittet, das Öffnen eines heruntergeladenen Programms zu bestätigen, bestätige nur, wenn du es von der Projektseite hast.
+
+**Warum „Alpha“?**  
+Weil sie noch jung ist: Der Kern funktioniert und ist getestet, aber nicht auf jedem System, und die automatischen Prüfungen auf GitHub sind noch nicht bestätigt. Rechne mit Ecken und Kanten und sag uns Bescheid.
+
+## Wenn etwas nicht klappt
+
+Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir, was zu beheben ist.
+
+| Symptom | Wahrscheinliche Ursache | Was tun |
+|---|---|---|
+| `cartacolibri: command not found` | Der Programmordner liegt nicht in deinem PATH. | Starte es mit vollem Pfad, zum Beispiel `./target/release/cartacolibri`, oder nutze den Starter aus dem portablen Zip. |
+| Die Seite öffnet sich nicht unter `http://127.0.0.1:8765/` | Die lokale Seite läuft nicht, oder der Port ist belegt. | Führe `cartacolibri start` aus. Ist der Port belegt, führe `cartacolibri serve --port 8766` aus und öffne diese Adresse. |
+| Du weißt nicht, was nicht stimmt | In der Einrichtung fehlt etwas. | Führe `cartacolibri doctor` aus: Es prüft die Einrichtung und sagt dir, was zu beheben ist. |
+| Die KI-Aufgaben erreichen Colibrì nicht | Die Colibrì-Engine läuft nicht oder lauscht auf einer anderen Adresse (Standard `http://127.0.0.1:8000`). | Starte sie (`coli web --model ~/colibri-models/<model>`) oder gib ihre Adresse mit `--url` an. Aktiviere solange **Offline-Modus (ohne Modell)**. |
+| Neue Dateien tauchen in der Suche nicht auf | Der Index hat sie noch nicht gesehen. | Klicke auf **Index aktualisieren** oder führe `cartacolibri index` aus. `cartacolibri watch` hält ihn automatisch aktuell. |
+| Einige Dateien stehen unter „Übersprungene Dateien“ | Die Dateien sind beschädigt, geschützt, nicht unterstützt oder Scans. | Führe `cartacolibri problems` aus, um den Grund zu sehen. Bei Scans schalte OCR ein. |
+| Scans und Bilder liefern keinen Text | OCR ist aus oder `tesseract` ist nicht installiert. | Installiere `tesseract` (und `pdftoppm` für PDFs) und füge `--ocr` hinzu, oder setze `CARTACOLIBRI_OCR=1`. |
+| Die Antwort lautet NOT FOUND | Die gewählten Dateien enthalten die Information nicht. Das ist Absicht: Es wird nie geraten. | Prüfe, ob die richtige Gruppe gewählt ist, formuliere die Frage um oder füge der Gruppe die fehlenden Dateien hinzu. |
+| Der web-grab-Browser öffnet sich nicht | Eine Systemkomponente fehlt. | Linux: installiere `libwebkit2gtk-4.1`. Windows: installiere die WebView2-Runtime. Bis dahin funktioniert `cartacolibri grab URL` auch ohne. |
+| Dein eigenes Skript bekommt `403 missing X-Colibri-UI header` | Das ist eine Sicherheitsprüfung, kein Fehler. | Sende den Header `X-Colibri-UI: 1` bei jedem Aufruf von `/carta/*`. |
+
+## Glossar in einfachen Worten
+
+- **Index** — Ein Verzeichnis der Wörter in deinen Dateien, damit eine Suche einen Augenblick dauert, statt alles neu zu lesen.
+- **RAG** — „Retrieval-augmented generation“: Zuerst werden die passenden Stellen in deinen Dateien gefunden, dann antwortet die KI nur anhand dieser Stellen.
+- **Quellenangabe [S1]** — Eine Markierung wie [S1] oder [S2] in einer Antwort. Das Kürzel verweist auf die Quelldatei, aus der der Satz stammt, damit du es prüfen kannst.
+- **Gruppe** — Eine benannte Liste von Dateien (ein Projekt, ein Thema), in der du immer wieder suchen oder fragen kannst.
+- **Gateway** — Die kleine Webadresse (Standard `http://127.0.0.1:8000`), über die CartaColibri mit der Colibrì-Engine spricht.
+- **Schnappschuss (Snapshot)** — Eine gespeicherte HTML-Kopie einer Webseite, bei jedem Speichern mit web-grab angelegt, damit du behältst, was an dem Tag dort stand.
+- **Watch (Beobachten)** — Zweierlei: `cartacolibri watch` hält deinen Index aktuell, und `cartacolibri webwatch` ruft Seiten, die du verfolgst, erneut ab und zeigt, was sich geändert hat.
+
+## Datenschutz und Sicherheit
+
+- **Wo was liegt.** Alles, was CartaColibri schreibt, liegt in einem einzigen Ordner, `<home>`: standardmäßig `~/.cartacolibri` oder der Ordner aus `CARTACOLIBRI_HOME`. Darin: `index.sqlite` (der Suchindex), `groups.json`, `library/uploads/` (hochgeladene Dateien), `outputs/` (Ergebnisse, die du speichern wolltest), `snapshots/` und `web.json` (gespeicherte Webseiten), `highlights.json`, `watch.json`, `settings.json` und `clip.token` (ein Geheimnis für das Bookmarklet: nicht weitergeben).
+- **Deine Originale sind nur lesbar.** CartaColibri liest deine Dokumente und verändert, verschiebt oder löscht sie nie.
+- **Die Seite ist rein lokal.** Der Server lauscht nur auf `127.0.0.1`, andere Rechner in deinem Netzwerk kommen also nicht heran. Anfragen, deren Adresse oder Herkunft nicht lokal ist, weist er ebenfalls ab.
+- **Der Header `X-Colibri-UI`.** Jeder Aufruf der Seite an ihren eigenen Server trägt diesen Header. Eine Webseite in einem anderen Tab kann ihn nicht hinzufügen und deshalb deinen Browser nicht dazu bringen, die lokale App hinter deinem Rücken anzustoßen.
+- **Nichts verlässt `127.0.0.1`, außer Seiten, die du abrufen lässt.** Keine Telemetrie, keine Statistik, keine Cloud. web-grab ruft nur die Adressen ab, die du angibst (und Seiten, die du beobachten wolltest). Auch die Präsentationsseite lädt nichts von anderen Servern.
+- **Der Verlauf ist standardmäßig aus.** Der Verlauf des web-grab-Browsers existiert nur, wenn du ihn einschaltest (`cartacolibri history on`), bleibt auf deiner Festplatte, und `cartacolibri history clear` löscht ihn.
+
+## Ehrlicher Stand
+
+CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) sind **noch nicht bestätigt**: Die Jobs hängen in der Warteschlange fest. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden.
 
 ## Lizenz und Danksagung
 

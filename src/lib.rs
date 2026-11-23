@@ -7,7 +7,9 @@
 
 pub mod api;
 pub mod carta;
+pub mod doctor;
 pub mod extract;
 pub mod grab;
 pub mod library;
 pub mod server;
+pub mod tour;

@@ -491,6 +491,50 @@ fn pdf_pages(path: &Path, ocr: bool) -> Res<Parts> {
 
 // ------------------------------------------------------------------ entry point
 
+/// Turn a low-level reader error into a sentence a non-technical user can act on.
+pub fn plain_reason(ext: &str, msg: &str) -> String {
+    let m = msg.to_lowercase();
+    let kind = ext.trim_start_matches('.').to_uppercase();
+    let s = if m.contains("permission denied") || m.contains("access is denied") {
+        "No permission to read this file. Check its access rights, or copy it somewhere readable."
+            .to_string()
+    } else if m.contains("no such file") || m.contains("cannot find the") {
+        "The file vanished, or is a broken shortcut/link, while it was being indexed.".to_string()
+    } else if m.contains("file name too long") || m.contains("filename too long") {
+        "The file name or its folder path is too long for the system to open. Shorten the name."
+            .to_string()
+    } else if m.contains("looks like a binary") {
+        msg.to_string()
+    } else if m.contains("not a valid zip") || m.contains("zip") || m.contains("central directory")
+    {
+        format!(
+            "This {kind} file looks damaged, or is not really a {kind} file (its container cannot be opened)."
+        )
+    } else if m.contains("xml") {
+        format!("The text inside this {kind} file is damaged and cannot be read.")
+    } else if m.contains("cannot read this pdf") || m.contains("pdftotext failed") {
+        "This PDF is damaged, password-protected or unsupported (a scan? turn OCR on, or install poppler-utils)."
+            .to_string()
+    } else if m.contains("unpacks to more than") {
+        "This file contains a part that is far too large to read safely; skipped.".to_string()
+    } else if m.contains("panicked") {
+        format!("This {kind} file is damaged in a way the reader could not handle; skipped.")
+    } else {
+        format!("Could not read this file: {msg}")
+    };
+    s.chars().take(300).collect()
+}
+
+/// Like [`extract`] but a reader panic on a corrupt file becomes an ordinary error.
+pub fn extract_safe(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
+    let p = path.to_path_buf();
+    let x = ext.to_string();
+    match std::panic::catch_unwind(move || extract(&p, &x, ocr)) {
+        Ok(r) => r.map_err(|m| plain_reason(ext, &m)),
+        Err(_) => Err(plain_reason(ext, "reader panicked")),
+    }
+}
+
 pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
     match ext {
         ".pdf" => return pdf_pages(path, ocr),
@@ -560,6 +604,15 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
         _ => {}
     }
     let raw = std::fs::read(path).map_err(|e| e.to_string())?;
+    let head = &raw[..raw.len().min(4096)];
+    if !head.starts_with(&[0xff, 0xfe])
+        && !head.starts_with(&[0xfe, 0xff])
+        && head.iter().filter(|&&b| b == 0).count() * 10 > head.len().max(1)
+    {
+        return Err(
+            "This file looks like a binary file renamed with a text extension, not text.".into(),
+        );
+    }
     let mut text = decode(&raw);
     match ext {
         ".html" | ".htm" => text = html_to_text(&text),

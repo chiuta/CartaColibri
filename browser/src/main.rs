@@ -23,16 +23,16 @@ use tao::window::{Window, WindowBuilder};
 use wry::{WebView, WebViewBuilder};
 
 const OVERLAY: &str = include_str!("overlay.js");
-const START: &str = r#"<!doctype html><meta charset=utf-8><title>CartaColibri web-grab</title>
-<body style="font:18px system-ui;background:#0f1115;color:#eef1f6;display:grid;place-content:center;height:80vh;text-align:center">
-<h1 style="color:#5fd7e6">CartaColibri · web-grab</h1>
-<p>Type an address in the bar, or words to search your library.<br>Open pages in tabs, press <b>💾</b> to keep one or <b>✨</b> to ask about it —<br><b>🗂✨</b> asks across all your open tabs.</p></body>"#;
+const START: &str = r#"<!doctype html><meta charset=utf-8><meta name=color-scheme content="dark light"><title>CartaColibri</title>
+<style>body{margin:0;font:16px system-ui,sans-serif;background:#0f1115;color:#eef1f6}@media(prefers-color-scheme:light){body{background:#f6f7fa;color:#1b1f2a}}</style>
+<body><noscript>CartaColibri</noscript></body>"#;
 
 enum Ev {
     Eval(usize, String),
     Navigate(usize, String),
     NewTab(Option<String>),
     Close(usize),
+    Reopen,
     Activate(usize),
     Cycle(bool),
     Title(usize, String),
@@ -75,6 +75,80 @@ fn nonce() -> String {
     hex::encode(Sha1::digest(seed.as_bytes()))
 }
 
+/// Small per-user switches kept next to the library (`browser.json`): tour seen, window size.
+fn prefs_get(c: &Cfg) -> serde_json::Map<String, Value> {
+    state_dir(c.home.as_deref())
+        .ok()
+        .and_then(|h| std::fs::read_to_string(h.join("browser.json")).ok())
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default()
+}
+
+fn prefs_set(c: &Cfg, kv: &[(&str, Value)]) {
+    if let Ok(h) = state_dir(c.home.as_deref()) {
+        let mut m = prefs_get(c);
+        for (k, v) in kv {
+            m.insert((*k).to_string(), v.clone());
+        }
+        let _ = std::fs::write(
+            h.join("browser.json"),
+            serde_json::to_string_pretty(&Value::Object(m)).unwrap_or_default(),
+        );
+    }
+}
+
+fn save_size(c: &Cfg, w: &Window) {
+    if c.selftest.is_some() {
+        return;
+    }
+    let s = w.inner_size().to_logical::<f64>(w.scale_factor());
+    if s.width >= 400.0 && s.height >= 300.0 {
+        prefs_set(
+            c,
+            &[
+                ("w", json!(s.width.round())),
+                ("h", json!(s.height.round())),
+            ],
+        );
+    }
+}
+
+/// What the new-tab page shows: recently saved pages and watched pages (all local).
+fn start_data(c: &Cfg) -> Value {
+    let Ok(h) = state_dir(c.home.as_deref()) else {
+        return json!({"recent": [], "watched": []});
+    };
+    let web: BTreeMap<String, Value> = std::fs::read_to_string(h.join("web.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default();
+    let mut v: Vec<(u64, &String, &Value)> = web
+        .iter()
+        .map(|(u, e)| (e["saved_at"].as_u64().unwrap_or(0), u, e))
+        .collect();
+    v.sort_by_key(|b| std::cmp::Reverse(b.0));
+    let recent: Vec<Value> = v
+        .into_iter()
+        .take(6)
+        .map(|(_, u, e)| {
+            let path = e["path"].as_str().unwrap_or("");
+            let title = std::fs::read_to_string(path)
+                .ok()
+                .and_then(|t| {
+                    t.lines()
+                        .next()
+                        .map(|l| l.trim_start_matches('#').trim().to_string())
+                })
+                .filter(|t| !t.is_empty())
+                .unwrap_or_else(|| u.clone());
+            json!({"title": title, "url": u})
+        })
+        .collect();
+    let watched: Vec<String> = grab::watch_list(&h).into_iter().take(6).collect();
+    json!({"recent": recent, "watched": watched})
+}
+
 fn normalize(q: &str) -> Option<String> {
     let q = q.trim();
     if q.is_empty() || q.contains(' ') {
@@ -90,7 +164,20 @@ fn normalize(q: &str) -> Option<String> {
 }
 
 fn reply(p: &EventLoopProxy<Ev>, c: &Cfg, tab: usize, ok: bool, text: String) {
-    let msg = json!({"ok": ok, "text": text});
+    reply_k(p, c, tab, ok, text, "", json!(null));
+}
+
+/// Like [`reply`], with a `kind` (the bar shows a friendly, translated toast) and one extra value.
+fn reply_k(
+    p: &EventLoopProxy<Ev>,
+    c: &Cfg,
+    tab: usize,
+    ok: bool,
+    text: String,
+    kind: &str,
+    x: Value,
+) {
+    let msg = json!({"ok": ok, "text": text, "k": kind, "x": x});
     let js = format!(
         "window[\"__cc_{n}\"]&&window[\"__cc_{n}\"]({msg})",
         n = c.nonce
@@ -150,7 +237,9 @@ fn related(lib: &Library, title: &str, skip: Option<&str>) -> Vec<Value> {
     .into_iter()
     .filter(|h| Some(h.path.as_str()) != skip)
     .take(4)
-    .map(|h| json!({"path": h.path, "snippet": h.snippet, "score": h.score}))
+    .map(
+        |h| json!({"path": h.path, "snippet": h.snippet.replace(['[', ']'], ""), "score": h.score}),
+    )
     .collect()
 }
 
@@ -160,8 +249,15 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
     let lib = || Library::open(c.home.as_deref(), false);
     match m["cmd"].as_str().unwrap_or("") {
         "newtab" => {
-            let _ = p.send_event(Ev::NewTab(None));
+            let u = s("url");
+            let _ = p.send_event(Ev::NewTab(
+                (u.starts_with("http://") || u.starts_with("https://")).then_some(u),
+            ));
         }
+        "reopen" => {
+            let _ = p.send_event(Ev::Reopen);
+        }
+        "tour_seen" => prefs_set(c, &[("tour_done", json!(true))]),
         "close" => {
             let _ = p.send_event(Ev::Close(m["id"].as_u64().unwrap_or(0) as usize));
         }
@@ -171,7 +267,23 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
         "cycle" => {
             let _ = p.send_event(Ev::Cycle(m["back"].as_bool().unwrap_or(false)));
         }
-        "ready" => {}
+        "ready" => {
+            let tour = tab == 1 && c.selftest.is_none() && prefs_get(c).get("tour_done").is_none();
+            if tour {
+                prefs_set(c, &[("tour_done", json!(true))]);
+            }
+            let start = if m["start"].as_bool().unwrap_or(false) {
+                start_data(c)
+            } else {
+                json!(null)
+            };
+            let js = format!(
+                "window[\"__cc_boot_{n}\"]&&window[\"__cc_boot_{n}\"]({b})",
+                n = c.nonce,
+                b = json!({"tour": tour, "start": start, "mock": c.mock})
+            );
+            let _ = p.send_event(Ev::Eval(tab, js));
+        }
         "loaded" => {
             let page = Page {
                 url: s("url"),
@@ -264,14 +376,19 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                         } else {
                             hits.iter()
                                 .map(|h| {
-                                    format!("{:>3}%  {}\n      {}", h.score, h.path, h.snippet)
+                                    format!(
+                                        "{:>3}%  {}\n      {}",
+                                        h.score,
+                                        h.path,
+                                        h.snippet.replace(['[', ']'], "")
+                                    )
                                 })
                                 .collect::<Vec<_>>()
                                 .join("\n")
                         }
                     });
                 match out {
-                    Ok(t) => reply(p, c, tab, true, t),
+                    Ok(t) => reply_k(p, c, tab, true, t, "search", json!(null)),
                     Err(e) => reply(p, c, tab, false, e),
                 }
             }
@@ -286,7 +403,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     m["html"].as_str(),
                 )
             }) {
-                Ok(v) => reply(
+                Ok(v) => reply_k(
                     p,
                     c,
                     tab,
@@ -296,6 +413,8 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                         v["chars"],
                         v["saved"].as_str().unwrap_or("")
                     ),
+                    "save",
+                    json!({"chars": v["chars"], "path": v["saved"]}),
                 ),
                 Err(e) => reply(p, c, tab, false, e),
             }
@@ -308,12 +427,14 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                 grab::highlight_add(&mut l, &s("url"), &s("sel"))
             });
             match r {
-                Ok(n) => reply(
+                Ok(n) => reply_k(
                     p,
                     c,
                     tab,
                     true,
                     format!("🖍 {n} highlight(s) saved with this page"),
+                    "hl",
+                    json!(n),
                 ),
                 Err(e) => reply(p, c, tab, false, e),
             }
@@ -326,7 +447,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     l.push(url.clone());
                 }
                 grab::watch_set(&h, l);
-                reply(
+                reply_k(
                     p,
                     c,
                     tab,
@@ -334,6 +455,8 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     format!(
                         "👁 watching {url}\ncheck with: cartacolibri webwatch check   (or run, to keep checking)"
                     ),
+                    "watch",
+                    json!(url),
                 );
             }
         }
@@ -341,7 +464,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
             if let Ok(h) = state_dir(c.home.as_deref()) {
                 let on = !grab::history_enabled(&h);
                 grab::set_history(&h, on);
-                reply(
+                reply_k(
                     p,
                     c,
                     tab,
@@ -355,6 +478,8 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                             "nothing new is recorded"
                         }
                     ),
+                    "hist",
+                    json!(on),
                 );
                 let js = format!(
                     "window[\"__cc_info_{n}\"]&&window[\"__cc_info_{n}\"]({{\"history\":{on}}})",
@@ -364,7 +489,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
             }
         }
         "save_tabs" => match lib().and_then(|mut l| save_tabs(c, &mut l)) {
-            Ok((name, paths)) => reply(
+            Ok((name, paths)) => reply_k(
                 p,
                 c,
                 tab,
@@ -374,6 +499,8 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     paths.len(),
                     paths.join("\n")
                 ),
+                "tabs",
+                json!(paths.len()),
             ),
             Err(e) => reply(p, c, tab, false, e),
         },
@@ -586,7 +713,7 @@ fn main() {
     };
     if flag("--help") || flag("-h") {
         println!(
-            "cartacolibri-browser [URL…] [--home DIR] [--gateway URL] [--mock] [--fresh]\n  --fresh   do not restore the previous tabs\n  --selftest-save | --selftest-ask | --selftest-tabs   load the first URL, save it / ask about it (use with --mock), print the result, exit (used by CI)"
+            "cartacolibri-browser [URL…] [--home DIR] [--gateway URL] [--mock] [--fresh]\n  --fresh   do not restore the previous tabs\n  keys: Ctrl+S save · Ctrl+Shift+A ask · Ctrl+H highlight · F1 help · Ctrl+Shift+T reopen tab · Esc close panels\n  --selftest-save | --selftest-ask | --selftest-tabs   load the first URL, save it / ask about it (use with --mock), print the result, exit (used by CI)"
         );
         return;
     }
@@ -629,9 +756,19 @@ fn main() {
 
     let event_loop = EventLoopBuilder::<Ev>::with_user_event().build();
     let proxy = event_loop.create_proxy();
+    let size = prefs_get(&cfg);
+    let dim = |k: &str, d: f64, hi: f64| {
+        size.get(k)
+            .and_then(Value::as_f64)
+            .filter(|v| (400.0..=hi).contains(v))
+            .unwrap_or(d)
+    };
     let window = WindowBuilder::new()
         .with_title("CartaColibri · web-grab")
-        .with_inner_size(tao::dpi::LogicalSize::new(1280.0, 860.0))
+        .with_inner_size(tao::dpi::LogicalSize::new(
+            dim("w", 1280.0, 10000.0),
+            dim("h", 860.0, 10000.0),
+        ))
         .build(&event_loop)
         .expect("window");
 
@@ -656,6 +793,7 @@ fn main() {
         active = id;
     }
     show_only(&tabs, active);
+    let mut closed: Vec<String> = vec![];
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
     event_loop.run(move |event, _, flow| {
@@ -705,7 +843,13 @@ fn main() {
             Event::UserEvent(Ev::Close(id)) => {
                 if tabs.len() > 1 {
                     if let Some(i) = tabs.iter().position(|t| t.id == id) {
-                        tabs.remove(i);
+                        let gone = tabs.remove(i);
+                        if gone.url.starts_with("http") {
+                            closed.push(gone.url);
+                            if closed.len() > 20 {
+                                closed.remove(0);
+                            }
+                        }
                         cfg.pages.lock().unwrap().remove(&id);
                         if active == id {
                             active = tabs[i.min(tabs.len() - 1)].id;
@@ -715,7 +859,13 @@ fn main() {
                         save_session(&cfg, &tabs);
                     }
                 } else {
+                    save_size(&cfg, &window);
                     *flow = ControlFlow::Exit;
+                }
+            }
+            Event::UserEvent(Ev::Reopen) => {
+                if let Some(u) = closed.pop() {
+                    let _ = proxy.send_event(Ev::NewTab(Some(u)));
                 }
             }
             Event::UserEvent(Ev::Activate(id)) => {
@@ -775,7 +925,10 @@ fn main() {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
-            } => *flow = ControlFlow::Exit,
+            } => {
+                save_size(&cfg, &window);
+                *flow = ControlFlow::Exit;
+            }
             _ => {}
         }
     });

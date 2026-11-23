@@ -3,6 +3,8 @@
 and the presentation site (site-carta/index.html) from ONE text table, so the 8 languages never drift.
 Languages: en ro fr it es pt de hu — informal address ("tu") everywhere.   Usage: python3 scripts/gen_carta_docs.py"""
 import html, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import carta_docs_beginner as B
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["en", "ro", "fr", "it", "es", "pt", "de", "hu"]
 NAMES = {"en": "English", "ro": "Română", "fr": "Français", "it": "Italiano", "es": "Español", "pt": "Português", "de": "Deutsch", "hu": "Magyar"}
@@ -161,8 +163,23 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 ```"""
 
 
+def md_beginner(lang):
+    """Markdown for the beginner sections (first 5 minutes, FAQ, troubleshooting, glossary, privacy, status)."""
+    l = lambda k: B.L[k][lang]
+    first = "\n".join(f"{i}. {l('first' + str(i))}" for i in (1, 2, 3))
+    th = B.L["th"][lang]
+    rows = "\n".join("| " + " | ".join(c.replace("|", "\\|") for c in r) + " |" for r in B.TROUBLE[lang])
+    faq = "\n\n".join(f"**{q}**  \n{a}" for q, a in B.FAQ[lang])
+    gloss = "\n".join(f"- **{t}** — {d}" for t, d in B.GLOSS[lang])
+    priv = "\n".join(f"- {x}" for x in B.PRIV[lang])
+    return {"first": f"## {l('h_first')}\n\n{l('first_intro')}\n\n{first}\n\n{l('first_note')}\n\n{B.FIRST_CODE}\n",
+            "faq": f"## {l('h_faq')}\n\n{faq}\n\n## {l('h_trouble')}\n\n{l('trouble_intro')}\n\n| {th[0]} | {th[1]} | {th[2]} |\n|---|---|---|\n{rows}\n\n## {l('h_gloss')}\n\n{gloss}\n",
+            "priv": f"## {l('h_priv')}\n\n{priv}\n\n## {l('h_status')}\n\n{l('status')}\n"}
+
+
 def md_readme(lang, root=False):
     t = lambda k: X[k][lang]
+    bg = md_beginner(lang)
     pre = "docs/cartacolibri/" if root else ""
     langbar = " · ".join(f"<b>{NAMES[l]}</b>" if l == lang else f"[{NAMES[l]}]({pre}README.{l}.md)" if not (root and l == "en") else f"[{NAMES[l]}](README.md)"
                          for l in LANGS) if not root else " · ".join("<b>English</b>" if l == "en" else f"[{NAMES[l]}](docs/cartacolibri/README.{l}.md)" for l in LANGS)
@@ -177,6 +194,7 @@ def md_readme(lang, root=False):
 
 {t('intro')}
 
+{bg['first']}
 ## {t('h_what')}
 
 - {t('f1')}
@@ -199,6 +217,8 @@ def md_readme(lang, root=False):
 
 {t('layers')}
 
+{bg['faq']}
+{bg['priv']}
 ## {t('h_lic')}
 
 {t('lic')}
@@ -210,72 +230,121 @@ def md_readme(lang, root=False):
 
 
 def site():
+    import json, re
+
     def li(md):  # **bold** -> <b>, `code` -> <code>, [text](url) -> <a>
-        import re
-        s = html.escape(md)
+        s = html.escape(md, quote=False)
         s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
         s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
         return re.sub(r"\[(.+?)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', s)
-    blocks = {}
-    for k in X:
-        blocks[k] = {l: li(X[k][l]) for l in LANGS}
-    import json
-    data = json.dumps(blocks, ensure_ascii=False)
+    blocks = {k: {l: li(X[k][l]) for l in LANGS} for k in X}
+    for k, v in B.L.items():
+        blocks[k] = {l: ([li(c) for c in v[l]] if isinstance(v[l], list) else li(v[l])) for l in LANGS}
+    blocks["faq"] = {l: [[li(q), li(a)] for q, a in B.FAQ[l]] for l in LANGS}
+    blocks["trouble"] = {l: [[li(c) for c in r] for r in B.TROUBLE[l]] for l in LANGS}
+    blocks["gloss"] = {l: [[li(t), li(d)] for t, d in B.GLOSS[l]] for l in LANGS}
+    blocks["priv"] = {l: [li(x) for x in B.PRIV[l]] for l in LANGS}
+    # `</` inside a script must not end it
+    data = json.dumps(blocks, ensure_ascii=False).replace("</", "<\\/")
     names = json.dumps(NAMES, ensure_ascii=False)
+    first_code = html.escape(B.FIRST_CODE.strip("`").removeprefix("bash\n").strip("\n"), quote=False)
+    ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_layers', 'layers',
+           'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CartaColibri — Local AI Library</title><meta name="description" content="Local AI library on the Colibrì engine: index, search, summarize, extract, synthesize — 100% local.">
 <link rel="icon" href="cartacolibri-mark.png"><meta property="og:image" content="cartacolibri-logo.png">
 <style>
 :root{{--bg:#0f1115;--s:#171a21;--line:#2a2f3a;--ink:#eef1f6;--mute:#9aa3b2;--blue:#2f66c4;--cyan:#5fd7e6;--amber:#fdb93a}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 system-ui,"Segoe UI",Roboto,sans-serif}}
-a{{color:var(--cyan)}}code{{background:var(--s);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.9em}}
-nav{{display:flex;gap:12px;align-items:center;padding:14px 5vw;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(15,17,21,.92);backdrop-filter:blur(8px)}}
-nav b{{flex:1}}select{{background:var(--s);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font:inherit}}
+*{{box-sizing:border-box}}html{{scroll-behavior:smooth}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 system-ui,"Segoe UI",Roboto,sans-serif}}
+a{{color:var(--cyan)}}code{{background:var(--s);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.9em;overflow-wrap:anywhere}}
+nav{{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 5vw;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;background:rgba(15,17,21,.94);backdrop-filter:blur(8px)}}
+nav b{{margin-right:auto}}nav a{{text-decoration:none;padding:4px 2px}}nav a:hover{{text-decoration:underline}}select{{background:var(--s);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font:inherit}}
+section{{scroll-margin-top:90px}}
 .hero{{text-align:center;padding:64px 5vw 40px;background:radial-gradient(60% 60% at 50% 0%,rgba(47,102,196,.28),transparent)}}
-.hero img{{width:min(340px,70vw)}}.hero h1{{font-size:clamp(26px,4vw,40px);margin:.4em 0 .2em}}.hero p{{max-width:760px;margin:.6em auto;color:var(--mute)}}
+.hero img{{width:min(340px,70vw);height:auto}}.hero h1{{font-size:clamp(26px,4vw,40px);margin:.4em 0 .2em}}.hero p{{max-width:760px;margin:.6em auto;color:var(--mute)}}
 .btn{{display:inline-block;margin:10px 6px;padding:13px 26px;border-radius:12px;font-weight:700;text-decoration:none;color:#fff;background:var(--blue)}}.btn.a{{background:var(--amber);color:#2b1d00}}
 main{{max-width:980px;margin:0 auto;padding:10px 5vw 80px}}h2{{margin:2.2em 0 .6em;font-size:24px}}
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}}.card{{background:var(--s);border:1px solid var(--line);border-radius:16px;padding:18px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}}.card{{background:var(--s);border:1px solid var(--line);border-radius:16px;padding:18px;overflow-wrap:anywhere}}
 .flow{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:24px 0}}.flow span{{padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:var(--s);font-weight:600}}.flow i{{color:var(--cyan);font-style:normal}}
-pre{{background:var(--s);border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;font-size:14px}}
-footer{{border-top:1px solid var(--line);padding:26px 5vw;color:var(--mute);text-align:center;font-size:14px}}
+.cb{{position:relative}}pre{{background:var(--s);border:1px solid var(--line);border-radius:12px;padding:14px;padding-right:90px;overflow:auto;font-size:14px;margin:.6em 0}}
+.cp{{position:absolute;top:8px;right:8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:3px 10px;font:inherit;font-size:13px;cursor:pointer}}.cp:hover{{border-color:var(--cyan)}}
+ol.steps{{padding-left:1.4em}}ol.steps li{{margin:.7em 0}}
+details{{background:var(--s);border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin:8px 0}}summary{{cursor:pointer;font-weight:600}}details p{{margin:.6em 0 .2em;color:var(--mute)}}
+.tw{{overflow-x:auto}}table{{border-collapse:collapse;width:100%;font-size:15px}}th,td{{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}}th{{background:var(--s)}}
+dt{{font-weight:700;margin-top:.8em}}dd{{margin:.1em 0 0;color:var(--mute)}}
+.note{{border-left:4px solid var(--amber);background:var(--s);border-radius:0 12px 12px 0;padding:12px 16px}}
+@media(max-width:560px){{body{{font-size:16px}}nav{{font-size:15px}}th,td{{padding:6px}}}}
 </style></head><body>
-<nav><b>CartaColibri</b><a href="{REPO}">GitHub</a><select id="l" aria-label="Language"></select></nav>
+<nav><b>CartaColibri</b><a href="#start" id="n_start"></a><a href="#features" id="n_features"></a><a href="#faq" id="n_faq"></a><a href="#privacy" id="n_privacy"></a><a href="#download" id="n_download"></a><select id="l" aria-label="Language"></select></nav>
 <header class="hero"><img src="cartacolibri-logo.png" alt="CartaColibri — Local AI Library"><h1 id="tagline"></h1><p id="intro"></p>
-<a class="btn a" href="{REPO}/releases" id="dl"></a><a class="btn" href="{REPO}">GitHub</a><p id="dl_sub" style="font-size:15px"></p></header>
-<main><h2 id="h_demo"></h2><p id="demo_sub" style="color:var(--mute)"></p>
+<a class="btn a" href="#download" id="dl"></a><a class="btn" href="#start" id="h_first_btn"></a><p id="dl_sub" style="font-size:15px"></p></header>
+<main>
+<section id="start"><h2 id="h_first"></h2><p id="first_intro"></p><ol class="steps" id="steps"></ol><p id="first_note"></p>
+<div class="cb"><pre>{first_code}</pre></div></section>
+<section id="features"><h2 id="h_demo"></h2><p id="demo_sub" style="color:var(--mute)"></p>
 <video id="vid" controls preload="metadata" poster="img/en-4.png" style="width:100%;border-radius:14px;border:1px solid var(--line)"><source src="media/cartacolibri-demo.mp4" type="video/mp4">{"".join(f'<track kind="subtitles" src="media/demo.{l}.vtt" srclang="{l}" label="{NAMES[l]}">' for l in LANGS)}</video>
-<div class="grid" style="margin-top:16px"><img id="g1" style="width:100%;border-radius:12px;border:1px solid var(--line)"><img id="g2" style="width:100%;border-radius:12px;border:1px solid var(--line)"><img id="g4" style="width:100%;border-radius:12px;border:1px solid var(--line)"></div>
+<div class="grid" style="margin-top:16px"><img id="g1" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"><img id="g2" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"><img id="g4" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"></div>
 <p style="margin-top:14px"><a id="tutpdf" class="btn" href="#"></a></p>
 <h2 id="h_what"></h2><div class="grid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div><div class="card" id="f5"></div></div>
 <h2 id="h_layers"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" style="text-align:center;color:var(--mute)"></p>
-<h2 id="h_start"></h2><p id="start1"></p><pre>git clone https://github.com/chiuta/CartaColibri
+<h2 id="h_start"></h2><p id="start1"></p><div class="cb"><pre>git clone https://github.com/chiuta/CartaColibri
 cd CartaColibri
 cargo build --release
 ./target/release/cartacolibri serve
-# http://127.0.0.1:8765/</pre><p id="start2"></p><pre>cartacolibri add ~/Documents
+# http://127.0.0.1:8765/</pre></div><p id="start2"></p><div class="cb"><pre>cartacolibri add ~/Documents
 cartacolibri search "contract*" --ext pdf,docx
 cartacolibri group set Contracts ~/Documents/contracts
 cartacolibri synthesize "payment terms" --group Contracts --save --mock
 cartacolibri grab https://example.org/article
-cartacolibri-browser https://example.org</pre>
-<h2 id="h_lic"></h2><p id="lic"></p></main>
+cartacolibri-browser https://example.org</pre></div></section>
+<section id="faq"><h2 id="h_faq"></h2><div id="faqs"></div>
+<h2 id="h_trouble"></h2><p id="trouble_intro"></p><div class="tw"><table><thead><tr id="thr"></tr></thead><tbody id="tbl"></tbody></table></div>
+<h2 id="h_gloss"></h2><dl id="gloss"></dl></section>
+<section id="privacy"><h2 id="h_priv"></h2><ul id="priv"></ul></section>
+<section id="download"><h2 id="h_dl"></h2><p><a class="btn a" href="{REPO}/releases" id="dl2"></a><a class="btn" href="{REPO}">GitHub</a></p><p id="dl_sub2"></p>
+<h2 id="h_status"></h2><p class="note" id="status"></p>
+<h2 id="h_lic"></h2><p id="lic"></p></section></main>
 <footer>© CartaColibri · MIT · <a href="{REPO}">{REPO.split('//')[1]}</a></footer>
 <script>
 const D={data},N={names};let L=(()=>{{try{{const s=localStorage.getItem('cc.lang');if(s&&N[s])return s}}catch(e){{}};const n=(navigator.language||'en').slice(0,2);return N[n]?n:'en'}})();
-const sel=document.getElementById('l');sel.innerHTML=Object.entries(N).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('');
-function go(){{document.documentElement.lang=L;sel.value=L;for(const k of ['tagline','intro','h_demo','demo_sub','h_what','f1','f2','f3','f4','f5','h_layers','layers','h_start','start1','start2','h_lic','lic'])document.getElementById(k).innerHTML=D[k][L];
-document.getElementById('dl').textContent=D.dl[L];
-const tp=document.getElementById('tutpdf');tp.textContent='📄 '+D.tut[L];tp.href='media/CartaColibri-Tutorial.'+L+'.pdf';
-[['g1',1],['g2',2],['g4',4]].forEach(([id,n])=>document.getElementById(id).src='img/'+L+'-'+n+'.png');
-const tr=[...document.querySelectorAll('#vid track')];tr.forEach(t=>t.track.mode=t.srclang===L?'showing':'disabled');document.getElementById('dl_sub').innerHTML=D.dl_sub[L];}}
+const $=id=>document.getElementById(id),sel=$('l');sel.innerHTML=Object.entries(N).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('');
+const IDS={json.dumps(ids)};
+function addCopy(){{document.querySelectorAll('.cb').forEach(b=>{{let c=b.querySelector('.cp');if(!c){{c=document.createElement('button');c.type='button';c.className='cp';b.appendChild(c);
+c.onclick=()=>{{const t=b.querySelector('pre').innerText;const ok=()=>{{c.textContent=D.copied[L];setTimeout(()=>c.textContent=D.copy[L],1500)}};
+if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(ok,()=>{{}});else{{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{{document.execCommand('copy');ok()}}catch(e){{}}a.remove()}}}}}}
+c.textContent=D.copy[L]}})}}
+function go(){{document.documentElement.lang=L;sel.value=L;for(const k of IDS)$(k).innerHTML=D[k][L];
+for(const k of ['n_start','n_features','n_faq','n_privacy','n_download'])$(k).textContent=D[k][L];
+$('h_first_btn').textContent=D.h_first[L];$('h_dl').textContent=D.dl[L];$('dl').textContent=D.dl[L];$('dl2').textContent=D.dl[L];
+$('steps').innerHTML=[1,2,3].map(i=>'<li>'+D['first'+i][L]+'</li>').join('');
+$('faqs').innerHTML=D.faq[L].map(x=>'<details><summary>'+x[0]+'</summary><p>'+x[1]+'</p></details>').join('');
+$('thr').innerHTML=D.th[L].map(x=>'<th>'+x+'</th>').join('');
+$('tbl').innerHTML=D.trouble[L].map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('');
+$('gloss').innerHTML=D.gloss[L].map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('');
+$('priv').innerHTML=D.priv[L].map(x=>'<li>'+x+'</li>').join('');
+const tp=$('tutpdf');tp.textContent='📄 '+D.tut[L];tp.href='media/CartaColibri-Tutorial.'+L+'.pdf';
+[['g1',1],['g2',2],['g4',4]].forEach(([id,n])=>$(id).src='img/'+L+'-'+n+'.png');
+const tr=[...document.querySelectorAll('#vid track')];tr.forEach(t=>t.track.mode=t.srclang===L?'showing':'disabled');$('dl_sub').innerHTML=D.dl_sub[L];$('dl_sub2').innerHTML=D.dl_sub[L];addCopy()}}
 sel.onchange=()=>{{L=sel.value;try{{localStorage.setItem('cc.lang',L)}}catch(e){{}}go()}};go();
 </script></body></html>
 """
 
 
+def check_beginner():
+    bad = []
+    for k, v in B.L.items():
+        bad += [(k, l) for l in LANGS if not v.get(l)]
+    for name in ("FAQ", "TROUBLE", "GLOSS", "PRIV"):
+        d = getattr(B, name)
+        n = len(d["en"])
+        bad += [(name, l) for l in LANGS if len(d.get(l, [])) != n]
+    bad += [("TROUBLE-cols", l) for l in LANGS for r in B.TROUBLE[l] if len(r) != 3]
+    if bad: sys.exit(f"beginner texts incomplete: {bad}")
+
+
 def main():
+    check_beginner()
     os.makedirs(f"{ROOT}/docs/cartacolibri", exist_ok=True)
     for l in LANGS:
         open(f"{ROOT}/docs/cartacolibri/README.{l}.md", "w", encoding="utf-8").write(md_readme(l))

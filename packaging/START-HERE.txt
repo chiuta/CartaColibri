@@ -1,0 +1,60 @@
+CartaColibri - START HERE  (ro, en, fr, de, es, it, pt, hu)
+Everything runs on your computer only. No account, no cloud, no telemetry.
+
+== RO ==
+1. Dezarhivează tot folderul (nu rula din interiorul zip-ului).
+2. Windows: dublu-clic pe CartaColibri.bat. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. Se deschide browserul la http://127.0.0.1:8765/ ; datele tale rămân în folderul Data/.
+4. Oprire: Stop-CartaColibri.bat (Windows) sau "./cartacolibri.sh stop". Instalare opțională: install.sh / install.ps1.
+5. Pentru rezumate cu AI pornește motorul Colibri local (implicit http://127.0.0.1:8000).
+
+== EN ==
+1. Unzip the whole folder (do not run from inside the zip).
+2. Windows: double-click CartaColibri.bat. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. Your browser opens at http://127.0.0.1:8765/ ; your data stays in the Data/ folder.
+4. Stop: Stop-CartaColibri.bat (Windows) or "./cartacolibri.sh stop". Optional install: install.sh / install.ps1.
+5. For AI summaries start the local Colibri engine (default http://127.0.0.1:8000).
+
+== FR ==
+1. Décompressez tout le dossier (ne lancez pas depuis l'intérieur du zip).
+2. Windows : double-clic sur CartaColibri.bat. Linux : cartacolibri.sh. macOS : CartaColibri.command.
+3. Le navigateur s'ouvre sur http://127.0.0.1:8765/ ; vos données restent dans le dossier Data/.
+4. Arrêt : Stop-CartaColibri.bat (Windows) ou "./cartacolibri.sh stop". Installation facultative : install.sh / install.ps1.
+5. Pour les résumés par IA, démarrez le moteur Colibri local (par défaut http://127.0.0.1:8000).
+
+== DE ==
+1. Den ganzen Ordner entpacken (nicht aus dem Zip heraus starten).
+2. Windows: Doppelklick auf CartaColibri.bat. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. Der Browser öffnet http://127.0.0.1:8765/ ; Ihre Daten bleiben im Ordner Data/.
+4. Beenden: Stop-CartaColibri.bat (Windows) oder "./cartacolibri.sh stop". Optionale Installation: install.sh / install.ps1.
+5. Für KI-Zusammenfassungen die lokale Colibri-Engine starten (Standard http://127.0.0.1:8000).
+
+== ES ==
+1. Descomprima toda la carpeta (no ejecute desde dentro del zip).
+2. Windows: doble clic en CartaColibri.bat. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. El navegador se abre en http://127.0.0.1:8765/ ; sus datos quedan en la carpeta Data/.
+4. Detener: Stop-CartaColibri.bat (Windows) o "./cartacolibri.sh stop". Instalación opcional: install.sh / install.ps1.
+5. Para resúmenes con IA inicie el motor Colibri local (por defecto http://127.0.0.1:8000).
+
+== IT ==
+1. Decomprimi l'intera cartella (non avviare dall'interno dello zip).
+2. Windows: doppio clic su CartaColibri.bat. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. Il browser si apre su http://127.0.0.1:8765/ ; i tuoi dati restano nella cartella Data/.
+4. Arresto: Stop-CartaColibri.bat (Windows) o "./cartacolibri.sh stop". Installazione facoltativa: install.sh / install.ps1.
+5. Per i riassunti con IA avvia il motore Colibri locale (predefinito http://127.0.0.1:8000).
+
+== PT ==
+1. Descompacte a pasta inteira (não execute de dentro do zip).
+2. Windows: duplo clique em CartaColibri.bat. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. O navegador abre em http://127.0.0.1:8765/ ; os seus dados ficam na pasta Data/.
+4. Parar: Stop-CartaColibri.bat (Windows) ou "./cartacolibri.sh stop". Instalação opcional: install.sh / install.ps1.
+5. Para resumos com IA inicie o motor Colibri local (por omissão http://127.0.0.1:8000).
+
+== HU ==
+1. Csomagolja ki a teljes mappát (ne a zipből futtassa).
+2. Windows: dupla kattintás a CartaColibri.bat fájlra. Linux: cartacolibri.sh. macOS: CartaColibri.command.
+3. A böngésző a http://127.0.0.1:8765/ címen nyílik meg; az adatai a Data/ mappában maradnak.
+4. Leállítás: Stop-CartaColibri.bat (Windows) vagy "./cartacolibri.sh stop". Választható telepítés: install.sh / install.ps1.
+5. Az MI-összefoglalókhoz indítsa el a helyi Colibri motort (alapértelmezett: http://127.0.0.1:8000).
+
+MIT licence - github.com/chiuta/CartaColibri

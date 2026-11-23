@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=CartaColibri
+Comment=Local AI library - 100% on your machine
+Exec=sh -c 'exec "$(dirname "$(readlink -f "%k")")/cartacolibri.sh"'
+Icon=cartacolibri
+Terminal=false
+Categories=Office;Utility;

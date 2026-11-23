@@ -6,6 +6,23 @@
 
 CartaColibri è una biblioteca IA locale costruita sul motore Colibrì. Indicizza le cartelle che scegli, ti permette di cercarvi in un lampo e poi chiede a un modello linguistico locale di riassumere, estrarre dati o sintetizzare gruppi di file — citando sempre il file sorgente. Niente lascia il tuo computer e gli originali non vengono mai modificati.
 
+## I tuoi primi 5 minuti
+
+Non serve esperienza. Tre passi e avrai cercato e riassunto i tuoi file.
+
+1. **Avviala.** Decomprimi lo zip portatile e avvii il lanciatore, oppure scrivi `cartacolibri start` in un terminale. Il browser mostra la pagina locale, `http://127.0.0.1:8765/`.
+2. **Aggiungi una cartella.** Nella pagina apri **Biblioteca**, scrivi il percorso di una cartella come `~/Documents` e clicca **Aggiungi cartella**. La prima indicizzazione di una cartella grande può richiedere qualche minuto. I tuoi file vengono solo letti, mai modificati.
+3. **Cerca, poi chiedi.** Apri **RAG-fetch**, cerca una parola, spunta qualche file e crea un gruppo. Poi apri **RAG-CARTA**, scegli **Riassumi** e clicca **Esegui**. Non hai ancora un modello IA? Spunta **Modalità offline (senza modello)** e prova lo stesso.
+
+Preferisci il terminale? Gli stessi tre passi:
+
+```bash
+cartacolibri start                 # step 1 - leave this window open (use a second one for the rest)
+cartacolibri add ~/Documents       # step 2
+cartacolibri group set Demo ~/Documents
+cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = no AI model needed
+```
+
 ## Cosa fa
 
 - **Biblioteca** — tutti i documenti locali con la loro posizione; aggiungi o rimuovi cartelle, carica file, visualizzali, salva se vuoi il testo OCR.
@@ -40,6 +57,78 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 ## Come si incastra
 
 Livello 0 — le tue cartelle (sola lettura) → RAG-fetch — indice, ricerca, gruppi → RAG-CARTA — compiti IA tramite il motore Colibrì.
+
+## Domande frequenti
+
+**Cosa significa «locale»?**  
+Tutto gira sul tuo computer: la pagina, l’indice di ricerca e il modello IA. Funziona anche senza rete. L’unica eccezione è web-grab, che scarica le pagine web che gli chiedi.
+
+**I miei dati vengono inviati da qualche parte?**  
+No. Niente cloud, niente account, niente telemetria, niente statistiche d’uso. L’unico traffico che esce dal tuo computer sono le pagine web che chiedi esplicitamente a web-grab di recuperare. Dettagli in «Privacy e sicurezza».
+
+**Colibrì non è in esecuzione. Posso usarla lo stesso?**  
+Sì. La Biblioteca e la ricerca non hanno mai bisogno di un modello. Per riassumere, estrarre e sintetizzare spunta **Modalità offline (senza modello)** (`--mock` da riga di comando): ottieni una risposta semplice costruita dai tuoi file, con citazioni, ma senza vera formulazione IA. Per risposte vere avvia il motore Colibrì.
+
+**Cos’è Colibrì e mi serve?**  
+[Colibrì](https://github.com/JustVugg/colibri) è un motore locale separato che esegue il modello linguistico. Ti serve solo per le risposte IA. Scegli un modello il cui file sia più piccolo della tua RAM libera e parti da uno piccolo. Vedi la documentazione di Colibrì.
+
+**Quali file sa leggere?**  
+Testo e appunti (txt, md, rst, log, csv, json, yaml, html, rtf), PDF, file Word, OpenDocument, PowerPoint ed Excel (docx, odt, pptx, xlsx), epub e, con l’OCR attivo, immagini e PDF scansionati.
+
+**E le scansioni e le foto di documenti?**  
+Attiva l’OCR (`--ocr`, oppure `CARTACOLIBRI_OCR=1`). Serve `tesseract` installato sul tuo computer, più `pdftoppm` per i PDF scansionati. La pagina ti avvisa quando manca tesseract.
+
+**Come aggiorno?**  
+Versione portatile: scarica lo zip più recente e decomprimilo. Dai sorgenti: `git pull`, poi `cargo build --release`. I tuoi dati in `~/.cartacolibri` restano dove sono e l’indice si aggiorna da solo, solo per ciò che è cambiato.
+
+**Come elimino tutto?**  
+Elimina la cartella del programma, poi la cartella di stato `~/.cartacolibri` (o quella indicata da `CARTACOLIBRI_HOME`). Fine: i tuoi documenti non sono mai stati toccati.
+
+**Qualcosa di particolare su Windows o macOS?**  
+Lo zip portatile esiste per entrambi, ma Linux è il sistema meglio testato. Il browser web-grab viene compilato in CI per Windows e macOS e lì non è mai stato avviato a mano. Su Windows richiede il runtime WebView2. Se il sistema ti chiede di confermare l’apertura di un programma scaricato, conferma solo se lo hai preso dalla pagina del progetto.
+
+**Perché «alfa»?**  
+Perché è giovane: il nucleo funziona ed è testato, ma non su ogni sistema, e i controlli automatici su GitHub non sono ancora verificati. Aspettati qualche spigolo e segnalacelo.
+
+## Quando qualcosa non va
+
+Prova prima `cartacolibri doctor`: controlla la tua installazione e ti dice cosa sistemare.
+
+| Sintomo | Causa probabile | Cosa fare |
+|---|---|---|
+| `cartacolibri: command not found` | La cartella del programma non è nel tuo PATH. | Avvialo con il percorso completo, ad esempio `./target/release/cartacolibri`, oppure usa il lanciatore dello zip portatile. |
+| La pagina non si apre su `http://127.0.0.1:8765/` | La pagina locale non è in esecuzione, oppure la porta è occupata. | Esegui `cartacolibri start`. Se la porta è occupata, esegui `cartacolibri serve --port 8766` e apri quell’indirizzo. |
+| Non sai cosa non va | Manca qualcosa nella configurazione. | Esegui `cartacolibri doctor`: controlla la configurazione e ti dice cosa sistemare. |
+| I compiti IA dicono di non raggiungere Colibrì | Il motore Colibrì non è in esecuzione, oppure ascolta su un altro indirizzo (predefinito `http://127.0.0.1:8000`). | Avvialo (`coli web --model ~/colibri-models/<model>`) o passa il suo indirizzo con `--url`. Nel frattempo spunta **Modalità offline (senza modello)**. |
+| I file nuovi non compaiono nella ricerca | L’indice non li ha ancora visti. | Clicca **Aggiorna indice** o esegui `cartacolibri index`. `cartacolibri watch` lo tiene aggiornato da solo. |
+| Alcuni file sono elencati in «File saltati» | Sono corrotti, protetti, non supportati o scansioni. | Esegui `cartacolibri problems` per vedere perché. Per le scansioni attiva l’OCR. |
+| Scansioni e immagini non danno testo | L’OCR è spento oppure `tesseract` non è installato. | Installa `tesseract` (e `pdftoppm` per i PDF) e aggiungi `--ocr`, oppure imposta `CARTACOLIBRI_OCR=1`. |
+| La risposta dice NOT FOUND | I file scelti non contengono l’informazione. È voluto: non tira mai a indovinare. | Controlla che sia selezionato il gruppo giusto, riformula la domanda o aggiungi al gruppo i file mancanti. |
+| Il browser web-grab non si apre | Manca un componente di sistema. | Linux: installa `libwebkit2gtk-4.1`. Windows: installa il runtime WebView2. Nel frattempo `cartacolibri grab URL` funziona senza. |
+| Il tuo script riceve `403 missing X-Colibri-UI header` | È un controllo di sicurezza, non un errore. | Invia l’intestazione `X-Colibri-UI: 1` a ogni chiamata a `/carta/*`. |
+
+## Glossario in parole semplici
+
+- **Indice** — Un catalogo delle parole contenute nei tuoi file, conservato perché una ricerca richieda un attimo invece di rileggere tutto.
+- **RAG** — «Retrieval-augmented generation»: prima si trovano i passaggi rilevanti nei tuoi file, poi l’IA risponde usando solo quelli.
+- **Citazione [S1]** — Un segnaposto come [S1] o [S2] in una risposta. Rimanda al file sorgente da cui viene la frase, così puoi verificare.
+- **Gruppo** — Un elenco con nome di file (un progetto, un tema) su cui puoi cercare o fare domande ancora e ancora.
+- **Gateway** — Il piccolo indirizzo web (predefinito `http://127.0.0.1:8000`) tramite cui CartaColibri parla con il motore Colibrì.
+- **Istantanea (snapshot)** — Una copia HTML salvata di una pagina web, fatta a ogni salvataggio con web-grab, per tenere ciò che diceva quel giorno.
+- **Watch (monitoraggio)** — Due cose: `cartacolibri watch` tiene aggiornato l’indice, e `cartacolibri webwatch` riscarica le pagine che segui e mostra cosa è cambiato.
+
+## Privacy e sicurezza
+
+- **Dove stanno le cose.** Tutto ciò che CartaColibri scrive sta in una sola cartella, `<home>`: per impostazione predefinita `~/.cartacolibri`, o la cartella indicata da `CARTACOLIBRI_HOME`. Dentro: `index.sqlite` (l’indice di ricerca), `groups.json`, `library/uploads/` (i file che carichi), `outputs/` (i risultati che hai scelto di salvare), `snapshots/` e `web.json` (le pagine web salvate), `highlights.json`, `watch.json`, `settings.json` e `clip.token` (un segreto per il bookmarklet: non condividerlo).
+- **I tuoi originali sono in sola lettura.** CartaColibri legge i tuoi documenti e non li modifica, sposta o elimina mai.
+- **La pagina è solo locale.** Il server ascolta soltanto su `127.0.0.1`, quindi gli altri computer della tua rete non possono raggiungerlo. Rifiuta anche le richieste il cui indirizzo o la cui origine non sia locale.
+- **L’intestazione `X-Colibri-UI`.** Ogni chiamata della pagina al proprio server porta questa intestazione. Una pagina web visitata in un’altra scheda non può aggiungerla, quindi non può far contattare l’app locale al tuo browser alle tue spalle.
+- **Niente esce da `127.0.0.1`, tranne le pagine che chiedi di recuperare.** Niente telemetria, niente statistiche, niente cloud. web-grab recupera solo gli indirizzi che gli dai (e le pagine che hai scelto di monitorare). Anche il sito di presentazione non carica nulla da altri server.
+- **La cronologia è spenta per impostazione predefinita.** La cronologia del browser web-grab esiste solo se la attivi (`cartacolibri history on`), resta sul tuo disco, e `cartacolibri history clear` la cancella.
+
+## Stato reale
+
+CartaColibri è un software **alfa** (versione 0.2.0-alpha): funziona, ma aspettati qualche spigolo e tieni copie di sicurezza di ciò che conta. Linux è la piattaforma meglio testata: lì il browser web-grab è autotestato in CI. Su **Windows e macOS** il browser viene compilato in CI ma **non è mai stato avviato a mano**. I controlli automatici su GitHub (CI) **non sono ancora verificati**: i job sono rimasti bloccati in coda. I tuoi documenti sono al sicuro comunque, perché vengono solo letti.
 
 ## Licenza e crediti
 

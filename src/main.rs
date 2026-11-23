@@ -1,9 +1,12 @@
 //! `cartacolibri` — command line + local UI server.
 
 use cartacolibri::carta::{self, Backend, Options};
+use cartacolibri::doctor::{self, Level};
 use cartacolibri::library::{Filter, Library};
+use cartacolibri::tour::{self, Paint, t};
 use cartacolibri::{grab, server};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use std::io::{BufRead, IsTerminal, Write};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
@@ -11,7 +14,18 @@ use std::time::Duration;
 #[command(
     name = "cartacolibri",
     version,
-    about = "CartaColibri — local AI library (RAG-fetch + RAG-CARTA), 100% on your machine"
+    about = "CartaColibri — local AI library (RAG-fetch + RAG-CARTA), 100% on your machine",
+    after_help = "FIRST TIME? Run:  cartacolibri start\n\n\
+EXAMPLES:\n  \
+cartacolibri start --folder ~/Documents     index a folder and open the web UI\n  \
+cartacolibri search \"invoice 2024\" --ext pdf  find words in your documents\n  \
+cartacolibri search budget --json           same, machine-readable\n  \
+cartacolibri group from-search taxes \"tax\"   save a search as a group\n  \
+cartacolibri summarize --group taxes        summarize a group with citations\n  \
+cartacolibri summarize --group taxes --mock offline, no model needed\n  \
+cartacolibri doctor                         check that everything works\n  \
+cartacolibri completions zsh > _cartacolibri  shell tab-completion\n\n\
+LANGUAGE: --lang ro|en|fr|de|es|it|pt|hu (or env CARTA_LANG). Colours: off when piped or NO_COLOR is set."
 )]
 struct Cli {
     /// state directory (default ~/.cartacolibri or $CARTACOLIBRI_HOME)
@@ -20,8 +34,11 @@ struct Cli {
     /// also read images and scanned PDF pages with tesseract (CARTACOLIBRI_OCR=1)
     #[arg(long, global = true)]
     ocr: bool,
+    /// language of the messages: en ro fr de es it pt hu (env CARTA_LANG)
+    #[arg(long, global = true, env = "CARTA_LANG")]
+    lang: Option<String>,
     #[command(subcommand)]
-    cmd: Cmd,
+    cmd: Option<Cmd>,
 }
 
 #[derive(clap::Args)]
@@ -53,6 +70,34 @@ struct TaskArgs {
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// guided start: pick a folder, index it, open the web UI
+    Start {
+        /// folder with your documents (asked interactively when omitted in a terminal)
+        #[arg(long)]
+        folder: Option<String>,
+        #[arg(long, default_value_t = 8765)]
+        port: u16,
+        #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+        url: String,
+        /// do not open the browser
+        #[arg(long)]
+        no_open: bool,
+        /// index only; do not start the UI server
+        #[arg(long)]
+        no_serve: bool,
+    },
+    /// check tesseract, PDF tools, gateway, disk and port; prints exact fixes
+    Doctor {
+        #[arg(long, default_value_t = 8765)]
+        port: u16,
+        #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+        url: String,
+    },
+    /// print a shell tab-completion script
+    Completions {
+        #[arg(value_parser = ["bash", "zsh", "fish", "powershell"])]
+        shell: String,
+    },
     /// register a library folder (and index it)
     Add {
         folder: String,
@@ -75,6 +120,9 @@ enum Cmd {
     List {
         #[arg(long)]
         group: Option<String>,
+        /// machine-readable output
+        #[arg(long)]
+        json: bool,
     },
     Search {
         query: String,
@@ -91,6 +139,9 @@ enum Cmd {
         group: Option<String>,
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// machine-readable output
+        #[arg(long)]
+        json: bool,
     },
     #[command(subcommand)]
     Group(GroupCmd),
@@ -187,15 +238,231 @@ fn csv(s: &Option<String>) -> Vec<String> {
 }
 
 fn main() {
-    if let Err(m) = run(Cli::parse()) {
-        eprintln!("error: {m}");
+    let c = Cli::parse();
+    let lang = tour::resolve(c.lang.as_deref());
+    if let Err(m) = run(c, lang) {
+        tour::print_error(lang, &m);
         std::process::exit(1);
     }
 }
 
-fn run(c: Cli) -> Result<(), String> {
+fn opener(url: &str) {
+    let (cmd, args): (&str, Vec<&str>) = if cfg!(target_os = "macos") {
+        ("open", vec![url])
+    } else if cfg!(target_os = "windows") {
+        ("cmd", vec!["/C", "start", "", url])
+    } else {
+        ("xdg-open", vec![url])
+    };
+    let _ = std::process::Command::new(cmd)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
+}
+
+fn welcome(lang: usize, home: Option<&str>) -> Result<(), String> {
+    let p = Paint::stdout();
+    let lib = Library::open(home, false)?;
+    let roots = lib.roots();
+    println!();
+    if roots.is_empty() {
+        println!("  {}", p.bold(&t(lang, "hello1", &[])));
+        println!("  {}", t(lang, "hello2", &[]));
+        println!("  {}", t(lang, "hello3", &[]));
+        println!();
+        println!("      {}", p.cyan("cartacolibri start"));
+        println!();
+        println!("  {}", p.dim("cartacolibri --help"));
+    } else {
+        let docs = lib.documents(None)?.len();
+        println!(
+            "  {}",
+            p.bold(&t(
+                lang,
+                "status",
+                &[&docs.to_string(), &roots.len().to_string()]
+            ))
+        );
+        println!("  {}", t(lang, "next", &[]));
+        println!();
+        for (cmd, key) in [
+            ("cartacolibri search \"your words\"", "do_search"),
+            ("cartacolibri start", "do_ui"),
+            ("cartacolibri doctor", "do_doctor"),
+        ] {
+            println!(
+                "      {}   {}",
+                p.cyan(&format!("{cmd:<34}")),
+                p.dim(&t(lang, key, &[]))
+            );
+        }
+        println!();
+    }
+    Ok(())
+}
+
+fn ask_folder(lang: usize, default: Option<&str>) -> Result<String, String> {
+    let p = Paint::stdout();
+    match default {
+        Some(d) => print!("{} [{d}] ", p.bold(&t(lang, "ask_folder", &[]))),
+        None => print!("{} ", p.bold(&t(lang, "ask_folder", &[]))),
+    }
+    let _ = std::io::stdout().flush();
+    let mut l = String::new();
+    std::io::stdin()
+        .lock()
+        .read_line(&mut l)
+        .map_err(|e| e.to_string())?;
+    let l = l.trim().trim_matches(|c| c == '"' || c == '\'').to_string();
+    if l.is_empty() {
+        default
+            .map(String::from)
+            .ok_or_else(|| t(lang, "need_folder", &[]))
+    } else {
+        Ok(l)
+    }
+}
+
+fn start(
+    lang: usize,
+    home: Option<&str>,
+    ocr: bool,
+    (folder, port, url, no_open, no_serve): (Option<String>, u16, String, bool, bool),
+) -> Result<(), String> {
+    let p = Paint::stdout();
+    let mut lib = Library::open(home, ocr)?;
+    let existing = lib.roots();
+    let folder = match folder {
+        Some(f) => Some(f),
+        None if std::io::stdin().is_terminal() => {
+            Some(ask_folder(lang, existing.first().map(String::as_str))?)
+        }
+        None if existing.is_empty() => {
+            return Err(format!(
+                "{} (cartacolibri start --folder ~/Documents)",
+                t(lang, "need_folder", &[])
+            ));
+        }
+        None => None,
+    };
+    let list: Option<Vec<String>> = folder.map(|f| vec![f]);
+    println!("{}", t(lang, "indexing", &[]));
+    if let Some(l) = &list {
+        lib.add_root(&l[0])?;
+    }
+    let st = lib.update(list.as_deref(), &mut |m| eprintln!("  {}", p.dim(m)))?;
+    println!(
+        "{}",
+        p.green(&t(
+            lang,
+            "indexed",
+            &[
+                &(st.added).to_string(),
+                &st.updated.to_string(),
+                &st.unchanged.to_string(),
+                &st.failed.to_string()
+            ]
+        ))
+    );
+    println!();
+    println!("{}", t(lang, "search_how", &[]));
+    println!("    {}", p.cyan("cartacolibri search \"your words\""));
+    let ui = format!("http://127.0.0.1:{port}/");
+    println!("{}", t(lang, "ui_at", &[&p.bold(&ui)]));
+    if no_serve {
+        return Ok(());
+    }
+    if std::net::TcpListener::bind(("127.0.0.1", port)).is_err() {
+        return Err(format!("cannot listen on 127.0.0.1:{port}: address in use"));
+    }
+    println!("{}", p.dim(&t(lang, "stop_hint", &[])));
+    if !no_open {
+        let u = ui.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(400));
+            opener(&u)
+        });
+    }
+    drop(lib);
+    server::serve(&format!("127.0.0.1:{port}"), home.map(String::from), url)
+}
+
+fn doctor_cmd(lang: usize, home: Option<&str>, url: &str, port: u16) -> Result<(), String> {
+    let p = Paint::stdout();
+    println!("{}\n", p.bold(&t(lang, "doctor_title", &[])));
+    let checks = doctor::run(home, url, port);
+    let (mut warns, mut fails) = (0, 0);
+    for c in &checks {
+        let tag = match c.level {
+            Level::Ok => p.green("OK  "),
+            Level::Warn => {
+                warns += 1;
+                p.yellow("WARN")
+            }
+            Level::Fail => {
+                fails += 1;
+                p.red("FAIL")
+            }
+        };
+        println!("{tag}  {:<9} {}", c.name, c.detail);
+        if let Some(f) = &c.fix {
+            println!("      {} {f}", p.bold("fix:"));
+        }
+    }
+    println!();
+    if fails > 0 {
+        println!("{}", p.red(&t(lang, "doctor_bad", &[&fails.to_string()])));
+        std::process::exit(1);
+    } else if warns > 0 {
+        println!("{}", t(lang, "doctor_warns", &[&warns.to_string()]));
+    } else {
+        println!("{}", p.green(&t(lang, "doctor_good", &[])));
+    }
+    Ok(())
+}
+
+fn run(c: Cli, lang: usize) -> Result<(), String> {
     let home = c.home.as_deref();
-    if let Cmd::Serve { port, url } = &c.cmd {
+    let Some(cmd) = c.cmd else {
+        return welcome(lang, home);
+    };
+    match &cmd {
+        Cmd::Completions { shell } => {
+            use clap_complete::Shell;
+            let sh = match shell.as_str() {
+                "bash" => Shell::Bash,
+                "zsh" => Shell::Zsh,
+                "fish" => Shell::Fish,
+                _ => Shell::PowerShell,
+            };
+            clap_complete::generate(
+                sh,
+                &mut Cli::command(),
+                "cartacolibri",
+                &mut std::io::stdout(),
+            );
+            return Ok(());
+        }
+        Cmd::Doctor { port, url } => return doctor_cmd(lang, home, url, *port),
+        Cmd::Start {
+            folder,
+            port,
+            url,
+            no_open,
+            no_serve,
+        } => {
+            return start(
+                lang,
+                home,
+                c.ocr,
+                (folder.clone(), *port, url.clone(), *no_open, *no_serve),
+            );
+        }
+        _ => {}
+    }
+    if let Cmd::Serve { port, url } = &cmd {
         if let Ok(n) = std::env::var("CARTACOLIBRI_WATCH")
             .unwrap_or_default()
             .parse::<u64>()
@@ -220,7 +487,8 @@ fn run(c: Cli) -> Result<(), String> {
         return server::serve(&addr, home.map(String::from), url.clone());
     }
     let mut lib = Library::open(home, c.ocr)?;
-    match c.cmd {
+    match cmd {
+        Cmd::Start { .. } | Cmd::Doctor { .. } | Cmd::Completions { .. } => unreachable!(),
         Cmd::History { action } => match action.as_str() {
             "on" => {
                 grab::set_history(&lib.home, true);
@@ -311,9 +579,18 @@ fn run(c: Cli) -> Result<(), String> {
                 &mut |m| println!("{m}"),
             );
         }
-        Cmd::List { group } => {
-            for d in lib.documents(group.as_deref())? {
-                println!("{:>7} KB  {:<6} {}", d.size / 1024, d.ext, d.path)
+        Cmd::List { group, json } => {
+            let docs = lib.documents(group.as_deref())?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&docs).unwrap());
+            } else if docs.is_empty() {
+                println!("{}", t(lang, "empty_lib", &[]));
+                println!("{} cartacolibri start", t(lang, "try", &[]));
+            }
+            if !json {
+                for d in docs {
+                    println!("{:>7} KB  {:<6} {}", d.size / 1024, d.ext, d.path)
+                }
             }
         }
         Cmd::Search {
@@ -324,6 +601,7 @@ fn run(c: Cli) -> Result<(), String> {
             path,
             group,
             limit,
+            json,
         } => {
             let f = Filter {
                 ext: csv(&ext),
@@ -334,6 +612,10 @@ fn run(c: Cli) -> Result<(), String> {
                 limit: Some(limit),
             };
             let hits = lib.search(&query, &f)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&hits).unwrap());
+                return Ok(());
+            }
             for h in &hits {
                 println!(
                     "{:>7}  {} {}\n         {}",
@@ -341,7 +623,13 @@ fn run(c: Cli) -> Result<(), String> {
                 );
             }
             if hits.is_empty() {
-                println!("no matches");
+                println!("{}", t(lang, "no_results", &[&query]));
+                if lib.documents(None)?.is_empty() {
+                    println!("{}", t(lang, "empty_lib", &[]));
+                    println!("{} {}", t(lang, "try", &[]), t(lang, "no_docs_hint", &[]));
+                } else {
+                    println!("{} {}", t(lang, "try", &[]), t(lang, "loosen_hint", &[]));
+                }
             }
         }
         Cmd::Group(g) => match g {

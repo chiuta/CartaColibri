@@ -1,77 +1,109 @@
 #!/usr/bin/env python3
-"""Builds dist/CartaColibriPortable-<version>-<target>.zip in the PortableApps.com layout from a compiled binary.
+"""Builds dist/CartaColibriPortable-<version>-<target>.zip (PortableApps.com layout + one-click launchers) from compiled binaries.
 
   CartaColibriPortable/
-    CartaColibriPortable.bat | .sh     launcher (Data/ is the state directory; nothing is written outside this folder)
-    App/AppInfo/appinfo.ini            PortableApps metadata
-    App/CartaColibri/cartacolibri[.exe], LICENSE, README.md, web-grab/
-    Data/                              your index, groups, outputs (survives upgrades)
+    START-HERE.txt                      8 languages, <=10 lines each
+    Windows:  CartaColibri.bat, CartaColibri-hidden.vbs, Stop-CartaColibri.bat, [CartaColibri-Browser.bat], install.ps1
+    Linux:    cartacolibri.sh, CartaColibri.desktop, install.sh
+    macOS:    CartaColibri.command, cartacolibri.sh, install.sh
+    App/AppInfo/appinfo.ini (+ appicon.png)   PortableApps metadata (CUFAR manager)
+    App/CartaColibri/cartacolibri[.exe], [cartacolibri-browser[.exe]], LICENSE, README.md, web-grab/
+    Data/cartacolibri/                  index, groups, outputs: CARTACOLIBRI_HOME points here, survives upgrades
+    Other/                              icon, release notes template
 
-Usage: python3 scripts/make_portable.py --version 0.2.0-alpha.1 --binary target/release/cartacolibri --target linux-x86_64"""
-import argparse, os, zipfile
+Also: --sums writes dist/SHA256SUMS for every zip in dist/.
+Usage: python3 scripts/make_portable.py --version 0.2.0-alpha.1 --binary target/release/cartacolibri --target linux-x86_64 [--browser PATH]
+       python3 scripts/make_portable.py --sums"""
+import argparse, glob, hashlib, os, zipfile
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BAT = r"""@echo off
-setlocal
-set "HERE=%~dp0"
-set "CARTACOLIBRI_HOME=%HERE%Data\cartacolibri"
-if not exist "%CARTACOLIBRI_HOME%" mkdir "%CARTACOLIBRI_HOME%"
-rem For the AI tasks also start the Colibri engine (coli web --model ...) — default gateway http://127.0.0.1:8000
-start "" "http://127.0.0.1:8765/"
-"%HERE%App\CartaColibri\cartacolibri.exe" serve --port 8765
-"""
-SH = """#!/usr/bin/env bash
-HERE="$(cd "$(dirname "$0")" && pwd)"
-export CARTACOLIBRI_HOME="$HERE/Data/cartacolibri"; mkdir -p "$CARTACOLIBRI_HOME"
-( sleep 1.5; (xdg-open http://127.0.0.1:8765/ || open http://127.0.0.1:8765/) >/dev/null 2>&1 ) &
-exec "$HERE/App/CartaColibri/cartacolibri" serve --port 8765
-"""
-INI = """[Format]
-Type=PortableApps.comFormat
-Version=3.0
+PK = os.path.join(ROOT, "packaging")
+DIST = os.path.join(ROOT, "dist")
 
-[Details]
-Name=CartaColibri Portable
-AppID=CartaColibriPortable
-Publisher=Alexandru-Ionut Chiuta
-Homepage=github.com/chiuta/CartaColibri
-Category=Utilities
-Description=Local AI library: RAG-fetch index and RAG-CARTA summaries with citations. 100% local.
-Language=Multilingual
 
-[License]
-Shareable=true
-OpenSource=true
-Freeware=true
-CommercialUse=true
+def rd(name, mode="r"):
+    with open(os.path.join(PK, name), mode, **({} if "b" in mode else {"encoding": "utf-8", "newline": ""})) as f:
+        return f.read()
 
-[Version]
-PackageVersion={v}.0
-DisplayVersion={v}
-"""
+
+def sums():
+    zs = sorted(glob.glob(os.path.join(DIST, "*.zip")))
+    lines = [f"{hashlib.sha256(open(z, 'rb').read()).hexdigest()}  {os.path.basename(z)}" for z in zs]
+    out = os.path.join(DIST, "SHA256SUMS")
+    with open(out, "w", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    print(out)
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--version", default="dev"); ap.add_argument("--binary", required=True); ap.add_argument("--target", default="local"); ap.add_argument("--browser", help="optional: compiled cartacolibri-browser binary to include")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--version", default="dev")
+    ap.add_argument("--binary")
+    ap.add_argument("--target", default="local")
+    ap.add_argument("--browser", help="optional: compiled cartacolibri-browser binary to include")
+    ap.add_argument("--sums", action="store_true", help="only (re)write dist/SHA256SUMS")
     a = ap.parse_args()
-    win = a.binary.endswith(".exe")
-    os.makedirs(os.path.join(ROOT, "dist"), exist_ok=True)
-    out = os.path.join(ROOT, "dist", f"CartaColibriPortable-{a.version}-{a.target}.zip")
+    if a.sums:
+        return sums()
+    if not a.binary:
+        ap.error("--binary is required")
+    win = a.binary.endswith(".exe") or a.target.startswith("windows")
+    mac = a.target.startswith("macos")
+    os.makedirs(DIST, exist_ok=True)
+    out = os.path.join(DIST, f"CartaColibriPortable-{a.version}-{a.target}.zip")
     top = "CartaColibriPortable/"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        def put_bytes(data, dst, mode=0o644):
+            zi = zipfile.ZipInfo(top + dst, date_time=(2026, 1, 1, 0, 0, 0))
+            zi.external_attr = mode << 16
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(zi, data)
+
         def add(src, dst, mode=0o644):
-            zi = zipfile.ZipInfo(top + dst); zi.external_attr = mode << 16; zi.compress_type = zipfile.ZIP_DEFLATED
-            with open(src, "rb") as f: z.writestr(zi, f.read())
-        def put(text, dst, mode=0o644):
-            zi = zipfile.ZipInfo(top + dst); zi.external_attr = mode << 16; z.writestr(zi, text)
-        put(BAT.replace("\n", "\r\n"), "CartaColibriPortable.bat") if win else put(SH, "CartaColibriPortable.sh", 0o755)
-        put(INI.format(v=a.version.split("-")[0]), "App/AppInfo/appinfo.ini")
-        add(a.binary, "App/CartaColibri/" + ("cartacolibri.exe" if win else "cartacolibri"), 0o755)
-        if a.browser: add(a.browser, "App/CartaColibri/" + ("cartacolibri-browser.exe" if win else "cartacolibri-browser"), 0o755)
-        for f in ("LICENSE", "README.md"): add(os.path.join(ROOT, f), "App/CartaColibri/" + f)
+            with open(src, "rb") as f:
+                put_bytes(f.read(), dst, mode)
+
+        def pk(name, dst=None, mode=0o644, crlf=False):
+            t = rd(name).replace("\r\n", "\n")
+            if crlf:
+                t = t.replace("\n", "\r\n")
+            put_bytes(t.encode("utf-8"), dst or name, mode)
+
+        pk("START-HERE.txt", crlf=win)
+        if win:
+            for n in ("CartaColibri.bat", "Stop-CartaColibri.bat"):
+                pk(n, crlf=True)
+            pk("CartaColibri-hidden.vbs", crlf=True)
+            if a.browser:
+                pk("CartaColibri-Browser.bat", crlf=True)
+            pk("install.ps1", crlf=True)
+        else:
+            pk("cartacolibri.sh", mode=0o755)
+            pk("install.sh", mode=0o755)
+            if mac:
+                pk("CartaColibri.command", mode=0o755)
+            else:
+                pk("CartaColibri.desktop", mode=0o755)
+        v = a.version
+        pk_ini = rd("appinfo.ini").replace("{v}", v.split("-")[0]).replace("{version}", v).replace("Start=CartaColibri.bat", "Start=" + ("CartaColibri.bat" if win else "CartaColibri.command" if mac else "cartacolibri.sh")).replace("\r\n", "\n")
+        put_bytes(pk_ini.replace("\n", "\r\n").encode(), "App/AppInfo/appinfo.ini")
+        icon = os.path.join(ROOT, "assets", "cartacolibri-mark.png")
+        add(icon, "App/AppInfo/appicon.png")
+        add(icon, "Other/cartacolibri-mark.png")
+        pk("release-notes.md", "Other/release-notes.md")
+        exe = ".exe" if win else ""
+        add(a.binary, f"App/CartaColibri/cartacolibri{exe}", 0o755)
+        if a.browser:
+            add(a.browser, f"App/CartaColibri/cartacolibri-browser{exe}", 0o755)
+        for f in ("LICENSE", "README.md"):
+            add(os.path.join(ROOT, f), "App/CartaColibri/" + f)
         for dp, _, fn in os.walk(os.path.join(ROOT, "web-grab")):
-            for f in fn: add(os.path.join(dp, f), "App/CartaColibri/" + os.path.relpath(os.path.join(dp, f), ROOT).replace(os.sep, "/"))
-        put("", "Data/.keep")
+            for f in sorted(fn):
+                p = os.path.join(dp, f)
+                add(p, "App/CartaColibri/" + os.path.relpath(p, ROOT).replace(os.sep, "/"))
+        put_bytes(b"", "Data/cartacolibri/.keep")
     print(out)
+
 
 if __name__ == "__main__":
     main()
