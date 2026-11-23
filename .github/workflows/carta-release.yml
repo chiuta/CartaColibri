@@ -1,0 +1,38 @@
+name: Tag a CartaColibri release
+
+# Manual: Actions → "Tag a CartaColibri release" → Run workflow → version (e.g. 0.1.0-alpha.1).
+# Runs the tests, builds the portable zip, creates the tag v<version> and a DRAFT pre-release with the zip attached.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without the leading v (e.g. 0.1.0-alpha.1)'
+        required: true
+        default: '0.1.0-alpha.1'
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - run: python -I tests/test_cartacolibri.py
+      - run: python scripts/make_portable.py --version "${{ inputs.version }}"
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ inputs.version }}" dist/*.zip \
+            --draft ${{ inputs.prerelease && '--prerelease' || '' }} \
+            --target "${{ github.sha }}" \
+            --title "CartaColibri ${{ inputs.version }}" \
+            --notes-file docs/cartacolibri.md

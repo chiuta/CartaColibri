@@ -1,0 +1,51 @@
+name: CartaColibri CI
+
+on:
+  push:
+    branches: [main, cartacolibri]
+    paths: ['c/ragfetch.py', 'c/ragcarta.py', 'c/carta_cli.py', 'ui/carta*.py', 'ui/carta.html', 'tests/test_cartacolibri.py',
+            'scripts/*carta*', 'scripts/make_portable.py', 'site-carta/**', '.github/workflows/carta*.yml']
+  pull_request:
+    paths: ['c/ragfetch.py', 'c/ragcarta.py', 'c/carta_cli.py', 'ui/carta*.py', 'ui/carta.html', 'tests/test_cartacolibri.py',
+            'scripts/*carta*', 'scripts/make_portable.py', 'site-carta/**']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, windows-latest, macos-latest]   # Ubuntu 26 per project policy
+        python: ['3.10', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '${{ matrix.python }}' }
+      - name: Unit tests (index, search, groups, RAG-CARTA, API, fuzz)
+        run: python -I tests/test_cartacolibri.py
+      - name: Generated READMEs and site are up to date
+        if: matrix.os != 'windows-latest'
+        run: |
+          python scripts/gen_carta_docs.py
+          git diff --exit-code -- README.md docs/cartacolibri site-carta
+
+  frontend:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }   # never older than 24
+      - name: JS syntax + 8-language completeness
+        run: node scripts/check_carta_ui.js
+
+  portable:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - run: python scripts/make_portable.py --version ci
+      - run: python -c "import zipfile,glob;z=zipfile.ZipFile(glob.glob('dist/*.zip')[0]);n=z.namelist();assert any(x.endswith('CartaColibriPortable.bat') for x in n) and any(x.endswith('appinfo.ini') for x in n) and any(x.endswith('c/ragfetch.py') for x in n);print(len(n),'files ok')"

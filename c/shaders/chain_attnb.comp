@@ -1,0 +1,257 @@
+#version 450
+// chain_attn.comp's attention for a prompt chunk: the same results (to rounding), the
+// K and V rows read once per block of query rows instead of once per (head, row).
+// chain_attn runs one workgroup per (head, row), and each reads every position the row
+// sees: a chunk of S rows reads its KV cache S * H times (68 GB a layer for 2048 rows of
+// Qwen3.6, 1.2 s on a Radeon 780M). Here one workgroup takes the G = H / KVH query
+// heads of one KV head for BR consecutive rows, P = G * BR (head, row) pairs, at most 32,
+// and walks the positions of its rows in tiles of BC (a specialization constant, 4 to 16
+// as the device's shared memory allows): each tile's K and V rows go to shared memory
+// once and serve every pair. 8 lanes per pair; lane l owns the query dims l, l + 8, ...
+// (at most 32) and the output dims likewise, in registers:
+//   - each lane's partial dot products with the tile's keys go to shared memory, summed
+//     per pair (score = sum of the 8 partials, times the scale);
+//   - a position the pair's row does not see (past it, before its window, past its
+//     list) scores nothing; the online softmax (running max and sum, the accumulator
+//     rescaled when the max grows) as chain_attn's;
+//   - the output, divided by the sum, times sigmoid(gate) when has_gate.
+// Everything chain_attn takes: a sliding window (win), a ring (ring), V's own head dim
+// (vd), position-major rows (kv_pm), a sink logit (sink, sink_off), and a selection list
+// per row (sel_row > 0): then BR = 1, the row's list is the workgroup's.
+// The order of the sums differs from chain_attn's and the CPU's; all agree to rounding.
+// Push constants: chain_attn's, then br (rows per workgroup, br * H / KVH <= 32).
+// part != 0 (vk_kvsplit.h's host part on the device, from its shadow of the host's
+// rows): a row's positions are its causal ones before its share of a split cache, the
+// blocks pos/B - anchor and on, so [first, (pos/B - anchor)*B); the output is the part
+// (the value sum unnormalized at o_off + s*o_row + h*vd, (m, l) at st_off + (s*H + h)*2)
+// for vkc_kvs_merge. Its tiles start at multiples of BC: a row's sums then depend on its
+// own positions only, whatever rows share its workgroup (a tile it does not see changes
+// nothing), so a row gets the same bits however a forward is cut into steps. No lists,
+// no sink, no ring there. With g_off > 0 the positions are cut into chunks of g_off (a
+// multiple of BC), workgroup z taking [z*g_off, (z+1)*g_off): its part at o_off +
+// z*g_row + ... and its (m, l) at st_off + z*g_seg + ..., for chain_kvs.comp's join (a
+// decode row's thousands of positions over many workgroups; the chunks are fixed by
+// position, so the bits still are the row's own).
+// Limits: hd, vd <= 256.
+// HDC and VDC (constants 1 and 2; 0: the push constants') fix K's and V's head dims in the
+// pipeline (vk_chain.c's kab_pipe, a pipeline a shape): a lane's loops over its dims then
+// stop where its dims do, without testing each dim against p.hd (on an Arc Pro B60 each
+// tested term was a shared-memory read of its own: 45 spills, and a 255-row chunk of
+// Qwen3.6 at 16K positions took 185.1 ms; fixed, 3 spills and 25.7 ms). The q.k partial is
+// then summed as fused multiply-adds in order (precise), the arithmetic the tested sum
+// compiles to on ANV and Lavapipe: left to the compiler, the untested sum rounded otherwise
+// on ANV (825,758 of 1,044,480 outputs differed in their last bits). VEC (constant 3)
+// stages K and V a uvec4 (8 halves) a load, every load of a tile before its stores: a
+// float16 cache, head-major, no ring and no list, k_off, v_off, HDC and VDC multiples of 8.
+layout(local_size_x = 256) in;
+layout(constant_id = 0) const int BC = 8;
+layout(constant_id = 1) const int HDC = 0;
+layout(constant_id = 2) const int VDC = 0;
+layout(constant_id = 3) const bool VEC = false;
+
+layout(std430, binding = 0) readonly buffer QB { float q[]; };
+layout(std430, binding = 1) readonly buffer KB { float kc[]; };
+layout(std430, binding = 2) readonly buffer VB { float vc[]; };
+layout(constant_id = 7) const bool KV16 = false;   // K and V float16, two a word (vk_chain.c's vkc_attn_h)
+layout(std430, binding = 1) readonly buffer KBH { uint kch[]; };
+layout(std430, binding = 2) readonly buffer VBH { uint vch[]; };
+layout(std430, binding = 1) readonly buffer KB4 { uvec4 kc4[]; };   // VEC
+layout(std430, binding = 2) readonly buffer VB4 { uvec4 vc4[]; };
+float kf(int i) { return KV16 ? unpackHalf2x16(kch[i >> 1])[i & 1] : kc[i]; }
+float vf(int i) { return KV16 ? unpackHalf2x16(vch[i >> 1])[i & 1] : vc[i]; }
+layout(std430, binding = 3) buffer OB { float o[]; };
+layout(std430, binding = 4) readonly buffer GB { float gt[]; };
+layout(std430, binding = 5) readonly buffer LB { int sel[]; };
+layout(std430, binding = 6) readonly buffer SB { float snk[]; };
+
+layout(push_constant) uniform P {
+    int S, H, KVH, hd, pos_base, cap;
+    int q_off, q_row, q_seg;
+    int g_off, g_row, g_seg, has_gate;
+    int o_off, o_row;
+    int sel_off, sel_row;
+    float scale;
+    int k_off, v_off;
+    int win, ring, vd, kv_pm, sink, sink_off;
+    int br;
+    int B, anchor, part, st_off;
+} p;
+
+shared float ks[BC * 256];        // the tile's keys   [j][d]
+shared float vs[BC * 256];        // the tile's values [j][d]
+shared float part[32 * 8 * BC];   // [pair][lane][position]
+shared float scr[32 * BC];        // [pair][position]
+shared int   tpos[BC];            // the tile's positions (-1: none)
+
+void main() {
+    int tid = int(gl_LocalInvocationID.x);
+    int pair = tid >> 3, lane = tid & 7;
+    int HD = HDC > 0 ? HDC : p.hd, VD = VDC > 0 ? VDC : p.vd;
+    int kvh = int(gl_WorkGroupID.x);
+    int G = p.H / p.KVH;
+    int s0 = int(gl_WorkGroupID.y) * p.br;
+    int r = pair / G, g = pair - r * G;
+    int s = s0 + r;
+    bool live = r < p.br && s < p.S;
+    int h = kvh * G + g;
+    float qv[32], av[32];
+    int qb = p.q_off + s * p.q_row + h * p.q_seg;
+    for (int i = 0; i < 32; i++) {
+        int d = lane + 8 * i;
+        qv[i] = live && d < HD ? q[qb + d] : 0.0;
+        av[i] = 0.0;
+    }
+    // the block's positions: the union of its rows' ranges, or the one row's list
+    int slast = min(s0 + p.br, p.S) - 1;
+    int pos = p.pos_base + s;
+    int first = p.win > 0 ? max(0, pos - p.win + 1) : 0;    // this pair's row
+    int bfirst = p.win > 0 ? max(0, p.pos_base + s0 - p.win + 1) : 0;
+    int n = p.pos_base + slast + 1 - bfirst;
+    int end = pos + 1;                                       // this pair's row: positions before end
+    if (p.part != 0) {
+        end = (pos / p.B - p.anchor) * p.B;
+        int bend = ((p.pos_base + slast) / p.B - p.anchor) * p.B;   // the block's last row's
+        bfirst -= bfirst % BC;
+        if (p.g_off > 0) {
+            int c0 = int(gl_WorkGroupID.z) * p.g_off, c1 = c0 + p.g_off;
+            bfirst = max(bfirst, c0); bend = min(bend, c1);
+            first = max(first, c0); end = min(end, c1);
+        }
+        n = max(0, bend - bfirst);
+    }
+    bool list = false;
+    int lb = 0;
+    if (p.sel_row > 0) {
+        lb = p.sel_off + s0 * p.sel_row;
+        int c = sel[lb];
+        if (c >= 0) { n = c; list = true; }
+    }
+    float m = p.sink != 0 && live ? snk[p.sink_off + h] : -3.0e38, l = p.sink != 0 ? 1.0 : 0.0;
+    int kbase = kvh * p.cap;
+    for (int t0 = 0; t0 < n; t0 += BC) {
+        if (tid < BC) {
+            int i = t0 + tid;
+            tpos[tid] = i < n ? (list ? sel[lb + 1 + i] : bfirst + i) : -1;
+        }
+        barrier();
+        // the tile's keys and values into shared memory, once for every pair
+        if (VEC) {   // the tile's positions are bfirst + t0 + j, its rows whole uvec4s
+            const int NW = (BC * 32 + 255) / 256;
+            int K8 = HD / 8, V8 = VD / 8;
+            uvec4 kw[NW], vw[NW];
+            for (int c = 0; c < NW; c++) {
+                int x = tid + 256 * c, j = x / K8, d8 = x - j * K8;
+                kw[c] = uvec4(0);
+                if (x < BC * K8 && t0 + j < n) kw[c] = kc4[(p.k_off + (kbase + bfirst + t0 + j) * HD) / 8 + d8];
+                j = x / V8; d8 = x - j * V8;
+                vw[c] = uvec4(0);
+                if (x < BC * V8 && t0 + j < n) vw[c] = vc4[(p.v_off + (kbase + bfirst + t0 + j) * VD) / 8 + d8];
+            }
+            for (int c = 0; c < NW; c++) {
+                int x = tid + 256 * c, j = x / K8, d8 = x - j * K8;
+                if (x < BC * K8) {
+                    int o = j * 256 + d8 * 8;
+                    vec2 a0 = unpackHalf2x16(kw[c].x), a1 = unpackHalf2x16(kw[c].y), a2 = unpackHalf2x16(kw[c].z), a3 = unpackHalf2x16(kw[c].w);
+                    ks[o] = a0.x; ks[o + 1] = a0.y; ks[o + 2] = a1.x; ks[o + 3] = a1.y;
+                    ks[o + 4] = a2.x; ks[o + 5] = a2.y; ks[o + 6] = a3.x; ks[o + 7] = a3.y;
+                }
+                j = x / V8; d8 = x - j * V8;
+                if (x < BC * V8) {
+                    int o = j * 256 + d8 * 8;
+                    vec2 a0 = unpackHalf2x16(vw[c].x), a1 = unpackHalf2x16(vw[c].y), a2 = unpackHalf2x16(vw[c].z), a3 = unpackHalf2x16(vw[c].w);
+                    vs[o] = a0.x; vs[o + 1] = a0.y; vs[o + 2] = a1.x; vs[o + 3] = a1.y;
+                    vs[o + 4] = a2.x; vs[o + 5] = a2.y; vs[o + 6] = a3.x; vs[o + 7] = a3.y;
+                }
+            }
+        } else {
+            for (int x = tid; x < BC * HD; x += 256) {
+                int j = x / HD, d = x - j * HD, t = tpos[j];
+                float kv = 0.0;
+                if (t >= 0) {
+                    int rr = p.ring > 0 ? t % p.ring : t;
+                    kv = kf(p.k_off + (p.kv_pm != 0 ? rr * p.KVH + kvh : kbase + rr) * HD + d);
+                }
+                ks[j * 256 + d] = kv;
+            }
+            for (int x = tid; x < BC * VD; x += 256) {
+                int j = x / VD, d = x - j * VD, t = tpos[j];
+                float vv = 0.0;
+                if (t >= 0) {
+                    int rr = p.ring > 0 ? t % p.ring : t;
+                    vv = vf(p.v_off + (p.kv_pm != 0 ? rr * p.KVH + kvh : kbase + rr) * VD + d);
+                }
+                vs[j * 256 + d] = vv;
+            }
+        }
+        barrier();
+        // the partial dot products of this lane's query dims with the tile's keys (HDC: in
+        // order, a fused multiply-add a term, as the tested sum compiles on ANV)
+        for (int j = 0; j < BC; j++) {
+            float a = 0.0;
+            if (HDC > 0) {
+                precise float f = 0.0;
+                for (int i = 0; i < 32; i++)
+                    if (HDC % 8 == 0 ? 8 * i < HDC : lane + 8 * i < HDC) f = fma(qv[i], ks[j * 256 + lane + 8 * i], f);
+                a = f;
+            } else
+                for (int i = 0; i < 32; i++) {
+                    int d = lane + 8 * i;
+                    if (d < p.hd) a += qv[i] * ks[j * 256 + d];
+                }
+            part[(pair * 8 + lane) * BC + j] = a;
+        }
+        barrier();
+        // the scores: lane j sums position j's (and j + 8's) partials
+        for (int j = lane; j < BC; j += 8) {
+            int t = tpos[j];
+            float sc = -3.0e38;
+            if (live && t >= 0 && (list || (t >= first && t < end))) {
+                float a = 0.0;
+                for (int k = 0; k < 8; k++) a += part[(pair * 8 + k) * BC + j];
+                sc = a * p.scale;
+            }
+            scr[pair * BC + j] = sc;
+        }
+        barrier();
+        // the online softmax over the tile, each lane of the pair alike
+        float mx = m;
+        for (int j = 0; j < BC; j++) mx = max(mx, scr[pair * BC + j]);
+        float corr = exp(m - mx), sum = 0.0;
+        for (int i = 0; i < 32; i++) av[i] *= corr;
+        for (int j = 0; j < BC; j++) {
+            float sc = scr[pair * BC + j];
+            if (sc <= -3.0e38) continue;
+            float w = exp(sc - mx);
+            sum += w;
+            for (int i = 0; i < 32; i++) {
+                int d = lane + 8 * i;
+                if (VDC % 8 == 0 && VDC > 0 ? 8 * i < VDC : d < VD) av[i] += w * vs[j * 256 + d];
+            }
+        }
+        l = l * corr + sum;
+        m = mx;
+        barrier();
+    }
+    if (!live) return;
+    int ob = p.o_off + s * p.o_row + h * VD;
+    if (p.part != 0) {   // the part (a chunk's, with g_off), for the merge (or the join)
+        int z = p.g_off > 0 ? int(gl_WorkGroupID.z) : 0;
+        int obz = ob + z * p.g_row, sb = p.st_off + z * p.g_seg + (s * p.H + h) * 2;
+        for (int i = 0; i < 32; i++) {
+            int d = lane + 8 * i;
+            if (d >= VD) break;
+            o[obz + d] = av[i];
+        }
+        if (lane == 0) { o[sb] = m; o[sb + 1] = l; }
+        return;
+    }
+    float inv = l > 0.0 ? 1.0 / l : 0.0;
+    int gb = p.g_off + s * p.g_row + h * p.g_seg;
+    for (int i = 0; i < 32; i++) {
+        int d = lane + 8 * i;
+        if (d >= VD) break;
+        float v = av[i] * inv;
+        if (p.has_gate != 0) v *= 1.0 / (1.0 + exp(-gt[gb + d]));
+        o[ob + d] = v;
+    }
+}
