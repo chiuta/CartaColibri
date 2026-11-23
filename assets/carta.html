@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CartaColibri — Local AI Library</title>
+<link rel="icon" href="/carta-mark.png">
+<style>
+/* CartaColibri screens: Library · RAG-fetch · RAG-CARTA. Palette taken from the logo. No build step, no external requests. */
+:root{--bg:#141414;--surface:#1a1a1a;--s2:#222;--s3:#2a2a2a;--line:#333;--ink:#ececec;--mute:#9a9a9a;
+ --blue:#2f66c4;--cyan:#5fd7e6;--amber:#fdb93a;--ok:#5fd7a0;--bad:#ff7a7a;--r:12px;--font:system-ui,"Segoe UI",Roboto,sans-serif}
+:root[data-theme=light]{--bg:#f7f8fa;--surface:#fff;--s2:#f0f2f5;--s3:#e6e9ee;--line:#d7dbe2;--ink:#1c2230;--mute:#667085;--blue:#2a5db8;--cyan:#0d8fa3;--amber:#b87800}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font);display:grid;grid-template-columns:64px 1fr;overflow:hidden}
+a{color:var(--cyan)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.rail{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0;border-right:1px solid var(--line);background:var(--bg)}
+.rail img{width:38px;height:38px;object-fit:contain;margin-bottom:8px}
+.rb{width:44px;height:44px;border-radius:12px;border:1px solid transparent;background:none;cursor:pointer;display:grid;place-items:center;color:var(--mute);text-decoration:none;position:relative}
+.rb:hover{background:var(--s2);color:var(--ink)}.rb[aria-current=page]{background:rgba(95,215,230,.13);color:var(--cyan)}
+.rb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rb[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:54px;background:var(--s3);border:1px solid var(--line);padding:3px 9px;border-radius:8px;font-size:13px;white-space:nowrap;z-index:50}
+.sp{flex:1}
+main{display:flex;flex-direction:column;min-width:0;height:100%}
+header.top{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line)}
+header.top h1{font-size:17px;margin:0;font-weight:700}header.top h1 small{color:var(--mute);font-weight:500;margin-left:8px}
+.status{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:13px}.status i{width:9px;height:9px;border-radius:50%;background:var(--mute)}.status[data-ok=true] i{background:var(--ok);box-shadow:0 0 0 4px rgba(95,215,160,.15)}
+.btn{border:1px solid var(--line);background:var(--s2);border-radius:10px;padding:7px 13px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--cyan)}.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}.btn.pri:hover{filter:brightness(1.12)}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#2b1d00}.btn.sm{padding:3px 9px;font-size:13px}.btn.bad:hover{border-color:var(--bad);color:var(--bad)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+input[type=text],input[type=number],select,textarea{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:7px 10px;min-width:0}
+textarea{width:100%;resize:vertical}
+.view{display:none;flex:1;min-height:0}.view.on{display:flex}
+.side{width:270px;border-right:1px solid var(--line);padding:14px;overflow:auto;flex:none;background:var(--surface)}
+.side h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px}.side h3:first-child{margin-top:0}
+.body{flex:1;min-width:0;display:flex;flex-direction:column}
+.bar{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.bar input[type=text]{flex:1;min-width:180px}
+.scroll{flex:1;overflow:auto;min-height:0}
+table{border-collapse:collapse;width:100%}th,td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--surface);font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;z-index:1}
+td.n{text-align:right;white-space:nowrap;color:var(--mute)}td.p{color:var(--mute);word-break:break-all;font-size:13px}
+tr.sel td{background:rgba(47,102,196,.18)}tr:hover td{background:var(--s2)}
+mark,.hit{background:rgba(253,185,58,.3);color:inherit;border-radius:3px}
+.snip{color:var(--mute);font-size:13px}.snip b{color:var(--amber)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;cursor:pointer;background:var(--s2)}.chip.on{border-color:var(--cyan);background:rgba(95,215,230,.14)}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0}.row label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:14px;margin:14px 18px}
+.card h2{font-size:15px;margin:0 0 10px}
+.muted{color:var(--mute)}.empty{padding:40px;text-align:center;color:var(--mute)}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:18px;text-align:center;color:var(--mute)}.drop.over{border-color:var(--cyan);color:var(--cyan)}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-10px 0 30px rgba(0,0,0,.4);display:none;flex-direction:column;z-index:40}
+.drawer.on{display:flex}.drawer .hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}.drawer .hd b{flex:1}
+.drawer .bd{flex:1;overflow:auto;padding:14px 16px}.drawer .ft{border-top:1px solid var(--line);padding:12px 16px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg button{flex:1;border:0;background:var(--s2);padding:7px;cursor:pointer;font-weight:600}.seg button.on{background:var(--blue);color:#fff}
+.md{font-size:14.5px}.md h2,.md h3{margin:14px 0 6px}.md p{margin:6px 0}.md ul{padding-left:20px}.md table{margin:8px 0;font-size:13.5px}.md hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.cite{color:var(--cyan);font-weight:700;font-size:.85em}
+.viewer{position:fixed;inset:5vh 8vw;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:none;flex-direction:column;z-index:60;box-shadow:0 20px 60px rgba(0,0,0,.6)}.viewer.on{display:flex}
+.viewer pre{flex:1;margin:0;padding:16px;overflow:auto;white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Consolas,monospace}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--line);padding:9px 16px;border-radius:10px;z-index:90;display:none;max-width:80vw}
+.err{color:var(--bad)}.ok{color:var(--ok)}
+@media(max-width:820px){.side{display:none}body{grid-template-columns:52px 1fr}}
+</style>
+</head>
+<body>
+<nav class="rail" aria-label="CartaColibri">
+  <a href="/carta.html" title="CartaColibri"><img src="/carta-mark.png" alt="CartaColibri"></a>
+  <a class="rb" href="/" data-tip="Chat" data-i="chat"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></a>
+  <button class="rb" data-view="library" data-tip="Library" data-i="library"><svg viewBox="0 0 24 24"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.8 1-3 13-3.8-1z"/></svg></button>
+  <button class="rb" data-view="fetch" data-tip="RAG-fetch" data-i="fetch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+  <span class="sp"></span>
+  <button class="rb" id="themeBtn" data-tip="Theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
+</nav>
+<main>
+  <header class="top">
+    <h1>CartaColibri<small data-i="subtitle"></small></h1>
+    <span class="sp" style="flex:1"></span>
+    <span class="status" id="gw"><i></i><span id="gwTxt"></span></span>
+    <select id="lang" aria-label="Language"></select>
+    <button class="btn amber" id="cartaBtn" data-i="rag_carta"></button>
+  </header>
+
+  <!-- LIBRARY: every local document + its location; add / remove folder; upload; view -->
+  <section class="view" id="v-library">
+    <div class="side">
+      <h3 data-i="folders"></h3><div id="roots"></div>
+      <div class="row"><input type="text" id="newRoot" data-ph="folder_path" style="width:100%"></div>
+      <div class="row"><button class="btn pri sm" id="addRoot" data-i="add_folder"></button><button class="btn sm" id="reindex" data-i="reindex"></button></div>
+      <h3 data-i="upload"></h3>
+      <div class="drop" id="drop"><span data-i="drop"></span><br><input type="file" id="file" multiple hidden><button class="btn sm" id="pick" style="margin-top:8px" data-i="choose_files"></button></div>
+      <div class="row"><label><input type="checkbox" id="ocrTxt"> <span data-i="ocr_txt"></span></label></div>
+      <div class="row"><label><input type="checkbox" id="ocrPdf"> <span data-i="ocr_pdf"></span></label></div>
+      <div class="muted" id="ocrNote" style="font-size:12px"></div>
+      <h3 data-i="problems"></h3><div id="problems" class="muted" style="font-size:12px"></div>
+    </div>
+    <div class="body">
+      <div class="bar"><b id="libCount"></b><span class="muted" id="libStats"></span></div>
+      <div class="scroll"><table><thead><tr><th><input type="checkbox" id="libAll"></th><th data-i="name"></th><th data-i="type"></th><th class="n" data-i="size"></th><th data-i="path"></th><th></th></tr></thead><tbody id="libRows"></tbody></table><div class="empty" id="libEmpty" data-i="empty_lib"></div></div>
+    </div>
+  </section>
+
+  <!-- RAG-fetch: search + filters + groups ("search scope") -->
+  <section class="view" id="v-fetch">
+    <div class="side">
+      <h3 data-i="filters"></h3>
+      <div class="chips" id="exts"></div>
+      <div class="row"><input type="number" id="minKb" min="0" data-ph="min_kb" style="width:50%"><input type="number" id="maxKb" min="0" data-ph="max_kb" style="width:50%"></div>
+      <div class="row"><input type="text" id="pathLike" data-ph="path_contains" style="width:100%"></div>
+      <h3 data-i="groups"></h3><div id="groupList"></div>
+      <div class="row"><input type="text" id="gName" data-ph="group_name" style="width:100%"></div>
+      <div class="row"><button class="btn pri sm" id="gFromSel" data-i="create_index_sel"></button></div>
+      <div class="muted" style="font-size:12px" data-i="group_hint"></div>
+    </div>
+    <div class="body">
+      <div class="bar"><input type="text" id="q" data-ph="query_ph"><button class="btn pri" id="go" data-i="search"></button><span class="muted" id="resCount"></span></div>
+      <div class="scroll"><table><thead><tr><th><input type="checkbox" id="resAll"></th><th class="n" data-i="score"></th><th data-i="name"></th><th data-i="type"></th><th class="n" data-i="size"></th><th data-i="path"></th></tr></thead><tbody id="resRows"></tbody></table><div class="empty" id="resEmpty" data-i="hint_fetch"></div></div>
+    </div>
+  </section>
+</main>
+
+<!-- RAG-CARTA drawer -->
+<aside class="drawer" id="drawer" aria-label="RAG-CARTA">
+  <div class="hd"><img src="/carta-mark.png" alt="" width="28"><b>RAG-CARTA</b><button class="btn sm" id="dClose" data-i="close"></button></div>
+  <div class="bd">
+    <div class="seg" id="taskSeg"><button data-t="summarize" class="on" data-i="summarize"></button><button data-t="extract" data-i="extract"></button><button data-t="synthesize" data-i="synthesize"></button></div>
+    <h4 data-i="scope" style="margin:14px 0 6px"></h4>
+    <div class="row"><label><input type="radio" name="scope" value="sel" checked> <span id="scopeSelTxt"></span></label></div>
+    <div class="row"><label><input type="radio" name="scope" value="group"> <span data-i="scope_group"></span></label><select id="scopeGroup"></select></div>
+    <div id="fieldsRow" class="row" style="display:none"><input type="text" id="fields" data-ph="fields_ph" style="width:100%"></div>
+    <div id="fmtRow" class="row" style="display:none"><label><input type="checkbox" id="asJson"> JSON</label></div>
+    <div class="row"><label><input type="checkbox" id="saveOut"> <span data-i="save_out"></span></label><label><input type="checkbox" id="mock"> <span data-i="mock"></span></label></div>
+    <div id="out" class="md" style="margin-top:14px"></div>
+  </div>
+  <div class="ft"><textarea id="req" rows="3" data-ph="message_ph"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn pri" id="run" data-i="run"></button><button class="btn" id="copy" data-i="copy"></button><span class="muted" id="runSt"></span></div></div>
+</aside>
+<div class="viewer" id="viewer"><div class="bar"><b id="vTitle" style="flex:1"></b><button class="btn sm" id="vClose" data-i="close"></button></div><pre id="vText"></pre></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ---- i18n: EN RO FR IT ES PT DE HU (informal address) ---- */
+const L={en:'English',ro:'Română',fr:'Français',it:'Italiano',es:'Español',pt:'Português',de:'Deutsch',hu:'Magyar'};
+const D={
+subtitle:{en:'Local AI Library',ro:'Bibliotecă AI locală',fr:'Bibliothèque IA locale',it:'Biblioteca IA locale',es:'Biblioteca IA local',pt:'Biblioteca de IA local',de:'Lokale KI-Bibliothek',hu:'Helyi MI-könyvtár'},
+chat:{en:'Chat',ro:'Chat',fr:'Chat',it:'Chat',es:'Chat',pt:'Chat',de:'Chat',hu:'Chat'},
+library:{en:'Library',ro:'Bibliotecă',fr:'Bibliothèque',it:'Biblioteca',es:'Biblioteca',pt:'Biblioteca',de:'Bibliothek',hu:'Könyvtár'},
+fetch:{en:'RAG-fetch',ro:'RAG-fetch',fr:'RAG-fetch',it:'RAG-fetch',es:'RAG-fetch',pt:'RAG-fetch',de:'RAG-fetch',hu:'RAG-fetch'},
+rag_carta:{en:'RAG-CARTA',ro:'RAG-CARTA',fr:'RAG-CARTA',it:'RAG-CARTA',es:'RAG-CARTA',pt:'RAG-CARTA',de:'RAG-CARTA',hu:'RAG-CARTA'},
+folders:{en:'Library folders',ro:'Foldere din bibliotecă',fr:'Dossiers de la bibliothèque',it:'Cartelle della biblioteca',es:'Carpetas de la biblioteca',pt:'Pastas da biblioteca',de:'Bibliotheksordner',hu:'Könyvtármappák'},
+folder_path:{en:'Folder path, e.g. /home/me/Documents',ro:'Calea folderului, ex. C:\\Documente',fr:'Chemin du dossier, ex. /home/moi/Documents',it:'Percorso della cartella, es. /home/io/Documenti',es:'Ruta de la carpeta, p. ej. /home/yo/Documentos',pt:'Caminho da pasta, ex. /home/eu/Documentos',de:'Ordnerpfad, z. B. /home/ich/Dokumente',hu:'Mappa elérési útja, pl. /home/en/Dokumentumok'},
+add_folder:{en:'Add folder',ro:'Adaugă folder',fr:'Ajouter un dossier',it:'Aggiungi cartella',es:'Añadir carpeta',pt:'Adicionar pasta',de:'Ordner hinzufügen',hu:'Mappa hozzáadása'},
+remove:{en:'Remove',ro:'Șterge',fr:'Retirer',it:'Rimuovi',es:'Quitar',pt:'Remover',de:'Entfernen',hu:'Eltávolítás'},
+reindex:{en:'Update index',ro:'Actualizează indexul',fr:'Mettre à jour l’index',it:'Aggiorna l’indice',es:'Actualizar índice',pt:'Atualizar índice',de:'Index aktualisieren',hu:'Index frissítése'},
+upload:{en:'Upload to library',ro:'Încarcă în bibliotecă',fr:'Ajouter à la bibliothèque',it:'Carica nella biblioteca',es:'Subir a la biblioteca',pt:'Enviar para a biblioteca',de:'In die Bibliothek hochladen',hu:'Feltöltés a könyvtárba'},
+drop:{en:'Drop documents here',ro:'Trage documentele aici',fr:'Dépose tes documents ici',it:'Trascina qui i documenti',es:'Suelta aquí tus documentos',pt:'Solta aqui os documentos',de:'Zieh Dokumente hierher',hu:'Húzd ide a dokumentumokat'},
+choose_files:{en:'Choose files',ro:'Alege fișiere',fr:'Choisir des fichiers',it:'Scegli i file',es:'Elegir archivos',pt:'Escolher ficheiros',de:'Dateien wählen',hu:'Fájlok kiválasztása'},
+ocr_txt:{en:'Also save OCR text (TXT)',ro:'Salvează și textul OCR (TXT)',fr:'Enregistrer aussi le texte OCR (TXT)',it:'Salva anche il testo OCR (TXT)',es:'Guardar también el texto OCR (TXT)',pt:'Guardar também o texto OCR (TXT)',de:'OCR-Text mitspeichern (TXT)',hu:'OCR-szöveg mentése is (TXT)'},
+ocr_pdf:{en:'Also save searchable PDF',ro:'Salvează și PDF cu text căutabil',fr:'Enregistrer aussi un PDF interrogeable',it:'Salva anche un PDF ricercabile',es:'Guardar también un PDF con texto buscable',pt:'Guardar também um PDF pesquisável',de:'Auch durchsuchbares PDF speichern',hu:'Kereshető PDF mentése is'},
+ocr_missing:{en:'OCR needs tesseract on this computer (not found).',ro:'OCR-ul are nevoie de tesseract pe acest calculator (negăsit).',fr:'L’OCR nécessite tesseract sur cet ordinateur (introuvable).',it:'L’OCR richiede tesseract su questo computer (non trovato).',es:'El OCR necesita tesseract en este equipo (no se encontró).',pt:'O OCR precisa do tesseract neste computador (não encontrado).',de:'OCR braucht Tesseract auf diesem Rechner (nicht gefunden).',hu:'Az OCR-hez tesseract kell ezen a gépen (nem található).'},
+ocr_ready:{en:'OCR available (tesseract).',ro:'OCR disponibil (tesseract).',fr:'OCR disponible (tesseract).',it:'OCR disponibile (tesseract).',es:'OCR disponible (tesseract).',pt:'OCR disponível (tesseract).',de:'OCR verfügbar (Tesseract).',hu:'OCR elérhető (tesseract).'},
+problems:{en:'Files skipped',ro:'Fișiere omise',fr:'Fichiers ignorés',it:'File saltati',es:'Archivos omitidos',pt:'Ficheiros ignorados',de:'Übersprungene Dateien',hu:'Kihagyott fájlok'},
+name:{en:'Name',ro:'Nume',fr:'Nom',it:'Nome',es:'Nombre',pt:'Nome',de:'Name',hu:'Név'},
+type:{en:'Type',ro:'Tip',fr:'Type',it:'Tipo',es:'Tipo',pt:'Tipo',de:'Typ',hu:'Típus'},
+size:{en:'Size',ro:'Mărime',fr:'Taille',it:'Dimensione',es:'Tamaño',pt:'Tamanho',de:'Größe',hu:'Méret'},
+path:{en:'Location',ro:'Locație',fr:'Emplacement',it:'Posizione',es:'Ubicación',pt:'Localização',de:'Speicherort',hu:'Hely'},
+view:{en:'View',ro:'Vezi',fr:'Voir',it:'Vedi',es:'Ver',pt:'Ver',de:'Ansehen',hu:'Megnyitás'},
+docs_n:{en:'documents',ro:'documente',fr:'documents',it:'documenti',es:'documentos',pt:'documentos',de:'Dokumente',hu:'dokumentum'},
+empty_lib:{en:'The library is empty. Add a folder to start.',ro:'Biblioteca e goală. Adaugă un folder ca să începi.',fr:'La bibliothèque est vide. Ajoute un dossier pour commencer.',it:'La biblioteca è vuota. Aggiungi una cartella per iniziare.',es:'La biblioteca está vacía. Añade una carpeta para empezar.',pt:'A biblioteca está vazia. Adiciona uma pasta para começar.',de:'Die Bibliothek ist leer. Füge einen Ordner hinzu, um zu starten.',hu:'A könyvtár üres. Adj hozzá egy mappát a kezdéshez.'},
+filters:{en:'Filters',ro:'Filtre',fr:'Filtres',it:'Filtri',es:'Filtros',pt:'Filtros',de:'Filter',hu:'Szűrők'},
+min_kb:{en:'Min KB',ro:'Min KB',fr:'Min Ko',it:'Min KB',es:'Mín. KB',pt:'Mín. KB',de:'Min. KB',hu:'Min. KB'},
+max_kb:{en:'Max KB',ro:'Max KB',fr:'Max Ko',it:'Max KB',es:'Máx. KB',pt:'Máx. KB',de:'Max. KB',hu:'Max. KB'},
+path_contains:{en:'Location contains…',ro:'Locația conține…',fr:'L’emplacement contient…',it:'La posizione contiene…',es:'La ubicación contiene…',pt:'A localização contém…',de:'Speicherort enthält …',hu:'A hely tartalmazza…'},
+groups:{en:'Groups (indexes)',ro:'Grupuri (indexuri)',fr:'Groupes (index)',it:'Gruppi (indici)',es:'Grupos (índices)',pt:'Grupos (índices)',de:'Gruppen (Indizes)',hu:'Csoportok (indexek)'},
+group_name:{en:'Group name',ro:'Numele grupului',fr:'Nom du groupe',it:'Nome del gruppo',es:'Nombre del grupo',pt:'Nome do grupo',de:'Gruppenname',hu:'Csoport neve'},
+create_index_sel:{en:'Create index from selected files',ro:'Creează index din fișierele selectate',fr:'Créer un index depuis la sélection',it:'Crea un indice dai file selezionati',es:'Crear índice con los archivos seleccionados',pt:'Criar índice com os ficheiros selecionados',de:'Index aus ausgewählten Dateien erstellen',hu:'Index létrehozása a kijelölt fájlokból'},
+group_hint:{en:'A group is a reusable list of files you can point RAG-CARTA at.',ro:'Un grup e o listă reutilizabilă de fișiere pe care o poți da lui RAG-CARTA.',fr:'Un groupe est une liste de fichiers réutilisable que tu peux confier à RAG-CARTA.',it:'Un gruppo è un elenco riutilizzabile di file da dare a RAG-CARTA.',es:'Un grupo es una lista reutilizable de archivos que puedes pasar a RAG-CARTA.',pt:'Um grupo é uma lista reutilizável de ficheiros que podes dar ao RAG-CARTA.',de:'Eine Gruppe ist eine wiederverwendbare Dateiliste, die du RAG-CARTA übergeben kannst.',hu:'A csoport egy újrafelhasználható fájllista, amelyet átadhatsz a RAG-CARTÁ-nak.'},
+query_ph:{en:'Search words, "phrases", prefix*, AND / OR / NOT',ro:'Caută cuvinte, „expresii”, prefix*, AND / OR / NOT',fr:'Cherche des mots, « expressions », préfixe*, AND / OR / NOT',it:'Cerca parole, «frasi», prefisso*, AND / OR / NOT',es:'Busca palabras, «frases», prefijo*, AND / OR / NOT',pt:'Procura palavras, «frases», prefixo*, AND / OR / NOT',de:'Suche Wörter, „Phrasen“, Präfix*, AND / OR / NOT',hu:'Keress szavakat, „kifejezéseket”, előtag*, AND / OR / NOT'},
+search:{en:'Search',ro:'Caută',fr:'Chercher',it:'Cerca',es:'Buscar',pt:'Procurar',de:'Suchen',hu:'Keresés'},
+score:{en:'Score',ro:'Scor',fr:'Score',it:'Punteggio',es:'Puntuación',pt:'Pontuação',de:'Score',hu:'Pontszám'},
+results_n:{en:'results',ro:'rezultate',fr:'résultats',it:'risultati',es:'resultados',pt:'resultados',de:'Treffer',hu:'találat'},
+hint_fetch:{en:'Search your indexed documents, then select files to build a group or send them to RAG-CARTA.',ro:'Caută în documentele indexate, apoi selectează fișiere ca să faci un grup sau să le trimiți la RAG-CARTA.',fr:'Cherche dans tes documents indexés, puis sélectionne des fichiers pour créer un groupe ou les envoyer à RAG-CARTA.',it:'Cerca nei documenti indicizzati, poi seleziona i file per creare un gruppo o inviarli a RAG-CARTA.',es:'Busca en tus documentos indexados y selecciona archivos para crear un grupo o enviarlos a RAG-CARTA.',pt:'Procura nos teus documentos indexados e seleciona ficheiros para criar um grupo ou enviá-los ao RAG-CARTA.',de:'Durchsuche deine indizierten Dokumente und wähle Dateien aus, um eine Gruppe zu bilden oder sie an RAG-CARTA zu senden.',hu:'Keress az indexelt dokumentumaid között, majd jelölj ki fájlokat csoporthoz vagy küldd őket a RAG-CARTÁ-nak.'},
+no_results:{en:'No matches.',ro:'Niciun rezultat.',fr:'Aucun résultat.',it:'Nessun risultato.',es:'Sin resultados.',pt:'Sem resultados.',de:'Keine Treffer.',hu:'Nincs találat.'},
+selected_n:{en:'selected files',ro:'fișiere selectate',fr:'fichiers sélectionnés',it:'file selezionati',es:'archivos seleccionados',pt:'ficheiros selecionados',de:'ausgewählte Dateien',hu:'kijelölt fájl'},
+scope:{en:'Work on',ro:'Lucrează pe',fr:'Travailler sur',it:'Lavora su',es:'Trabajar con',pt:'Trabalhar com',de:'Arbeiten mit',hu:'Ezeken dolgozz'},
+scope_group:{en:'Group',ro:'Grup',fr:'Groupe',it:'Gruppo',es:'Grupo',pt:'Grupo',de:'Gruppe',hu:'Csoport'},
+summarize:{en:'Summarize',ro:'Rezumă',fr:'Résumer',it:'Riassumi',es:'Resumir',pt:'Resumir',de:'Zusammenfassen',hu:'Összefoglalás'},
+extract:{en:'Extract',ro:'Extrage',fr:'Extraire',it:'Estrai',es:'Extraer',pt:'Extrair',de:'Extrahieren',hu:'Kinyerés'},
+synthesize:{en:'Synthesize',ro:'Sintetizează',fr:'Synthétiser',it:'Sintetizza',es:'Sintetizar',pt:'Sintetizar',de:'Synthetisieren',hu:'Szintézis'},
+fields_ph:{en:'Fields to extract, comma-separated (parties, value, deadline…)',ro:'Câmpuri de extras, separate prin virgulă (părți, valoare, termen…)',fr:'Champs à extraire, séparés par des virgules (parties, valeur, délai…)',it:'Campi da estrarre, separati da virgola (parti, valore, termine…)',es:'Campos a extraer, separados por comas (partes, valor, plazo…)',pt:'Campos a extrair, separados por vírgulas (partes, valor, prazo…)',de:'Zu extrahierende Felder, kommagetrennt (Parteien, Wert, Frist …)',hu:'Kinyerendő mezők, vesszővel elválasztva (felek, érték, határidő…)'},
+message_ph:{en:'Message Colibri… (question, theme or focus)',ro:'Scrie-i lui Colibri… (întrebare, temă sau accent)',fr:'Écris à Colibri… (question, thème ou focus)',it:'Scrivi a Colibri… (domanda, tema o focus)',es:'Escribe a Colibri… (pregunta, tema o enfoque)',pt:'Escreve ao Colibri… (pergunta, tema ou foco)',de:'Schreib Colibri … (Frage, Thema oder Fokus)',hu:'Írj Colibrinek… (kérdés, téma vagy fókusz)'},
+run:{en:'Run',ro:'Rulează',fr:'Lancer',it:'Esegui',es:'Ejecutar',pt:'Executar',de:'Starten',hu:'Indítás'},
+copy:{en:'Copy',ro:'Copiază',fr:'Copier',it:'Copia',es:'Copiar',pt:'Copiar',de:'Kopieren',hu:'Másolás'},
+copied:{en:'Copied',ro:'Copiat',fr:'Copié',it:'Copiato',es:'Copiado',pt:'Copiado',de:'Kopiert',hu:'Másolva'},
+save_out:{en:'Save result to outputs/',ro:'Salvează rezultatul în outputs/',fr:'Enregistrer le résultat dans outputs/',it:'Salva il risultato in outputs/',es:'Guardar el resultado en outputs/',pt:'Guardar o resultado em outputs/',de:'Ergebnis in outputs/ speichern',hu:'Eredmény mentése az outputs/ mappába'},
+mock:{en:'Offline mode (no model)',ro:'Mod offline (fără model)',fr:'Mode hors ligne (sans modèle)',it:'Modalità offline (senza modello)',es:'Modo sin conexión (sin modelo)',pt:'Modo offline (sem modelo)',de:'Offline-Modus (ohne Modell)',hu:'Offline mód (modell nélkül)'},
+running:{en:'Working…',ro:'Lucrez…',fr:'En cours…',it:'In corso…',es:'Trabajando…',pt:'A trabalhar…',de:'Arbeite …',hu:'Dolgozom…'},
+saved:{en:'Saved',ro:'Salvat',fr:'Enregistré',it:'Salvato',es:'Guardado',pt:'Guardado',de:'Gespeichert',hu:'Mentve'},
+close:{en:'Close',ro:'Închide',fr:'Fermer',it:'Chiudi',es:'Cerrar',pt:'Fechar',de:'Schließen',hu:'Bezárás'},
+gw_ok:{en:'Colibrì engine running',ro:'Motorul Colibrì rulează',fr:'Moteur Colibrì actif',it:'Motore Colibrì attivo',es:'Motor Colibrì activo',pt:'Motor Colibrì ativo',de:'Colibrì-Engine läuft',hu:'A Colibrì motor fut'},
+gw_off:{en:'Engine not running — start it with coli web',ro:'Motorul nu rulează — pornește-l cu coli web',fr:'Moteur arrêté — lance-le avec coli web',it:'Motore non attivo — avvialo con coli web',es:'Motor detenido — inícialo con coli web',pt:'Motor parado — inicia-o com coli web',de:'Engine läuft nicht — starte sie mit coli web',hu:'A motor nem fut — indítsd a coli web paranccsal'},
+need_selection:{en:'Select files or pick a group first.',ro:'Selectează fișiere sau alege un grup mai întâi.',fr:'Sélectionne d’abord des fichiers ou un groupe.',it:'Seleziona prima dei file o un gruppo.',es:'Primero selecciona archivos o elige un grupo.',pt:'Seleciona primeiro ficheiros ou escolhe um grupo.',de:'Wähle zuerst Dateien oder eine Gruppe aus.',hu:'Előbb jelölj ki fájlokat vagy válassz csoportot.'},
+confirm_remove:{en:'Remove this folder from the library? Your files are not touched.',ro:'Scoți acest folder din bibliotecă? Fișierele tale nu sunt atinse.',fr:'Retirer ce dossier de la bibliothèque ? Tes fichiers ne sont pas touchés.',it:'Rimuovere questa cartella dalla biblioteca? I tuoi file non vengono toccati.',es:'¿Quitar esta carpeta de la biblioteca? Tus archivos no se tocan.',pt:'Remover esta pasta da biblioteca? Os teus ficheiros não são tocados.',de:'Diesen Ordner aus der Bibliothek entfernen? Deine Dateien bleiben unberührt.',hu:'Eltávolítod ezt a mappát a könyvtárból? A fájljaid érintetlenek maradnak.'},
+indexed:{en:'Indexed',ro:'Indexat',fr:'Indexé',it:'Indicizzato',es:'Indexado',pt:'Indexado',de:'Indiziert',hu:'Indexelve'}
+};
+let LANG=(()=>{try{const s=localStorage.getItem('carta.lang');if(s&&L[s])return s}catch(e){}const n=(navigator.language||'en').slice(0,2);return L[n]?n:'en'})();
+const T=k=>(D[k]&&(D[k][LANG]||D[k].en))||k;
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function applyLang(){document.documentElement.lang=LANG;
+  $$('[data-i]').forEach(e=>{const t=T(e.dataset.i);if(e.dataset.tip!==undefined)e.dataset.tip=t;else e.textContent=t});
+  $$('[data-ph]').forEach(e=>e.placeholder=T(e.dataset.ph));renderAll()}
+
+/* ---- api ---- */
+async function api(path,method='GET',body){
+  const o={method,headers:{'X-Colibri-UI':'1'}};
+  if(body!==undefined){o.headers['Content-Type']='application/json';o.body=JSON.stringify(body)}
+  const r=await fetch('/carta/'+path,o);const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||r.statusText);return j}
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='toast '+(bad?'err':'');t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',4200)}
+const kb=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+const base=p=>p.split(/[\\/]/).pop();
+
+/* ---- state ---- */
+const S={lib:{roots:[],documents:[],groups:{},problems:[]},results:[],selLib:new Set(),selRes:new Set(),exts:new Set(),extOn:new Set(),group:null,task:'summarize',ocr:false};
+async function load(){S.lib=await api('library');renderAll()}
+
+function renderAll(){renderRoots();renderLib();renderGroups();renderExts();renderRes();renderDrawerScope();$('#ocrNote').textContent=S.ocr?T('ocr_ready'):T('ocr_missing')}
+function renderRoots(){const c={};S.lib.documents.forEach(d=>c[d.root]=(c[d.root]||0)+1);
+  $('#roots').innerHTML=S.lib.roots.map(r=>`<div class="row"><label title="${esc(r)}">${esc(r)}</label><span class="muted">${c[r]||0}</span><button class="btn sm bad" data-rm="${esc(r)}">✕</button></div>`).join('')||'';
+  $$('[data-rm]').forEach(b=>b.onclick=async()=>{if(!confirm(T('confirm_remove')))return;await api('folders','DELETE',{path:b.dataset.rm});await load()})}
+function renderLib(){const d=S.lib.documents;$('#libCount').textContent=d.length+' '+T('docs_n');$('#libEmpty').style.display=d.length?'none':'block';
+  $('#libRows').innerHTML=d.map(x=>`<tr class="${S.selLib.has(x.id)?'sel':''}"><td><input type="checkbox" data-l="${x.id}" ${S.selLib.has(x.id)?'checked':''}></td><td>${esc(base(x.path))}</td><td>${esc(x.ext)}</td><td class="n">${kb(x.size)}</td><td class="p">${esc(x.path)}</td><td><button class="btn sm" data-v="${x.id}" data-n="${esc(base(x.path))}">${T('view')}</button></td></tr>`).join('');
+  $$('[data-l]').forEach(c=>c.onchange=()=>{c.checked?S.selLib.add(+c.dataset.l):S.selLib.delete(+c.dataset.l);renderLib()});
+  $$('[data-v]').forEach(b=>b.onclick=()=>openDoc(+b.dataset.v,b.dataset.n));
+  $('#problems').innerHTML=S.lib.problems.length?S.lib.problems.map(p=>`<div title="${esc(p.reason)}">⚠ ${esc(base(p.path))}<br><span style="opacity:.7">${esc(p.reason)}</span></div>`).join(''):'—'}
+function renderGroups(){const g=S.lib.groups;
+  $('#groupList').innerHTML=Object.keys(g).map(n=>`<div class="row"><label title="${esc(g[n].description||'')}"><input type="radio" name="grp" value="${esc(n)}" ${S.group===n?'checked':''}> ${esc(n)}</label><span class="muted">${g[n].members.length}</span><button class="btn sm bad" data-gd="${esc(n)}">✕</button></div>`).join('')
+    +`<div class="row"><label><input type="radio" name="grp" value="" ${!S.group?'checked':''}> ${T('library')}</label></div>`;
+  $$('[name=grp]').forEach(r=>r.onchange=()=>{S.group=r.value||null});
+  $$('[data-gd]').forEach(b=>b.onclick=async()=>{await api('groups','DELETE',{name:b.dataset.gd});if(S.group===b.dataset.gd)S.group=null;await load()})}
+function renderExts(){const set=new Set(S.lib.documents.map(d=>d.ext));
+  $('#exts').innerHTML=[...set].sort().map(e=>`<span class="chip ${S.extOn.has(e)?'on':''}" data-e="${e}">${esc(e)}</span>`).join('');
+  $$('[data-e]').forEach(c=>c.onclick=()=>{S.extOn.has(c.dataset.e)?S.extOn.delete(c.dataset.e):S.extOn.add(c.dataset.e);renderExts()})}
+function renderRes(){const r=S.results;$('#resCount').textContent=r.length?r.length+' '+T('results_n'):'';
+  $('#resEmpty').style.display=r.length?'none':'block';
+  $('#resRows').innerHTML=r.map(x=>`<tr class="${S.selRes.has(x.id)?'sel':''}" data-r="${x.id}"><td><input type="checkbox" data-c="${x.id}" ${S.selRes.has(x.id)?'checked':''}></td><td class="n">${x.score}</td><td>${esc(base(x.path))}<div class="snip">${esc(x.snippet).replace(/\[([^\]]+)\]/g,'<b>$1</b>')}</div></td><td>${esc(x.ext)}</td><td class="n">${kb(x.size)}</td><td class="p">${esc(x.path)}</td></tr>`).join('');
+  $$('[data-c]').forEach(c=>c.onchange=e=>{e.stopPropagation();c.checked?S.selRes.add(+c.dataset.c):S.selRes.delete(+c.dataset.c);renderRes();renderDrawerScope()});
+  $$('[data-r]').forEach(t=>t.ondblclick=()=>openDoc(+t.dataset.r,base(S.results.find(x=>x.id==t.dataset.r).path)))}
+async function openDoc(id,name){const j=await api('doc?id='+id);$('#vTitle').textContent=name;
+  const q=$('#q').value.trim().split(/\s+/).filter(w=>/\w/.test(w)&&!/^(AND|OR|NOT)$/.test(w)).map(w=>w.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);
+  let h=esc(j.text);if(q.length)h=h.replace(new RegExp('('+q.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi'),'<mark>$1</mark>');
+  $('#vText').innerHTML=h;$('#viewer').classList.add('on')}
+
+/* ---- actions ---- */
+$('#addRoot').onclick=async()=>{const p=$('#newRoot').value.trim();if(!p)return;try{await api('folders','POST',{path:p});$('#newRoot').value='';toast(T('indexed'));await load()}catch(e){toast(e.message,1)}};
+$('#reindex').onclick=async()=>{try{const s=await api('index','POST',{});toast(T('indexed')+': +'+s.added+' ~'+s.updated+' −'+s.removed);await load()}catch(e){toast(e.message,1)}};
+$('#pick').onclick=()=>$('#file').click();$('#file').onchange=e=>uploadFiles(e.target.files);
+const dz=$('#drop');['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over')}));dz.addEventListener('drop',e=>uploadFiles(e.dataTransfer.files));
+async function uploadFiles(fs){const ocr=[$('#ocrTxt').checked&&'txt',$('#ocrPdf').checked&&'pdf'].filter(Boolean).join(',');
+  for(const f of fs){try{const r=await fetch('/carta/upload'+(ocr?'?ocr='+ocr:''),{method:'POST',headers:{'X-Colibri-UI':'1','X-File-Name':encodeURIComponent(f.name)},body:f});
+    const j=await r.json();if(!r.ok)throw new Error(j.error);toast(T('saved')+': '+f.name)}catch(e){toast(f.name+': '+e.message,1)}}
+  await load()}
+$('#libAll').onchange=e=>{S.selLib=e.target.checked?new Set(S.lib.documents.map(d=>d.id)):new Set();renderLib()};
+$('#resAll').onchange=e=>{S.selRes=e.target.checked?new Set(S.results.map(d=>d.id)):new Set();renderRes();renderDrawerScope()};
+async function search(){const q=$('#q').value.trim();if(!q)return;const p=new URLSearchParams({q});
+  if(S.extOn.size)p.set('ext',[...S.extOn].join(','));if($('#minKb').value)p.set('min',$('#minKb').value*1024);if($('#maxKb').value)p.set('max',$('#maxKb').value*1024);
+  if($('#pathLike').value)p.set('path',$('#pathLike').value);if(S.group)p.set('group',S.group);
+  try{S.results=await api('search?'+p);S.selRes=new Set();if(!S.results.length)toast(T('no_results'));renderRes();renderDrawerScope()}catch(e){toast(e.message,1)}}
+$('#go').onclick=search;$('#q').onkeydown=e=>{if(e.key==='Enter')search()};
+$('#gFromSel').onclick=async()=>{const n=$('#gName').value.trim();const ids=S.selRes.size?S.selRes:S.selLib;if(!n||!ids.size)return toast(T('need_selection'),1);
+  const docs=S.lib.documents.filter(d=>ids.has(d.id)).map(d=>d.path);await api('groups','POST',{name:n,members:docs,description:S.results.length?'search: '+$('#q').value:''});$('#gName').value='';await load()};
+
+/* ---- RAG-CARTA drawer ---- */
+function selIds(){return S.selRes.size?[...S.selRes]:[...S.selLib]}
+function renderDrawerScope(){$('#scopeSelTxt').textContent=selIds().length+' '+T('selected_n');
+  const g=S.lib.groups;$('#scopeGroup').innerHTML=Object.keys(g).map(n=>`<option>${esc(n)}</option>`).join('')}
+$('#cartaBtn').onclick=()=>{renderDrawerScope();$('#drawer').classList.add('on')};$('#dClose').onclick=()=>$('#drawer').classList.remove('on');
+$$('#taskSeg button').forEach(b=>b.onclick=()=>{S.task=b.dataset.t;$$('#taskSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#fieldsRow').style.display=$('#fmtRow').style.display=S.task==='extract'?'flex':'none'});
+function md(t){let h=esc(t);h=h.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^---$/gm,'<hr>');
+  h=h.replace(/((?:^\|.*\|\s*$\n?)+)/gm,m=>{const rows=m.trim().split('\n').filter(r=>!/^\|[\s:|-]+\|$/.test(r.trim()));return '<table>'+rows.map((r,i)=>'<tr>'+r.trim().slice(1,-1).split('|').map(c=>`<${i?'td':'th'}>${c.trim()}</${i?'td':'th'}>`).join('')+'</tr>').join('')+'</table>'});
+  h=h.replace(/((?:^[-*] .*$\n?)+)/gm,m=>'<ul>'+m.trim().split('\n').map(l=>'<li>'+l.replace(/^[-*] /,'')+'</li>').join('')+'</ul>');
+  return h.replace(/\[(S\d+)\]/g,'<span class="cite">[$1]</span>').replace(/\n{2,}/g,'<br>')}
+let lastText='';
+$('#run').onclick=async()=>{const scope=document.querySelector('[name=scope]:checked').value;const body={task:S.task,request:$('#req').value.trim(),save:$('#saveOut').checked,mock:$('#mock').checked};
+  if(scope==='group')body.group=$('#scopeGroup').value;else body.ids=selIds();
+  if(!body.group&&!body.ids.length)return toast(T('need_selection'),1);
+  if(S.task==='extract'){body.fields=$('#fields').value.split(',').map(s=>s.trim()).filter(Boolean);body.fmt=$('#asJson').checked?'json':'table'}
+  $('#run').disabled=true;$('#runSt').textContent=T('running');$('#out').innerHTML='';
+  try{const j=await api('run','POST',body);lastText=j.text;$('#out').innerHTML=body.fmt==='json'?'<pre>'+esc(j.text)+'</pre>':md(j.text);if(j.saved)toast(T('saved')+': '+j.saved)}
+  catch(e){$('#out').innerHTML='<p class="err">'+esc(e.message)+'</p>'}
+  $('#run').disabled=false;$('#runSt').textContent=''};
+$('#copy').onclick=()=>{navigator.clipboard.writeText(lastText).then(()=>toast(T('copied')))};
+$('#vClose').onclick=()=>$('#viewer').classList.remove('on');
+
+/* ---- shell ---- */
+function show(v){$$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));$$('.rb[data-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v?'page':'false'));location.hash=v}
+$$('.rb[data-view]').forEach(b=>b.onclick=()=>show(b.dataset.view));
+$('#lang').innerHTML=Object.entries(L).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');$('#lang').value=LANG;
+$('#lang').onchange=e=>{LANG=e.target.value;try{localStorage.setItem('carta.lang',LANG)}catch(x){}applyLang()};
+$('#themeBtn').onclick=()=>{const l=document.documentElement.dataset.theme==='light';document.documentElement.dataset.theme=l?'dark':'light';try{localStorage.setItem('carta.theme',l?'dark':'light')}catch(e){}};
+try{const t=localStorage.getItem('carta.theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+async function health(){try{const r=await fetch('/health',{cache:'no-store'});$('#gw').dataset.ok=r.ok;$('#gwTxt').textContent=T(r.ok?'gw_ok':'gw_off')}catch(e){$('#gw').dataset.ok=false;$('#gwTxt').textContent=T('gw_off')}}
+(async()=>{applyLang();show((location.hash||'#library').slice(1)==='fetch'?'fetch':'library');
+  try{S.ocr=(await api('status')).ocr}catch(e){}try{await load()}catch(e){toast(e.message,1)}health();setInterval(health,8000)})();
+</script>
+</body>
+</html>

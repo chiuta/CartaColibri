@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, rust]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, windows-latest, macos-latest]   # Ubuntu 26 per project policy
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: 'rustfmt, clippy' }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all-targets
+
+  frontend-and-docs:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }   # never older than 24
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: UI syntax + 8-language completeness
+        run: node scripts/check_carta_ui.js
+      - name: Generated READMEs and site are up to date
+        run: |
+          python scripts/gen_carta_docs.py
+          git diff --exit-code -- README.md docs/cartacolibri/README.*.md site-carta/index.html
+      - name: Falkon plugin template is valid Python
+        run: python -c "import ast;ast.parse(open('web-grab/falkon/main.py').read())"
