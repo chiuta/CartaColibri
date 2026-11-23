@@ -101,6 +101,14 @@ enum Cmd {
     Grab {
         url: String,
     },
+    /// watched web pages: report (and optionally refresh) what changed since you saved them
+    #[command(subcommand)]
+    Webwatch(WwCmd),
+    /// searchable browsing history of the web-grab browser (opt-in, local)
+    History {
+        #[arg(value_parser = ["on", "off", "clear", "status"])]
+        action: String,
+    },
     /// print the web-grab bookmarklet (drag it to your browser's bookmarks bar; works in any browser)
     Bookmarklet {
         #[arg(long, default_value_t = 8765)]
@@ -112,6 +120,30 @@ enum Cmd {
         port: u16,
         #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
         url: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum WwCmd {
+    Add {
+        url: String,
+    },
+    List,
+    Rm {
+        url: String,
+    },
+    /// check every watched page once
+    Check {
+        /// also update the saved copy of changed pages
+        #[arg(long)]
+        refresh: bool,
+    },
+    /// check forever, every N minutes
+    Run {
+        #[arg(long, default_value_t = 60)]
+        minutes: u64,
+        #[arg(long)]
+        refresh: bool,
     },
 }
 
@@ -189,6 +221,56 @@ fn run(c: Cli) -> Result<(), String> {
     }
     let mut lib = Library::open(home, c.ocr)?;
     match c.cmd {
+        Cmd::History { action } => match action.as_str() {
+            "on" => {
+                grab::set_history(&lib.home, true);
+                println!(
+                    "history on: pages you visit in cartacolibri-browser are kept locally and become searchable"
+                );
+            }
+            "off" => {
+                grab::set_history(&lib.home, false);
+                println!("history off (existing entries stay until `history clear`)");
+            }
+            "clear" => println!(
+                "history cleared ({} documents dropped from the index)",
+                grab::history_clear(&lib)?
+            ),
+            _ => println!(
+                "history is {}",
+                if grab::history_enabled(&lib.home) {
+                    "on"
+                } else {
+                    "off"
+                }
+            ),
+        },
+        Cmd::Webwatch(w) => match w {
+            WwCmd::Add { url } => {
+                let mut l = grab::watch_list(&lib.home);
+                if !l.contains(&url) {
+                    l.push(url.clone());
+                }
+                grab::watch_set(&lib.home, l);
+                println!("watching {url}");
+            }
+            WwCmd::List => grab::watch_list(&lib.home)
+                .iter()
+                .for_each(|u| println!("{u}")),
+            WwCmd::Rm { url } => {
+                let l: Vec<String> = grab::watch_list(&lib.home)
+                    .into_iter()
+                    .filter(|u| *u != url)
+                    .collect();
+                grab::watch_set(&lib.home, l);
+                println!("no longer watching {url}");
+            }
+            WwCmd::Check { refresh } => print_watch(&grab::watch_check(&mut lib, refresh)),
+            WwCmd::Run { minutes, refresh } => loop {
+                print_watch(&grab::watch_check(&mut lib, refresh));
+                std::thread::sleep(Duration::from_secs(minutes * 60));
+            },
+        },
         Cmd::Bookmarklet { port } => {
             let tok = server::token(&lib.home);
             println!(
@@ -368,4 +450,35 @@ fn task(lib: &Library, name: &str, a: TaskArgs) -> Result<(), String> {
         );
     }
     Ok(())
+}
+
+fn print_watch(res: &[serde_json::Value]) {
+    for r in res {
+        let url = r["url"].as_str().unwrap_or("");
+        match r["state"].as_str().unwrap_or("") {
+            "changed" => {
+                println!(
+                    "CHANGED  {url}{}",
+                    if r["refreshed"] == true {
+                        "  (copy refreshed)"
+                    } else {
+                        ""
+                    }
+                );
+                for l in r["diff"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|l| l.as_str())
+                {
+                    println!("    {l}");
+                }
+            }
+            "same" => println!("same     {url}"),
+            "not-saved" => println!(
+                "not saved yet  {url}  (save it with `cartacolibri grab` or 💾 in the browser)"
+            ),
+            _ => println!("error    {url}  {}", r["error"].as_str().unwrap_or("")),
+        }
+    }
 }

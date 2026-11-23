@@ -626,3 +626,141 @@ fn grab_status_dedupe_and_change_detection() {
     assert!(s(&lib, "tigri").len() == 1 && s(&lib, "inițial").is_empty());
     assert_eq!(lib.documents(None).unwrap().len(), 1);
 }
+
+#[test]
+fn highlights_survive_refresh_and_are_searchable() {
+    use cartacolibri::grab;
+    let fx = fixture();
+    let mut lib = open(&fx);
+    let url = "https://exemplu.local/h";
+    assert!(
+        grab::highlight_add(&mut lib, url, "ceva important").is_err(),
+        "needs the page saved first"
+    );
+    grab::save(
+        &mut lib,
+        url,
+        "Pagina H",
+        "Un text lung despre albatroși și oceanele largi ale lumii.",
+    )
+    .unwrap();
+    assert_eq!(
+        grab::highlight_add(&mut lib, url, "oceanele   largi").unwrap(),
+        1
+    );
+    assert_eq!(
+        grab::highlight_add(&mut lib, url, "oceanele largi").unwrap(),
+        1,
+        "no duplicates"
+    );
+    assert_eq!(
+        grab::highlights(&lib.home, url),
+        vec!["oceanele largi".to_string()]
+    );
+    grab::save(
+        &mut lib,
+        url,
+        "Pagina H",
+        "Text revizuit despre albatroși și vânturile puternice.",
+    )
+    .unwrap();
+    let md = std::fs::read_to_string(
+        grab::status(&lib.home, url, "").unwrap()["path"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(
+        md.contains("## Highlights") && md.contains("- oceanele largi"),
+        "{md}"
+    );
+    assert!(!s(&lib, "oceanele").is_empty());
+}
+
+#[test]
+fn diff_snapshot_history_and_watch() {
+    use cartacolibri::grab;
+    let fx = fixture();
+    let mut lib = open(&fx);
+    let d = grab::diff(
+        "linia unu\nlinia doi\nlinia trei",
+        "linia unu\nlinia patru\nlinia trei",
+    );
+    assert_eq!(
+        d,
+        vec!["+ linia patru".to_string(), "- linia doi".to_string()]
+    );
+    let url = "https://exemplu.local/s";
+    grab::save_with(
+        &mut lib,
+        url,
+        "S",
+        "Conținut stabil al paginii de test pentru snapshot.",
+        Some("<html>copie exactă</html>"),
+    )
+    .unwrap();
+    let st = grab::status(
+        &lib.home,
+        url,
+        "Conținut stabil al paginii de test pentru snapshot.",
+    )
+    .unwrap();
+    assert!(
+        std::fs::read_to_string(st["snapshot"].as_str().unwrap())
+            .unwrap()
+            .contains("copie exactă")
+    );
+    assert_eq!(st["changed"], false);
+
+    assert!(!grab::history_enabled(&lib.home));
+    grab::set_history(&lib.home, true);
+    assert!(grab::history_enabled(&lib.home));
+    grab::history_add(
+        &mut lib,
+        "https://exemplu.local/vizitat",
+        "Vizitat",
+        "Pagină vizitată despre zeppeline și baloane cu aer cald.",
+    )
+    .unwrap();
+    assert!(!s(&lib, "zeppeline").is_empty());
+    assert_eq!(grab::history_clear(&lib).unwrap(), 1);
+    assert!(s(&lib, "zeppeline").is_empty());
+
+    // watch: a tiny local server whose page changes
+    let srv = tiny_http::Server::http("127.0.0.1:0").unwrap();
+    let port = srv.server_addr().to_ip().unwrap().port();
+    let body = std::sync::Arc::new(std::sync::Mutex::new(
+        "<html><body><p>Prima versiune a paginii urmărite.</p></body></html>".to_string(),
+    ));
+    let b2 = body.clone();
+    std::thread::spawn(move || {
+        for r in srv.incoming_requests() {
+            let t = b2.lock().unwrap().clone();
+            let _ = r.respond(tiny_http::Response::from_string(t).with_header(
+                tiny_http::Header::from_bytes("Content-Type", "text/html; charset=utf-8").unwrap(),
+            ));
+        }
+    });
+    let wurl = format!("http://127.0.0.1:{port}/");
+    assert_eq!(grab::watch_check(&mut lib, false).len(), 0);
+    grab::watch_set(&lib.home, vec![wurl.clone()]);
+    assert_eq!(grab::watch_check(&mut lib, false)[0]["state"], "not-saved");
+    grab::grab(&mut lib, &wurl).unwrap();
+    assert_eq!(grab::watch_check(&mut lib, false)[0]["state"], "same");
+    *body.lock().unwrap() =
+        "<html><body><p>A doua versiune a paginii urmărite.</p></body></html>".into();
+    let r = grab::watch_check(&mut lib, true);
+    assert_eq!(r[0]["state"], "changed");
+    assert!(
+        r[0]["diff"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|l| l.as_str().unwrap().starts_with("+ A doua versiune"))
+    );
+    assert_eq!(
+        grab::watch_check(&mut lib, false)[0]["state"],
+        "same",
+        "refresh updated the saved copy"
+    );
+}

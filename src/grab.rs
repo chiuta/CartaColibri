@@ -6,7 +6,10 @@ use crate::extract::{decode, html_to_text};
 use crate::library::Library;
 use regex::Regex;
 use serde_json::{Value, json};
+use std::collections::BTreeMap;
 use std::io::Read;
+use std::path::Path;
+use std::sync::Mutex;
 use std::time::Duration;
 
 const MAX_PAGE: u64 = 20 * 1024 * 1024;
@@ -71,37 +74,177 @@ pub fn fetch(url: &str) -> Result<(String, String), String> {
     }
 }
 
+static LOCK: Mutex<()> = Mutex::new(());
+const HL_MARK: &str = "\n\n## Highlights\n";
+
+fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
 fn norm_hash(text: &str) -> String {
     use sha1::{Digest, Sha1};
     let n = text.split_whitespace().collect::<Vec<_>>().join(" ");
     hex::encode(Sha1::digest(n.as_bytes()))
 }
 
-fn web_json(home: &std::path::Path) -> std::path::PathBuf {
-    home.join("web.json")
+fn url_key(url: &str) -> String {
+    use sha1::{Digest, Sha1};
+    hex::encode(Sha1::digest(url.as_bytes()))[..16].to_string()
 }
 
-fn load_web(home: &std::path::Path) -> std::collections::BTreeMap<String, Value> {
-    std::fs::read_to_string(web_json(home))
+fn read_json<T: serde::de::DeserializeOwned + Default>(p: &Path) -> T {
+    std::fs::read_to_string(p)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default()
 }
 
-/// Is this address already in the library, and does the page differ from the saved copy?
-pub fn status(home: &std::path::Path, url: &str, text: &str) -> Option<Value> {
+fn write_json<T: serde::Serialize>(p: &Path, v: &T) {
+    let tmp = p.with_extension("json.tmp");
+    if std::fs::write(&tmp, serde_json::to_string_pretty(v).unwrap_or_default()).is_ok() {
+        let _ = std::fs::rename(&tmp, p);
+    }
+}
+
+fn load_web(home: &Path) -> BTreeMap<String, Value> {
+    read_json(&home.join("web.json"))
+}
+
+fn saved_text(path: &str) -> String {
+    let md = std::fs::read_to_string(path).unwrap_or_default();
+    let body = md
+        .split_once("\nSource: ")
+        .and_then(|(_, r)| r.split_once("\n\n"))
+        .map(|(_, b)| b)
+        .unwrap_or(&md);
+    body.split(HL_MARK).next().unwrap_or("").to_string()
+}
+
+/// Lines that appeared (+) or disappeared (-) between the saved copy and the live page.
+pub fn diff(saved: &str, live: &str) -> Vec<String> {
+    let lines = |t: &str| -> Vec<String> {
+        t.lines()
+            .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
+            .filter(|l| l.chars().count() >= 4)
+            .collect()
+    };
+    let (a, b) = (lines(saved), lines(live));
+    let (sa, sb): (
+        std::collections::HashSet<&String>,
+        std::collections::HashSet<&String>,
+    ) = (a.iter().collect(), b.iter().collect());
+    let cut = |l: &String| l.chars().take(160).collect::<String>();
+    let mut out: Vec<String> = b
+        .iter()
+        .filter(|l| !sa.contains(l))
+        .take(12)
+        .map(|l| format!("+ {}", cut(l)))
+        .collect();
+    out.extend(
+        a.iter()
+            .filter(|l| !sb.contains(l))
+            .take(12)
+            .map(|l| format!("- {}", cut(l))),
+    );
+    out
+}
+
+/// Is this address already in the library, and does the page differ from the saved copy (and how)?
+pub fn status(home: &Path, url: &str, text: &str) -> Option<Value> {
     let e = load_web(home).get(url).cloned()?;
     let path = e["path"].as_str()?.to_string();
-    if !std::path::Path::new(&path).is_file() {
+    if !Path::new(&path).is_file() {
         return None;
     }
     let changed = !text.trim().is_empty() && e["hash"].as_str() != Some(norm_hash(text).as_str());
-    Some(json!({"path": path, "saved_at": e["saved_at"], "changed": changed}))
+    let d = if changed {
+        diff(&saved_text(&path), text)
+    } else {
+        vec![]
+    };
+    Some(
+        json!({"path": path, "saved_at": e["saved_at"], "changed": changed, "diff": d, "snapshot": e["snapshot"]}),
+    )
+}
+
+pub fn highlights(home: &Path, url: &str) -> Vec<String> {
+    let m: BTreeMap<String, Vec<String>> = read_json(&home.join("highlights.json"));
+    m.get(url).cloned().unwrap_or_default()
+}
+
+fn hl_section(items: &[String]) -> String {
+    if items.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "{HL_MARK}{}\n",
+            items
+                .iter()
+                .map(|h| format!("- {}", h.replace('\n', " ")))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+}
+
+/// Remember a highlighted passage of a saved page; it is appended to the page's library file (so it is searchable).
+pub fn highlight_add(lib: &mut Library, url: &str, sel: &str) -> Result<usize, String> {
+    let sel: String = sel
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(2000)
+        .collect();
+    if sel.chars().count() < 3 {
+        return Err("select some text first".into());
+    }
+    let _g = LOCK.lock().unwrap();
+    let path = load_web(&lib.home)
+        .get(url)
+        .and_then(|e| e["path"].as_str().map(String::from))
+        .filter(|p| Path::new(p).is_file())
+        .ok_or("save the page first (💾)")?;
+    let hp = lib.home.join("highlights.json");
+    let mut m: BTreeMap<String, Vec<String>> = read_json(&hp);
+    let list = m.entry(url.to_string()).or_default();
+    if !list.contains(&sel) {
+        list.push(sel);
+    }
+    let n = list.len();
+    let items = list.clone();
+    write_json(&hp, &m);
+    let md = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let base = md
+        .split(HL_MARK)
+        .next()
+        .unwrap_or("")
+        .trim_end()
+        .to_string();
+    std::fs::write(&path, format!("{base}\n{}", hl_section(&items))).map_err(|e| e.to_string())?;
+    let dir = lib.upload_dir()?.to_string_lossy().into_owned();
+    lib.update(Some(&[dir]), &mut |_| {})?;
+    Ok(n)
 }
 
 /// Save a page/clip as Markdown inside the library uploads and index it.
-/// Saving an address that is already in the library refreshes that file instead of adding a copy.
+/// Saving an address that is already in the library refreshes that file instead of adding a copy
+/// (its highlights are kept).
 pub fn save(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<Value, String> {
+    save_with(lib, url, title, text, None)
+}
+
+/// Like [`save`], plus an optional HTML snapshot ("the page as you saw it") kept outside the index.
+pub fn save_with(
+    lib: &mut Library,
+    url: &str,
+    title: &str,
+    text: &str,
+    html: Option<&str>,
+) -> Result<Value, String> {
     let clean = Regex::new(r"\n{3,}")
         .unwrap()
         .replace_all(
@@ -113,17 +256,19 @@ pub fn save(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<Val
     if clean.chars().count() < 20 {
         return Err("the page has no readable text".into());
     }
+    let _g = LOCK.lock().unwrap();
     let name = format!("{}.md", slug(if title.is_empty() { url } else { title }));
     let doc = format!(
-        "# {}\n\nSource: {url}\n\n{clean}\n",
-        if title.is_empty() { url } else { title }
+        "# {}\n\nSource: {url}\n\n{clean}\n{}",
+        if title.is_empty() { url } else { title },
+        hl_section(&highlights(&lib.home, url))
     );
     let mut web = load_web(&lib.home);
     let known = web
         .get(url)
         .and_then(|e| e["path"].as_str())
         .map(String::from)
-        .filter(|p| std::path::Path::new(p).is_file());
+        .filter(|p| Path::new(p).is_file());
     let r = match known {
         Some(p) => {
             std::fs::write(&p, doc.as_bytes()).map_err(|e| e.to_string())?;
@@ -133,18 +278,18 @@ pub fn save(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<Val
         }
         None => lib.add_upload(&name, doc.as_bytes(), &[])?,
     };
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    web.insert(
-        url.to_string(),
-        json!({"path": r["saved"], "saved_at": secs, "hash": norm_hash(&clean)}),
-    );
-    let _ = std::fs::write(
-        web_json(&lib.home),
-        serde_json::to_string_pretty(&web).unwrap_or_default(),
-    );
+    let mut entry = json!({"path": r["saved"], "saved_at": now(), "hash": norm_hash(&clean)});
+    if let Some(h) = html.filter(|h| !h.is_empty() && h.len() <= 3 * 1024 * 1024) {
+        let d = lib.home.join("snapshots");
+        std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+        let sp = d.join(format!("{}.html", url_key(url)));
+        std::fs::write(&sp, h).map_err(|e| e.to_string())?;
+        entry["snapshot"] = json!(sp);
+    } else if let Some(old) = web.get(url).and_then(|e| e.get("snapshot")) {
+        entry["snapshot"] = old.clone();
+    }
+    web.insert(url.to_string(), entry);
+    write_json(&lib.home.join("web.json"), &web);
     Ok(
         json!({"title": title, "url": url, "chars": clean.chars().count(), "saved": r["saved"], "index": r["index"]}),
     )
@@ -153,4 +298,85 @@ pub fn save(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<Val
 pub fn grab(lib: &mut Library, url: &str) -> Result<Value, String> {
     let (title, text) = fetch(url)?;
     save(lib, url, &title, &text)
+}
+
+// ------------------------------------------------------------------ searchable history (opt-in)
+
+/// The history file of an address (it exists only when history is on).
+pub fn history_path(home: &Path, url: &str) -> std::path::PathBuf {
+    home.join("library")
+        .join("history")
+        .join(format!("{}.md", url_key(url)))
+}
+
+pub fn history_enabled(home: &Path) -> bool {
+    let m: BTreeMap<String, Value> = read_json(&home.join("settings.json"));
+    m.get("history").and_then(Value::as_bool).unwrap_or(false)
+}
+
+pub fn set_history(home: &Path, on: bool) {
+    let p = home.join("settings.json");
+    let mut m: BTreeMap<String, Value> = read_json(&p);
+    m.insert("history".into(), json!(on));
+    write_json(&p, &m);
+}
+
+/// Keep the text of a visited page so RAG-fetch can search your browsing history. One file per address.
+pub fn history_add(lib: &mut Library, url: &str, title: &str, text: &str) -> Result<(), String> {
+    if !url.starts_with("http") || text.trim().chars().count() < 20 {
+        return Ok(());
+    }
+    let dir = lib.home.join("library").join("history");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let body: String = text.chars().take(200_000).collect();
+    let doc = format!(
+        "# {}\n\nSource: {url}\nVisited: {}\n\n{body}\n",
+        if title.is_empty() { url } else { title },
+        now()
+    );
+    let p = dir.join(format!("{}.md", url_key(url)));
+    std::fs::write(&p, doc).map_err(|e| e.to_string())?;
+    lib.update(Some(&[dir.to_string_lossy().into_owned()]), &mut |_| {})?;
+    Ok(())
+}
+
+pub fn history_clear(lib: &Library) -> Result<usize, String> {
+    let dir = lib.home.join("library").join("history");
+    let n = lib.remove_root(&dir.to_string_lossy())?;
+    let _ = std::fs::remove_dir_all(&dir);
+    Ok(n)
+}
+
+// ------------------------------------------------------------------ watched pages
+
+pub fn watch_list(home: &Path) -> Vec<String> {
+    let m: BTreeMap<String, Vec<String>> = read_json(&home.join("watch.json"));
+    m.get("urls").cloned().unwrap_or_default()
+}
+
+pub fn watch_set(home: &Path, urls: Vec<String>) {
+    let mut m = BTreeMap::new();
+    m.insert("urls".to_string(), urls);
+    write_json(&home.join("watch.json"), &m);
+}
+
+/// Re-fetch every watched page and report what changed against the saved copy (`refresh` also updates the copy).
+pub fn watch_check(lib: &mut Library, refresh: bool) -> Vec<Value> {
+    let mut out = vec![];
+    for url in watch_list(&lib.home) {
+        match fetch(&url) {
+            Err(e) => out.push(json!({"url": url, "state": "error", "error": e})),
+            Ok((title, text)) => match status(&lib.home, &url, &text) {
+                None => out.push(json!({"url": url, "state": "not-saved"})),
+                Some(st) if st["changed"] == true => {
+                    if refresh {
+                        let _ = save(lib, &url, &title, &text);
+                    }
+                    out.push(json!({"url": url, "state": "changed", "diff": st["diff"], "refreshed": refresh}));
+                }
+                Some(_) => out.push(json!({"url": url, "state": "same"})),
+            },
+        }
+    }
+    out
 }

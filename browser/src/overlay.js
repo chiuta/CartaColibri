@@ -4,29 +4,33 @@
   const post = window.ipc && window.ipc.postMessage.bind(window.ipc);
   if (!post) return;
   const D = {
-    en: { save: "Save", ask: "Ask", addr: "Address, or words to search your library", q: "Ask about this page…", think: "Thinking…", newtab: "New tab (Ctrl+T)", sg: "Save all tabs as a library group", aa: "Ask all open tabs", inlib: "In your library", changed: "differs from the saved copy", related: "Related in your library", refresh: "Refresh copy", qall: "Question across all tabs…" },
-    ro: { save: "Salvează", ask: "Întreabă", addr: "Adresă sau cuvinte de căutat în bibliotecă", q: "Întreabă despre pagina asta…", think: "Se gândește…", newtab: "Tab nou (Ctrl+T)", sg: "Salvează toate taburile ca grup în bibliotecă", aa: "Întreabă toate taburile deschise", inlib: "În biblioteca ta", changed: "diferă de copia salvată", related: "Înrudite în biblioteca ta", refresh: "Reîmprospătează copia", qall: "Întrebare peste toate taburile…" },
-    fr: { save: "Enregistrer", ask: "Demander", addr: "Adresse, ou mots à chercher dans ta bibliothèque", q: "Pose une question sur cette page…", think: "Réflexion…", newtab: "Nouvel onglet (Ctrl+T)", sg: "Enregistrer tous les onglets comme groupe", aa: "Interroger tous les onglets ouverts", inlib: "Dans ta bibliothèque", changed: "diffère de la copie enregistrée", related: "Liés dans ta bibliothèque", refresh: "Actualiser la copie", qall: "Question sur tous les onglets…" },
-    it: { save: "Salva", ask: "Chiedi", addr: "Indirizzo, o parole da cercare nella biblioteca", q: "Chiedi di questa pagina…", think: "Sto pensando…", newtab: "Nuova scheda (Ctrl+T)", sg: "Salva tutte le schede come gruppo", aa: "Interroga tutte le schede aperte", inlib: "Nella tua biblioteca", changed: "diversa dalla copia salvata", related: "Correlati nella tua biblioteca", refresh: "Aggiorna la copia", qall: "Domanda su tutte le schede…" },
-    es: { save: "Guardar", ask: "Preguntar", addr: "Dirección, o palabras para buscar en tu biblioteca", q: "Pregunta sobre esta página…", think: "Pensando…", newtab: "Nueva pestaña (Ctrl+T)", sg: "Guardar todas las pestañas como grupo", aa: "Preguntar a todas las pestañas", inlib: "En tu biblioteca", changed: "difiere de la copia guardada", related: "Relacionado en tu biblioteca", refresh: "Actualizar la copia", qall: "Pregunta sobre todas las pestañas…" },
-    pt: { save: "Guardar", ask: "Perguntar", addr: "Endereço, ou palavras para pesquisar na biblioteca", q: "Pergunta sobre esta página…", think: "A pensar…", newtab: "Novo separador (Ctrl+T)", sg: "Guardar todos os separadores como grupo", aa: "Perguntar a todos os separadores", inlib: "Na tua biblioteca", changed: "difere da cópia guardada", related: "Relacionado na tua biblioteca", refresh: "Atualizar a cópia", qall: "Pergunta sobre todos os separadores…" },
-    de: { save: "Speichern", ask: "Fragen", addr: "Adresse oder Suchwörter für deine Bibliothek", q: "Frage zu dieser Seite…", think: "Denke nach…", newtab: "Neuer Tab (Strg+T)", sg: "Alle Tabs als Gruppe speichern", aa: "Alle offenen Tabs befragen", inlib: "In deiner Bibliothek", changed: "weicht von der gespeicherten Kopie ab", related: "Verwandt in deiner Bibliothek", refresh: "Kopie aktualisieren", qall: "Frage über alle Tabs…" },
-    hu: { save: "Mentés", ask: "Kérdés", addr: "Cím, vagy keresőszavak a könyvtárhoz", q: "Kérdezz erről az oldalról…", think: "Gondolkodik…", newtab: "Új lap (Ctrl+T)", sg: "Az összes lap mentése csoportként", aa: "Kérdés az összes nyitott laphoz", inlib: "A könyvtáradban", changed: "eltér a mentett példánytól", related: "Kapcsolódó a könyvtáradban", refresh: "Példány frissítése", qall: "Kérdés az összes laphoz…" },
+    en: { hl: "Highlight selection", watch: "Watch this page for changes", hist: "Searchable history (on/off)", sall: "Summarize all tabs", xall: "Extract from all tabs (comma-separated fields)", snap: "Snapshot", diffh: "What changed", asklib: "Ask your whole library: start with ?", save: "Save", ask: "Ask", addr: "Address, or words to search your library", q: "Ask about this page…", think: "Thinking…", newtab: "New tab (Ctrl+T)", sg: "Save all tabs as a library group", aa: "Ask all open tabs", inlib: "In your library", changed: "differs from the saved copy", related: "Related in your library", refresh: "Refresh copy", qall: "Question across all tabs…" },
+    ro: { hl: "Evidențiază selecția", watch: "Urmărește schimbările paginii", hist: "Istoric căutabil (pornit/oprit)", sall: "Rezumă toate taburile", xall: "Extrage din toate taburile (câmpuri separate prin virgulă)", snap: "Instantaneu", diffh: "Ce s-a schimbat", asklib: "Întreabă toată biblioteca: începe cu ?", save: "Salvează", ask: "Întreabă", addr: "Adresă sau cuvinte de căutat în bibliotecă", q: "Întreabă despre pagina asta…", think: "Se gândește…", newtab: "Tab nou (Ctrl+T)", sg: "Salvează toate taburile ca grup în bibliotecă", aa: "Întreabă toate taburile deschise", inlib: "În biblioteca ta", changed: "diferă de copia salvată", related: "Înrudite în biblioteca ta", refresh: "Reîmprospătează copia", qall: "Întrebare peste toate taburile…" },
+    fr: { hl: "Surligner la sélection", watch: "Surveiller les changements de cette page", hist: "Historique consultable (oui/non)", sall: "Résumer tous les onglets", xall: "Extraire de tous les onglets (champs séparés par des virgules)", snap: "Instantané", diffh: "Ce qui a changé", asklib: "Interroger toute ta bibliothèque : commence par ?", save: "Enregistrer", ask: "Demander", addr: "Adresse, ou mots à chercher dans ta bibliothèque", q: "Pose une question sur cette page…", think: "Réflexion…", newtab: "Nouvel onglet (Ctrl+T)", sg: "Enregistrer tous les onglets comme groupe", aa: "Interroger tous les onglets ouverts", inlib: "Dans ta bibliothèque", changed: "diffère de la copie enregistrée", related: "Liés dans ta bibliothèque", refresh: "Actualiser la copie", qall: "Question sur tous les onglets…" },
+    it: { hl: "Evidenzia la selezione", watch: "Controlla le modifiche della pagina", hist: "Cronologia ricercabile (sì/no)", sall: "Riassumi tutte le schede", xall: "Estrai da tutte le schede (campi separati da virgole)", snap: "Istantanea", diffh: "Cosa è cambiato", asklib: "Chiedi a tutta la biblioteca: inizia con ?", save: "Salva", ask: "Chiedi", addr: "Indirizzo, o parole da cercare nella biblioteca", q: "Chiedi di questa pagina…", think: "Sto pensando…", newtab: "Nuova scheda (Ctrl+T)", sg: "Salva tutte le schede come gruppo", aa: "Interroga tutte le schede aperte", inlib: "Nella tua biblioteca", changed: "diversa dalla copia salvata", related: "Correlati nella tua biblioteca", refresh: "Aggiorna la copia", qall: "Domanda su tutte le schede…" },
+    es: { hl: "Resaltar la selección", watch: "Vigilar los cambios de esta página", hist: "Historial con búsqueda (sí/no)", sall: "Resumir todas las pestañas", xall: "Extraer de todas las pestañas (campos separados por comas)", snap: "Instantánea", diffh: "Qué ha cambiado", asklib: "Pregunta a toda tu biblioteca: empieza con ?", save: "Guardar", ask: "Preguntar", addr: "Dirección, o palabras para buscar en tu biblioteca", q: "Pregunta sobre esta página…", think: "Pensando…", newtab: "Nueva pestaña (Ctrl+T)", sg: "Guardar todas las pestañas como grupo", aa: "Preguntar a todas las pestañas", inlib: "En tu biblioteca", changed: "difiere de la copia guardada", related: "Relacionado en tu biblioteca", refresh: "Actualizar la copia", qall: "Pregunta sobre todas las pestañas…" },
+    pt: { hl: "Destacar a seleção", watch: "Vigiar alterações desta página", hist: "Histórico pesquisável (ligado/desligado)", sall: "Resumir todos os separadores", xall: "Extrair de todos os separadores (campos separados por vírgulas)", snap: "Instantâneo", diffh: "O que mudou", asklib: "Pergunta a toda a biblioteca: começa com ?", save: "Guardar", ask: "Perguntar", addr: "Endereço, ou palavras para pesquisar na biblioteca", q: "Pergunta sobre esta página…", think: "A pensar…", newtab: "Novo separador (Ctrl+T)", sg: "Guardar todos os separadores como grupo", aa: "Perguntar a todos os separadores", inlib: "Na tua biblioteca", changed: "difere da cópia guardada", related: "Relacionado na tua biblioteca", refresh: "Atualizar a cópia", qall: "Pergunta sobre todos os separadores…" },
+    de: { hl: "Auswahl markieren", watch: "Seite auf Änderungen beobachten", hist: "Durchsuchbarer Verlauf (an/aus)", sall: "Alle Tabs zusammenfassen", xall: "Aus allen Tabs extrahieren (Felder mit Komma)", snap: "Schnappschuss", diffh: "Was sich geändert hat", asklib: "Ganze Bibliothek fragen: mit ? beginnen", save: "Speichern", ask: "Fragen", addr: "Adresse oder Suchwörter für deine Bibliothek", q: "Frage zu dieser Seite…", think: "Denke nach…", newtab: "Neuer Tab (Strg+T)", sg: "Alle Tabs als Gruppe speichern", aa: "Alle offenen Tabs befragen", inlib: "In deiner Bibliothek", changed: "weicht von der gespeicherten Kopie ab", related: "Verwandt in deiner Bibliothek", refresh: "Kopie aktualisieren", qall: "Frage über alle Tabs…" },
+    hu: { hl: "Kijelölés kiemelése", watch: "Az oldal változásainak figyelése", hist: "Kereshető előzmények (be/ki)", sall: "Az összes lap összefoglalása", xall: "Kinyerés az összes lapból (vesszővel elválasztott mezők)", snap: "Pillanatkép", diffh: "Mi változott", asklib: "Kérdezd az egész könyvtárat: kezdd ?-lel", save: "Mentés", ask: "Kérdés", addr: "Cím, vagy keresőszavak a könyvtárhoz", q: "Kérdezz erről az oldalról…", think: "Gondolkodik…", newtab: "Új lap (Ctrl+T)", sg: "Az összes lap mentése csoportként", aa: "Kérdés az összes nyitott laphoz", inlib: "A könyvtáradban", changed: "eltér a mentett példánytól", related: "Kapcsolódó a könyvtáradban", refresh: "Példány frissítése", qall: "Kérdés az összes laphoz…" },
   };
   const L = D[(navigator.language || "en").slice(0, 2)] || D.en;
   const send = (o) => post(JSON.stringify(Object.assign({ n: N, t: T }, o)));
+  const pageHtml = () => { try { return document.documentElement.outerHTML.slice(0, 3000000); } catch (e) { return ""; } };
   const pageText = () => String(getSelection()) || (document.body ? document.body.innerText : "");
-  let sh, panel, qrow, qin, urlIn, tabsEl, badge, mode = "page", info = null;
+  let $hist, sh, panel, qrow, qin, urlIn, tabsEl, badge, mode = "page", info = null;
   const show = (t, cls) => { panel.textContent = t; panel.className = cls || ""; panel.style.display = t ? "block" : "none"; };
-  const act = (cmd, q) => {
-    if (cmd === "save") { show("…"); send({ cmd, url: location.href, title: document.title, text: pageText() }); }
+  const act = function (cmd, q) {
+    if (cmd === "save") { show("…"); send({ cmd, url: location.href, title: document.title, text: pageText(), html: pageHtml() }); }
+    else if (cmd === "highlight") { const sel = String(getSelection()).trim(); if (!sel) return show("🖍 …", "err"); send({ cmd, url: location.href, title: document.title, text: document.body ? document.body.innerText : "", sel }); applyHL([sel]); }
+    else if (cmd === "watch") { send({ cmd, url: location.href }); }
+    else if (cmd === "history") { send({ cmd }); }
     else if (cmd === "ask") { show(L.think); send({ cmd, q, url: location.href, title: document.title, text: pageText() }); }
-    else if (cmd === "ask_tabs") { show(L.think); send({ cmd, q }); }
+    else if (cmd === "ask_tabs") { show(L.think); send({ cmd, q, task: arguments[2] || "synthesize" }); }
     else if (cmd === "save_tabs") { show("…"); send({ cmd }); }
   };
   const hidden = (name, fn) => Object.defineProperty(window, name + N, { enumerable: false, value: fn });
   hidden("__cc_", (m) => { if (sh) show(m.text, m.ok ? "ok" : "err"); });
-  hidden("__cc_do_", (c, q) => act(c, q));
+  hidden("__cc_do_", (c, q, k) => act(c, q, k));
   hidden("__cc_tabs_", (s) => {
     if (!sh) return;
     tabsEl.textContent = "";
@@ -39,8 +43,24 @@
     }
     const plus = document.createElement("button"); plus.textContent = "+"; plus.title = L.newtab; plus.onclick = () => send({ cmd: "newtab" }); tabsEl.append(plus);
   });
+  const applyHL = (list) => {
+    for (const h of list || []) {
+      if (!h || h.length < 3) continue;
+      const w = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = w.nextNode())) {
+        const i = n.nodeValue.replace(/\s+/g, " ").indexOf(h);
+        const raw = n.nodeValue.indexOf(h);
+        if (raw >= 0 && n.parentElement && !/^(SCRIPT|STYLE|MARK)$/.test(n.parentElement.tagName)) {
+          const r = document.createRange(); r.setStart(n, raw); r.setEnd(n, raw + h.length);
+          const m = document.createElement("mark"); m.style.cssText = "background:#fdb93a88;color:inherit"; r.surroundContents(m); break;
+        }
+      }
+    }
+  };
   hidden("__cc_info_", (i) => {
-    if (!sh) return; info = i; badge.textContent = ""; badge.style.display = "none";
+    if (!sh) return; info = i; applyHL(i.highlights); $hist.className = i.history ? "go" : "";
+    if (i.status && i.status.snapshot) i.status.snapshot_label = L.snap; badge.textContent = ""; badge.style.display = "none";
     if (i.status) {
       badge.style.display = "inline-block";
       badge.textContent = "📚 " + L.inlib + (i.status.changed ? " · ⚠ " + L.changed : "");
@@ -71,24 +91,30 @@
     </style>
     <div id="tabs"></div>
     <div class="bar"><button id="b">◀</button><button id="f">▶</button><button id="r">⟳</button>
-      <input id="u" spellcheck="false"><span id="badge"></span><button id="s" class="go"></button><button id="a"></button><button id="sg"></button></div>
-    <div class="row" id="qrow"><input id="q"><button id="qq" class="go">➤</button><button id="qa"></button></div><div id="panel"></div>`;
+      <input id="u" spellcheck="false"><span id="badge"></span><button id="s" class="go"></button><button id="a"></button><button id="hl"></button><button id="wt"></button><button id="hi"></button><button id="sg"></button></div>
+    <div class="row" id="qrow"><input id="q"><button id="qq" class="go">➤</button><button id="qa"></button><button id="qs"></button><button id="qx"></button></div><div id="panel"></div>`;
     const $ = (i) => sh.getElementById(i);
     panel = $("panel"); qrow = $("qrow"); qin = $("q"); urlIn = $("u"); tabsEl = $("tabs"); badge = $("badge");
     urlIn.value = location.href.startsWith("data:") ? "" : location.href; urlIn.placeholder = L.addr;
-    $("s").textContent = "💾 " + L.save; $("a").textContent = "✨ " + L.ask; $("sg").textContent = "🗂"; $("sg").title = L.sg; $("qa").textContent = "🗂 ✨"; $("qa").title = L.aa; qin.placeholder = L.q;
+    $("s").textContent = "💾 " + L.save; $("a").textContent = "✨ " + L.ask; $("sg").textContent = "🗂"; $("sg").title = L.sg; $("qa").textContent = "🗂✨"; $("qa").title = L.aa; $("qs").textContent = "🗂📝"; $("qs").title = L.sall; $("qx").textContent = "🗂📊"; $("qx").title = L.xall;
+    $("hl").textContent = "🖍"; $("hl").title = L.hl; $("wt").textContent = "👁"; $("wt").title = L.watch; $("hi").textContent = "🕘"; $("hi").title = L.hist; $hist = $("hi"); urlIn.title = L.asklib;
+    $("hl").onclick = () => act("highlight"); $("wt").onclick = () => act("watch"); $("hi").onclick = () => act("history"); qin.placeholder = L.q;
     $("b").onclick = () => history.back(); $("f").onclick = () => history.forward(); $("r").onclick = () => location.reload();
     urlIn.onkeydown = (e) => { if (e.key === "Enter") send({ cmd: "go", q: urlIn.value }); };
     $("s").onclick = () => act("save");
     $("sg").onclick = () => act("save_tabs");
     $("a").onclick = () => { qrow.classList.toggle("on"); if (qrow.classList.contains("on")) qin.focus(); };
     const ask = () => qin.value.trim() && act("ask", qin.value.trim());
-    const askAll = () => qin.value.trim() && act("ask_tabs", qin.value.trim());
-    $("qq").onclick = ask; $("qa").onclick = askAll; qin.onkeydown = (e) => { if (e.key === "Enter") (e.ctrlKey ? askAll : ask)(); };
+    const askAll = (k) => qin.value.trim() && act("ask_tabs", qin.value.trim(), k);
+    $("qq").onclick = ask; $("qa").onclick = () => askAll("synthesize"); $("qs").onclick = () => askAll("summarize"); $("qx").onclick = () => askAll("extract");
+    qin.onkeydown = (e) => { if (e.key === "Enter") (e.ctrlKey ? () => askAll("synthesize") : ask)(); };
     badge.onclick = () => {
       if (!info) return;
       const lines = [];
-      if (info.status) lines.push("📚 " + info.status.path + (info.status.changed ? "\n⚠ " + L.changed + " — 💾 " + L.refresh : ""));
+      if (info.status) {
+        lines.push("📚 " + info.status.path + (info.status.snapshot ? "\n🖼 " + L.snap + ": " + info.status.snapshot : ""));
+        if (info.status.changed) { lines.push("⚠ " + L.changed + " — 💾 " + L.refresh); lines.push("", L.diffh + ":", ...(info.status.diff || []).map((d) => "  " + d)); }
+      }
       if (info.related && info.related.length) { lines.push("", "🔗 " + L.related + ":"); for (const r of info.related) lines.push(" • " + r.score + "%  " + r.path + "\n     " + r.snippet); }
       show(lines.join("\n"), "ok");
     };

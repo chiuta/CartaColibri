@@ -191,15 +191,57 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
             let skip = status
                 .as_ref()
                 .and_then(|s| s["path"].as_str().map(String::from));
-            let rel = lib()
+            let history = home.as_ref().is_some_and(|h| grab::history_enabled(h));
+            let mut rel = lib()
                 .map(|l| related(&l, &page.title, skip.as_deref()))
                 .unwrap_or_default();
-            let info = json!({"status": status, "related": rel});
+            if let Some(h) = home.as_ref() {
+                let own = grab::history_path(h, &page.url)
+                    .to_string_lossy()
+                    .into_owned();
+                rel.retain(|r| r["path"].as_str() != Some(own.as_str()));
+            }
+            let hl = home
+                .as_ref()
+                .map(|h| grab::highlights(h, &page.url))
+                .unwrap_or_default();
+            let info =
+                json!({"status": status, "related": rel, "highlights": hl, "history": history});
             let js = format!(
                 "window[\"__cc_info_{n}\"]&&window[\"__cc_info_{n}\"]({info})",
                 n = c.nonce
             );
             let _ = p.send_event(Ev::Eval(tab, js));
+            if let (true, Ok(mut l)) = (history, lib()) {
+                let _ = grab::history_add(&mut l, &page.url, &page.title, &page.text);
+            }
+        }
+        "go" if s("q").trim_start().starts_with('?') => {
+            let q = s("q")
+                .trim_start()
+                .trim_start_matches('?')
+                .trim()
+                .to_string();
+            let r = lib().and_then(|l| {
+                let hits = l.search(
+                    &q,
+                    &Filter {
+                        limit: Some(8),
+                        ..Default::default()
+                    },
+                )?;
+                let ids: Vec<i64> = hits.iter().map(|h| h.id).collect();
+                let docs = l.docs_by_id(&ids);
+                let o = Options {
+                    request: &q,
+                    ..Default::default()
+                };
+                carta::run(&l, "synthesize", &docs, &backend(c), &o, &mut |_| {})
+            });
+            match r {
+                Ok(t) => reply(p, c, tab, true, t),
+                Err(e) => reply(p, c, tab, false, e),
+            }
         }
         "go" => match normalize(&s("q")) {
             Some(u) => {
@@ -235,7 +277,15 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
             }
         },
         "save" => {
-            match lib().and_then(|mut l| grab::save(&mut l, &s("url"), &s("title"), &s("text"))) {
+            match lib().and_then(|mut l| {
+                grab::save_with(
+                    &mut l,
+                    &s("url"),
+                    &s("title"),
+                    &s("text"),
+                    m["html"].as_str(),
+                )
+            }) {
                 Ok(v) => reply(
                     p,
                     c,
@@ -248,6 +298,69 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     ),
                 ),
                 Err(e) => reply(p, c, tab, false, e),
+            }
+        }
+        "highlight" => {
+            let r = lib().and_then(|mut l| {
+                if grab::status(&l.home, &s("url"), "").is_none() {
+                    grab::save(&mut l, &s("url"), &s("title"), &s("text"))?;
+                }
+                grab::highlight_add(&mut l, &s("url"), &s("sel"))
+            });
+            match r {
+                Ok(n) => reply(
+                    p,
+                    c,
+                    tab,
+                    true,
+                    format!("🖍 {n} highlight(s) saved with this page"),
+                ),
+                Err(e) => reply(p, c, tab, false, e),
+            }
+        }
+        "watch" => {
+            let url = s("url");
+            if let Ok(h) = state_dir(c.home.as_deref()) {
+                let mut l = grab::watch_list(&h);
+                if !l.contains(&url) {
+                    l.push(url.clone());
+                }
+                grab::watch_set(&h, l);
+                reply(
+                    p,
+                    c,
+                    tab,
+                    true,
+                    format!(
+                        "👁 watching {url}\ncheck with: cartacolibri webwatch check   (or run, to keep checking)"
+                    ),
+                );
+            }
+        }
+        "history" => {
+            if let Ok(h) = state_dir(c.home.as_deref()) {
+                let on = !grab::history_enabled(&h);
+                grab::set_history(&h, on);
+                reply(
+                    p,
+                    c,
+                    tab,
+                    true,
+                    format!(
+                        "🕘 history {} — {}",
+                        if on { "on" } else { "off" },
+                        if on {
+                            "pages you visit are kept locally and searchable from the address bar"
+                        } else {
+                            "nothing new is recorded"
+                        }
+                    ),
+                );
+                let js = format!(
+                    "window[\"__cc_info_{n}\"]&&window[\"__cc_info_{n}\"]({{\"history\":{on}}})",
+                    n = c.nonce
+                );
+                let _ = p.send_event(Ev::Eval(tab, js));
             }
         }
         "save_tabs" => match lib().and_then(|mut l| save_tabs(c, &mut l)) {
@@ -276,7 +389,24 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     request: &s("q"),
                     ..Default::default()
                 };
-                carta::run(&l, "synthesize", &docs, &backend(c), &o, &mut |_| {})
+                let task = match m["task"].as_str() {
+                    Some("summarize") => "summarize",
+                    Some("extract") => "extract",
+                    _ => "synthesize",
+                };
+                let o = Options {
+                    fields: if task == "extract" {
+                        s("q")
+                            .split(',')
+                            .map(|f| f.trim().to_string())
+                            .filter(|f| !f.is_empty())
+                            .collect()
+                    } else {
+                        vec![]
+                    },
+                    ..o
+                };
+                carta::run(&l, task, &docs, &backend(c), &o, &mut |_| {})
             });
             match r {
                 Ok(t) => reply(p, c, tab, true, t),
