@@ -469,7 +469,7 @@ fn api_roundtrip() {
         "POST",
         "folders",
         &[],
-        format!(r#"{{"path":"{d}"}}"#).as_bytes(),
+        serde_json::json!({ "path": d }).to_string().as_bytes(),
         None,
     );
     assert_eq!(c, 200, "{v}");
@@ -559,7 +559,7 @@ fn api_roundtrip() {
         "DELETE",
         "folders",
         &[],
-        format!(r#"{{"path":"{d}"}}"#).as_bytes(),
+        serde_json::json!({ "path": d }).to_string().as_bytes(),
         None,
     );
     assert_eq!(c, 200);
