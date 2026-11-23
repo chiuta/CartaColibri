@@ -222,6 +222,12 @@ class Library:
         """)
         self._groups = os.path.join(self.home, "groups.json")
 
+    def close(self):
+        self.db.close()
+
+    def __enter__(self): return self
+    def __exit__(self, *a): self.close()
+
     # ---- folders (the "Library" page: list + add folder + remove folder)
     def add_root(self, path):
         path = os.path.abspath(os.path.expanduser(path))

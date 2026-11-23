@@ -26,7 +26,7 @@ class FakeGateway(BaseHTTPRequestHandler):
 
 class Carta(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         t = self.tmp.name
         self.lib_dir = os.path.join(t, "docs")
         w(os.path.join(self.lib_dir, "contracte", "c1.txt"), "Contract de prestări servicii. Valoarea totală este 42 de lei. Termen: 30 de zile.")
@@ -94,7 +94,7 @@ class Carta(unittest.TestCase):
         self.lib.group_set("Contracte", [os.path.join(self.lib_dir, "note.docx")], add=True)
         self.assertEqual(len(self.lib.resolve_group("Contracte")), 3)
         # persists across instances
-        self.assertIn("Contracte", ragfetch.Library(self.lib.home).groups())
+        with ragfetch.Library(self.lib.home) as other: self.assertIn("Contracte", other.groups())
         self.lib.group_remove("Html"); self.assertNotIn("Html", self.lib.groups())
 
     def test_tasks_mock_and_save(self):
@@ -201,7 +201,6 @@ class Carta(unittest.TestCase):
         except OSError: f = ImageFont.load_default()
         d.text((40, 90), "HUMMINGBIRD LIBRARY", fill="black", font=f)
         p = os.path.join(self.lib_dir, "scan.pdf"); img.save(p, "PDF", resolution=150)
-        self.assertFalse(ragfetch.Library(os.path.join(self.tmp.name, "noocr")).update([self.lib_dir]) and False)
         lib = ragfetch.Library(os.path.join(self.tmp.name, "ocr"), ocr=True); lib.update([self.lib_dir])
         self.assertTrue(lib.search("hummingbird")); lib.db.close()
 

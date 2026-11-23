@@ -47,7 +47,11 @@ def build_parser():
 
 def main(argv=None):
     a = build_parser().parse_args(argv)
-    lib = ragfetch.Library(a.home, ocr=a.ocr)
+    with ragfetch.Library(a.home, ocr=a.ocr) as lib:
+        return _run(a, lib)
+
+
+def _run(a, lib):
     out = print
     if a.cmd == "add":
         out("registered", lib.add_root(a.folder)); out(lib.update([a.folder]))
