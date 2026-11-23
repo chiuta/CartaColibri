@@ -64,17 +64,17 @@ S = [
 END = {  # closing card: command line + portable
  "title": {"en": "5 · Command line and portable", "ro": "5 · Linia de comandă și versiunea portabilă", "fr": "5 · Ligne de commande et version portable", "it": "5 · Riga di comando e versione portatile", "es": "5 · Línea de comandos y versión portátil", "pt": "5 · Linha de comandos e versão portátil", "de": "5 · Kommandozeile und portable Version", "hu": "5 · Parancssor és hordozható változat"},
  "cap": {"en": "Everything also works from the command line — and as a portable app.", "ro": "Totul merge și din linia de comandă — și ca aplicație portabilă.", "fr": "Tout fonctionne aussi en ligne de commande — et en version portable.", "it": "Tutto funziona anche da riga di comando — e come app portatile.", "es": "Todo funciona también desde la línea de comandos — y como app portátil.", "pt": "Tudo funciona também na linha de comandos — e como app portátil.", "de": "Alles funktioniert auch per Kommandozeile — und als portable App.", "hu": "Minden működik parancssorból is — és hordozható alkalmazásként."},
- "text": {"en": "The same features are available as coli carta commands (see below). The portable zip keeps your index, groups and outputs in its own Data folder: unzip, run the launcher, done.",
-          "ro": "Aceleași funcții sunt disponibile ca bomenzi coli carta (vezi mai jos). Arhiva portabilă ține indexul, grupurile și rezultatele în propriul folder Data: dezarhivezi, rulezi lansatorul, gata.".replace("bomenzi", "comenzi"),
-          "fr": "Les mêmes fonctions existent en commandes coli carta (voir ci-dessous). Le zip portable garde ton index, tes groupes et tes résultats dans son propre dossier Data : décompresse, lance, c’est prêt.",
-          "it": "Le stesse funzioni sono disponibili come comandi coli carta (vedi sotto). Lo zip portatile conserva indice, gruppi e risultati nella propria cartella Data: decomprimi, avvia, fatto.",
-          "es": "Las mismas funciones están disponibles como comandos coli carta (abajo). El zip portátil guarda tu índice, tus grupos y tus resultados en su propia carpeta Data: descomprime, ejecuta y listo.",
-          "pt": "As mesmas funções estão disponíveis como comandos coli carta (abaixo). O zip portátil guarda o teu índice, os grupos e os resultados na sua própria pasta Data: descomprime, executa e já está.",
-          "de": "Dieselben Funktionen gibt es als coli-carta-Befehle (siehe unten). Das portable Zip speichert Index, Gruppen und Ergebnisse im eigenen Ordner Data: entpacken, Starter ausführen, fertig.",
-          "hu": "Ugyanezek a funkciók coli carta parancsokként is elérhetők (lásd alább). A hordozható zip az indexet, a csoportokat és az eredményeket a saját Data mappájában tartja: kicsomagolod, elindítod, kész."}}
-CMD = ["coli carta add ~/Documents", 'coli carta search "payment OR pay*" --ext txt,md', "coli carta group set Contracts ~/Documents/contracts",
-       'coli carta synthesize "payment terms" --group Contracts --save', "coli carta watch --interval 30      # keep the index current",
-       "python3 scripts/make_portable.py --version 0.1.0-alpha.1"]
+ "text": {"en": "The same features are available as cartacolibri commands (see below). The portable zip keeps your index, groups and outputs in its own Data folder: unzip, run the launcher, done.",
+          "ro": "Aceleași funcții sunt disponibile ca bomenzi cartacolibri (vezi mai jos). Arhiva portabilă ține indexul, grupurile și rezultatele în propriul folder Data: dezarhivezi, rulezi lansatorul, gata.".replace("bomenzi", "comenzi"),
+          "fr": "Les mêmes fonctions existent en commandes cartacolibri (voir ci-dessous). Le zip portable garde ton index, tes groupes et tes résultats dans son propre dossier Data : décompresse, lance, c’est prêt.",
+          "it": "Le stesse funzioni sono disponibili come comandi cartacolibri (vedi sotto). Lo zip portatile conserva indice, gruppi e risultati nella propria cartella Data: decomprimi, avvia, fatto.",
+          "es": "Las mismas funciones están disponibles como comandos cartacolibri (abajo). El zip portátil guarda tu índice, tus grupos y tus resultados en su propia carpeta Data: descomprime, ejecuta y listo.",
+          "pt": "As mesmas funções estão disponíveis como comandos cartacolibri (abaixo). O zip portátil guarda o teu índice, os grupos e os resultados na sua própria pasta Data: descomprime, executa e já está.",
+          "de": "Dieselben Funktionen gibt es als cartacolibri-Befehle (siehe unten). Das portable Zip speichert Index, Gruppen und Ergebnisse im eigenen Ordner Data: entpacken, Starter ausführen, fertig.",
+          "hu": "Ugyanezek a funkciók cartacolibri parancsokként is elérhetők (lásd alább). A hordozható zip az indexet, a csoportokat és az eredményeket a saját Data mappájában tartja: kicsomagolod, elindítod, kész."}}
+CMD = ["cartacolibri add ~/Documents", 'cartacolibri search "payment OR pay*" --ext txt,md', "cartacolibri group set Contracts ~/Documents/contracts",
+       'cartacolibri synthesize "payment terms" --group Contracts --save', "cartacolibri watch --interval 30      # keep the index current",
+       "cartacolibri grab https://example.org/article      # web-grab", "cartacolibri bookmarklet               # one-click save from any browser"]
 TITLE_CARD = {"en": "Tutorial", "ro": "Tutorial", "fr": "Tutoriel", "it": "Tutorial", "es": "Tutorial", "pt": "Tutorial", "de": "Anleitung", "hu": "Útmutató"}
 PDFSEARCH = None
 

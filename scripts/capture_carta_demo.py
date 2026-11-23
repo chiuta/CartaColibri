@@ -15,7 +15,7 @@ def main():
     out = os.path.join(ROOT, "docs", "cartacolibri", "img"); os.makedirs(out, exist_ok=True)
     home = tempfile.mkdtemp()
     env = dict(os.environ, CARTACOLIBRI_HOME=home)
-    srv = subprocess.Popen([sys.executable, os.path.join(ROOT, "ui", "server.py"), "--port", str(a.port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    srv = subprocess.Popen([os.path.join(ROOT, "target", "release", "cartacolibri"), "serve", "--port", str(a.port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1.5)
     try:
         base = f"http://127.0.0.1:{a.port}"
@@ -41,10 +41,6 @@ def main():
                 pg.evaluate("n=>fetch('/carta/groups',{method:'DELETE',headers:{'X-Colibri-UI':'1','Content-Type':'application/json'},body:JSON.stringify({name:n})})", GROUP[lang])
                 print(lang, "ok", "JS errors:" + str(errs) if errs else "")
                 ctx.close()
-            # the chat page must load without errors and offer the new upload entry
-            ctx = b.new_context(viewport={"width": 1360, "height": 820}); pg = ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
-            pg.goto(base + "/"); pg.wait_for_timeout(1500)
-            has = pg.evaluate("!!document.querySelector('#plusPop [data-k=lib]')"); print("chat page: upload-to-library entry:", has, "errors:", errs)
             b.close()
     finally:
         srv.terminate()

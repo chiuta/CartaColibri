@@ -1,14 +1,9 @@
-name: Deploy website
-
-# Publishes site/ to GitHub Pages. One-time repo setup:
-#   Settings → Pages → Build and deployment → Source: "GitHub Actions".
-# Custom domain later: add site/CNAME with the bare domain, point DNS
-# (A/AAAA to GitHub Pages IPs or CNAME to <org>.github.io), done.
+name: Site
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/site.yml']
+    paths: ['site-carta/**', '.github/workflows/site.yml']
   workflow_dispatch:
 
 permissions:
@@ -22,8 +17,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.repository == 'JustVugg/colibri'   # CartaColibri fork: upstream's engine release/site pipelines stay with upstream
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -31,7 +25,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
+        with: { path: site-carta }
       - id: deployment
         uses: actions/deploy-pages@v4

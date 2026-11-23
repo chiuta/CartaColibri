@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=CartaColibri web-grab
+Comment=Save the current page (or selection) to your local CartaColibri library
+Icon=document-save
+Type=Service
+X-Falkon-Author=Alexandru-Ionuț Chiuță
+X-Falkon-Email=alexio@trom.tf
+X-Falkon-Version=0.1.0
+X-Falkon-Type=Extension/PythonPlugin
+X-Falkon-EntryPoint=main.py

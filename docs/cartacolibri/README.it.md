@@ -12,25 +12,28 @@ CartaColibri è una biblioteca IA locale costruita sul motore Colibrì. Indicizz
 - **RAG-fetch** — indice full-text incrementale in stile DocFetcher (parole, «frasi», prefisso*, AND/OR/NOT, filtri per tipo, dimensione, posizione) e **gruppi** di file riutilizzabili.
 - **RAG-CARTA** — tre compiti locali su un gruppo: **riassumere**, **estrarre** (tabella o JSON, «NOT FOUND» invece di supposizioni), **sintetizzare** (temi, punti comuni, contraddizioni). Ogni risposta cita [S1], [S2]… ed elenca le fonti.
 - **Privato per progetto** — niente cloud, niente telemetria; gli originali vengono solo letti. 8 lingue: EN, RO, FR, IT, ES, PT, DE, HU.
+- **web-grab** — salva qualsiasi pagina web (o solo la tua selezione) nella biblioteca come testo pulito, con l’indirizzo conservato come fonte; un comando, un bookmarklet che funziona in ogni browser (Falkon incluso) o un modello di plugin Falkon.
 
 ## Avvio rapido
 
-Scarica il codice e avvia il motore con un modello adatto alla tua RAM (vedi la documentazione Colibrì), poi apri la pagina CartaColibri:
+Compilala (o prendi lo zip portatile) e avvia la pagina locale. Per i compiti IA avvia anche il motore Colibrì con un modello adatto alla tua RAM (vedi la sua documentazione):
 
 ```bash
 git clone https://github.com/chiuta/CartaColibri
 cd CartaColibri
-./start-here.sh            # Windows: START-HERE.bat
-coli web --model ~/colibri-models/<model>   # then open http://127.0.0.1:8790/carta.html
+cargo build --release                       # Rust 1.90+, or use the portable zip
+./target/release/cartacolibri serve         # then open http://127.0.0.1:8765/
+coli web --model ~/colibri-models/<model>   # Colibrì engine, only for the AI tasks
 ```
 
 Oppure usa la riga di comando, senza modello per provare (`--mock` è un ripiego offline):
 
 ```bash
-coli carta add ~/Documents
-coli carta search "contract*" --ext pdf,docx
-coli carta group set Contracts ~/Documents/contracts
-coli carta synthesize "payment terms" --group Contracts --save --mock
+cartacolibri add ~/Documents
+cartacolibri search "contract*" --ext pdf,docx
+cartacolibri group set Contracts ~/Documents/contracts
+cartacolibri synthesize "payment terms" --group Contracts --save --mock
+cartacolibri grab https://example.org/article      # web-grab
 ```
 
 ## Come si incastra
@@ -39,8 +42,8 @@ Livello 0 — le tue cartelle (sola lettura) → RAG-fetch — indice, ricerca, 
 
 ## Licenza e crediti
 
-CartaColibri è un fork di [Colibrì](https://github.com/JustVugg/colibri) di JustVugg e mantiene la licenza Apache-2.0. Il livello di indicizzazione e ricerca è un progetto clean-room ispirato al comportamento descritto nel manuale pubblico di DocFetcher; non si usa codice di DocFetcher.
+CartaColibri è rilasciato con **licenza MIT**. È un’implementazione Rust clean-room: parla con il motore [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) solo tramite il suo gateway HTTP pubblico e non ne contiene codice. Il livello di indicizzazione e ricerca segue il comportamento descritto nel manuale pubblico di DocFetcher; non si usa codice DocFetcher. Il modello di plugin Falkon, opzionale, è un file separato che parla con CartaColibri solo via HTTP locale.
 
 ## Per saperne di più
 
-[Documentazione completa](../cartacolibri.md) · [README del motore Colibrì](../../README.colibri.md) · [Contribuire](../../CONTRIBUTING-CARTA.md) · [📄 Tutorial PDF illustrato](CartaColibri-Tutorial.it.pdf)
+[Documentazione completa](../cartacolibri.md) · [README del motore Colibrì](https://github.com/JustVugg/colibri) · [Contribuire](../../CONTRIBUTING.md) · [📄 Tutorial PDF illustrato](CartaColibri-Tutorial.it.pdf)

@@ -1,8 +1,8 @@
-// node scripts/check_carta_ui.js — syntax of ui/carta.html's script, 8-language completeness, keys used exist,
+// node scripts/check_carta_ui.js — syntax of assets/carta.html's script, 8-language completeness, keys used exist,
 // informal address (no formal pronouns) — run in CI with Node >= 24.
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'ui', 'carta.html'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'assets', 'carta.html'), 'utf8');
 const js = html.match(/<script>([\s\S]*)<\/script>/)[1];
 new Function(js);                                              // throws on a syntax error
 const D = eval('({' + js.match(/const D=\{([\s\S]*?)\n\};\nlet LANG/)[1] + '})');

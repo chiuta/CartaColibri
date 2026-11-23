@@ -64,16 +64,25 @@ X = {  # key -> {lang: text}
  "pt": "**Privada por conceção** — sem nuvem nem telemetria; os originais são apenas lidos. 8 línguas: EN, RO, FR, IT, ES, PT, DE, HU.",
  "de": "**Privat von Grund auf** — keine Cloud, keine Telemetrie; Originale werden nur gelesen. 8 Sprachen: EN, RO, FR, IT, ES, PT, DE, HU.",
  "hu": "**Alapból privát** — nincs felhő, nincs telemetria; az eredetiket csak olvassa. 8 nyelv: EN, RO, FR, IT, ES, PT, DE, HU."},
+"f5": {
+ "en": "**web-grab** — save any web page (or just your selection) into the library as clean text, with its address kept as the source; one command, a bookmarklet that works in any browser (Falkon included), or a Falkon plugin template.",
+ "ro": "**web-grab** — salvezi orice pagină web (sau doar selecția ta) în bibliotecă, ca text curat, cu adresa păstrată ca sursă; o comandă, un bookmarklet care merge în orice browser (inclusiv Falkon) sau un șablon de plugin Falkon.",
+ "fr": "**web-grab** — enregistre n’importe quelle page web (ou ta seule sélection) dans la bibliothèque en texte propre, avec son adresse comme source ; une commande, un bookmarklet qui marche dans tout navigateur (Falkon compris) ou un modèle de plugin Falkon.",
+ "it": "**web-grab** — salva qualsiasi pagina web (o solo la tua selezione) nella biblioteca come testo pulito, con l’indirizzo conservato come fonte; un comando, un bookmarklet che funziona in ogni browser (Falkon incluso) o un modello di plugin Falkon.",
+ "es": "**web-grab** — guarda cualquier página web (o solo tu selección) en la biblioteca como texto limpio, conservando su dirección como fuente; un comando, un bookmarklet que funciona en cualquier navegador (Falkon incluido) o una plantilla de plugin para Falkon.",
+ "pt": "**web-grab** — guarda qualquer página web (ou só a tua seleção) na biblioteca como texto limpo, com o endereço guardado como fonte; um comando, um bookmarklet que funciona em qualquer navegador (Falkon incluído) ou um modelo de plugin para o Falkon.",
+ "de": "**web-grab** — speichere jede Webseite (oder nur deine Auswahl) als sauberen Text in der Bibliothek, die Adresse bleibt als Quelle erhalten; ein Befehl, ein Bookmarklet für jeden Browser (auch Falkon) oder eine Falkon-Plugin-Vorlage.",
+ "hu": "**web-grab** — bármely weboldalt (vagy csak a kijelölésedet) letisztított szövegként mentheted a könyvtárba, a címe forrásként megmarad; egy parancs, egy bármely böngészőben (Falkonban is) működő bookmarklet vagy egy Falkon-bővítmény sablon."},
 "h_start": {"en": "Quick start", "ro": "Pornire rapidă", "fr": "Démarrage rapide", "it": "Avvio rapido", "es": "Inicio rápido", "pt": "Início rápido", "de": "Schnellstart", "hu": "Gyors kezdés"},
 "start1": {
- "en": "Get the code and start the engine with a model that fits your RAM (see the Colibrì docs), then open the CartaColibri page:",
- "ro": "Ia codul și pornește motorul cu un model care încape în RAM-ul tău (vezi documentația Colibrì), apoi deschide pagina CartaColibri:",
- "fr": "Récupère le code et lance le moteur avec un modèle adapté à ta RAM (voir la doc Colibrì), puis ouvre la page CartaColibri :",
- "it": "Scarica il codice e avvia il motore con un modello adatto alla tua RAM (vedi la documentazione Colibrì), poi apri la pagina CartaColibri:",
- "es": "Descarga el código y arranca el motor con un modelo que quepa en tu RAM (mira la documentación de Colibrì); después abre la página de CartaColibri:",
- "pt": "Obtém o código e arranca o motor com um modelo que caiba na tua RAM (vê a documentação do Colibrì); depois abre a página do CartaColibri:",
- "de": "Hol dir den Code und starte die Engine mit einem Modell, das in deinen RAM passt (siehe Colibrì-Doku), und öffne dann die CartaColibri-Seite:",
- "hu": "Töltsd le a kódot, és indítsd a motort a RAM-odba férő modellel (lásd a Colibrì dokumentációt), majd nyisd meg a CartaColibri oldalt:"},
+ "en": "Build it (or grab the portable zip) and start the local page. For the AI tasks also run the Colibrì engine with a model that fits your RAM (see its docs):",
+ "ro": "Compilează-l (sau ia zip-ul portabil) și pornește pagina locală. Pentru taskurile AI pornește și motorul Colibrì cu un model care încape în RAM-ul tău (vezi documentația lui):",
+ "fr": "Compile-la (ou prends le zip portable) et lance la page locale. Pour les tâches IA, lance aussi le moteur Colibrì avec un modèle adapté à ta RAM (voir sa doc) :",
+ "it": "Compilala (o prendi lo zip portatile) e avvia la pagina locale. Per i compiti IA avvia anche il motore Colibrì con un modello adatto alla tua RAM (vedi la sua documentazione):",
+ "es": "Compílala (o descarga el zip portátil) y arranca la página local. Para las tareas de IA, arranca también el motor Colibrì con un modelo que quepa en tu RAM (mira su documentación):",
+ "pt": "Compila-a (ou obtém o zip portátil) e arranca a página local. Para as tarefas de IA, arranca também o motor Colibrì com um modelo que caiba na tua RAM (vê a documentação dele):",
+ "de": "Kompiliere sie (oder nimm das portable Zip) und starte die lokale Seite. Für die KI-Aufgaben starte außerdem die Colibrì-Engine mit einem Modell, das in deinen RAM passt (siehe deren Doku):",
+ "hu": "Fordítsd le (vagy töltsd le a hordozható zipet), és indítsd el a helyi oldalt. Az MI-feladatokhoz indítsd el a Colibrì motort is a RAM-odba férő modellel (lásd a dokumentációját):"},
 "start2": {
  "en": "Or use the command line, with no model needed to try it (`--mock` is an offline fallback):",
  "ro": "Sau folosește linia de comandă, fără model pentru a încerca (`--mock` e un mod offline de rezervă):",
@@ -95,24 +104,24 @@ X = {  # key -> {lang: text}
  "hu": "0. réteg — a mappáid (csak olvasás) → RAG-fetch — index, keresés, csoportok → RAG-CARTA — MI-feladatok a Colibrì motoron át."},
 "h_lic": {"en": "Licence and credits", "ro": "Licență și mulțumiri", "fr": "Licence et crédits", "it": "Licenza e crediti", "es": "Licencia y créditos", "pt": "Licença e créditos", "de": "Lizenz und Danksagung", "hu": "Licenc és köszönet"},
 "lic": {
- "en": "CartaColibri is a fork of [Colibrì](https://github.com/JustVugg/colibri) by JustVugg and keeps its Apache-2.0 licence. The index and search layer is a clean-room design inspired by the behaviour described in DocFetcher’s public manual; no DocFetcher code is used.",
- "ro": "CartaColibri este un fork al [Colibrì](https://github.com/JustVugg/colibri) de JustVugg și păstrează licența Apache-2.0. Stratul de indexare și căutare este un design clean-room, inspirat de comportamentul descris în manualul public DocFetcher; nu se folosește cod DocFetcher.",
- "fr": "CartaColibri est un fork de [Colibrì](https://github.com/JustVugg/colibri) par JustVugg et conserve sa licence Apache-2.0. La couche d’index et de recherche est une conception « clean-room » inspirée du comportement décrit dans le manuel public de DocFetcher ; aucun code de DocFetcher n’est utilisé.",
- "it": "CartaColibri è un fork di [Colibrì](https://github.com/JustVugg/colibri) di JustVugg e mantiene la licenza Apache-2.0. Il livello di indicizzazione e ricerca è un progetto clean-room ispirato al comportamento descritto nel manuale pubblico di DocFetcher; non si usa codice di DocFetcher.",
- "es": "CartaColibri es un fork de [Colibrì](https://github.com/JustVugg/colibri) de JustVugg y mantiene su licencia Apache-2.0. La capa de índice y búsqueda es un diseño clean-room inspirado en el comportamiento descrito en el manual público de DocFetcher; no se usa código de DocFetcher.",
- "pt": "O CartaColibri é um fork do [Colibrì](https://github.com/JustVugg/colibri) de JustVugg e mantém a licença Apache-2.0. A camada de índice e pesquisa é um desenho clean-room inspirado no comportamento descrito no manual público do DocFetcher; não é usado código do DocFetcher.",
- "de": "CartaColibri ist ein Fork von [Colibrì](https://github.com/JustVugg/colibri) von JustVugg und behält dessen Apache-2.0-Lizenz. Die Index- und Suchschicht ist ein Clean-Room-Entwurf, inspiriert vom im öffentlichen DocFetcher-Handbuch beschriebenen Verhalten; DocFetcher-Code wird nicht verwendet.",
- "hu": "A CartaColibri a JustVugg [Colibrì](https://github.com/JustVugg/colibri) projektjének forkja, és megtartja annak Apache-2.0 licencét. Az index- és keresőréteg clean-room tervezésű, a DocFetcher nyilvános kézikönyvében leírt viselkedés ihlette; DocFetcher-kódot nem használ."},
+ "en": "CartaColibri is released under the **MIT licence**. It is a clean-room Rust implementation: it talks to the [Colibrì](https://github.com/JustVugg/colibri) engine (JustVugg, Apache-2.0) only through its public HTTP gateway and contains none of its code. The index and search layer follows the behaviour described in DocFetcher’s public manual; no DocFetcher code is used. The optional Falkon plugin template is a separate file that only talks to CartaColibri over local HTTP.",
+ "ro": "CartaColibri este publicat sub **licența MIT**. Este o implementare Rust clean-room: vorbește cu motorul [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) doar prin gateway-ul lui HTTP public și nu conține cod din el. Stratul de indexare și căutare urmează comportamentul descris în manualul public DocFetcher; nu se folosește cod DocFetcher. Șablonul opțional de plugin Falkon este un fișier separat care vorbește cu CartaColibri doar prin HTTP local.",
+ "fr": "CartaColibri est publié sous **licence MIT**. C’est une implémentation Rust clean-room : elle ne parle au moteur [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) que via sa passerelle HTTP publique et n’en contient aucun code. La couche d’index et de recherche suit le comportement décrit dans le manuel public de DocFetcher ; aucun code DocFetcher n’est utilisé. Le modèle de plugin Falkon, optionnel, est un fichier séparé qui ne parle à CartaColibri qu’en HTTP local.",
+ "it": "CartaColibri è rilasciato con **licenza MIT**. È un’implementazione Rust clean-room: parla con il motore [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) solo tramite il suo gateway HTTP pubblico e non ne contiene codice. Il livello di indicizzazione e ricerca segue il comportamento descritto nel manuale pubblico di DocFetcher; non si usa codice DocFetcher. Il modello di plugin Falkon, opzionale, è un file separato che parla con CartaColibri solo via HTTP locale.",
+ "es": "CartaColibri se publica bajo **licencia MIT**. Es una implementación Rust clean-room: habla con el motor [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) solo a través de su pasarela HTTP pública y no contiene nada de su código. La capa de índice y búsqueda sigue el comportamiento descrito en el manual público de DocFetcher; no se usa código de DocFetcher. La plantilla de plugin para Falkon, opcional, es un archivo aparte que solo habla con CartaColibri por HTTP local.",
+ "pt": "O CartaColibri é publicado sob **licença MIT**. É uma implementação Rust clean-room: fala com o motor [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) apenas através do seu gateway HTTP público e não contém código dele. A camada de índice e pesquisa segue o comportamento descrito no manual público do DocFetcher; não é usado código do DocFetcher. O modelo de plugin para o Falkon, opcional, é um ficheiro à parte que só fala com o CartaColibri por HTTP local.",
+ "de": "CartaColibri steht unter der **MIT-Lizenz**. Es ist eine Clean-Room-Implementierung in Rust: Sie spricht mit der [Colibrì](https://github.com/JustVugg/colibri)-Engine (JustVugg, Apache-2.0) nur über deren öffentliches HTTP-Gateway und enthält keinen Code daraus. Die Index- und Suchschicht folgt dem im öffentlichen DocFetcher-Handbuch beschriebenen Verhalten; DocFetcher-Code wird nicht verwendet. Die optionale Falkon-Plugin-Vorlage ist eine separate Datei, die nur per lokalem HTTP mit CartaColibri spricht.",
+ "hu": "A CartaColibri **MIT licenc** alatt jelenik meg. Clean-room Rust implementáció: a [Colibrì](https://github.com/JustVugg/colibri) motorral (JustVugg, Apache-2.0) kizárólag a nyilvános HTTP-átjárón át beszél, és nem tartalmaz belőle kódot. Az index- és keresőréteg a DocFetcher nyilvános kézikönyvében leírt viselkedést követi; DocFetcher-kód nincs benne. Az opcionális Falkon-bővítmény sablon különálló fájl, amely csak helyi HTTP-n át beszél a CartaColibrivel."},
 "h_docs": {"en": "More", "ro": "Mai multe", "fr": "Plus d’infos", "it": "Per saperne di più", "es": "Más información", "pt": "Mais informação", "de": "Mehr", "hu": "Továbbiak"},
 "docs": {
- "en": "[Full documentation](../cartacolibri.md) · [Colibrì engine README](../../README.colibri.md) · [Contributing](../../CONTRIBUTING-CARTA.md)",
- "ro": "[Documentație completă](../cartacolibri.md) · [README motor Colibrì](../../README.colibri.md) · [Contribuții](../../CONTRIBUTING-CARTA.md)",
- "fr": "[Documentation complète](../cartacolibri.md) · [README du moteur Colibrì](../../README.colibri.md) · [Contribuer](../../CONTRIBUTING-CARTA.md)",
- "it": "[Documentazione completa](../cartacolibri.md) · [README del motore Colibrì](../../README.colibri.md) · [Contribuire](../../CONTRIBUTING-CARTA.md)",
- "es": "[Documentación completa](../cartacolibri.md) · [README del motor Colibrì](../../README.colibri.md) · [Contribuir](../../CONTRIBUTING-CARTA.md)",
- "pt": "[Documentação completa](../cartacolibri.md) · [README do motor Colibrì](../../README.colibri.md) · [Contribuir](../../CONTRIBUTING-CARTA.md)",
- "de": "[Vollständige Dokumentation](../cartacolibri.md) · [README der Colibrì-Engine](../../README.colibri.md) · [Mitmachen](../../CONTRIBUTING-CARTA.md)",
- "hu": "[Teljes dokumentáció](../cartacolibri.md) · [A Colibrì motor README-je](../../README.colibri.md) · [Közreműködés](../../CONTRIBUTING-CARTA.md)"},
+ "en": "[Full documentation](../cartacolibri.md) · [Colibrì engine](https://github.com/JustVugg/colibri) · [Contributing](../../CONTRIBUTING.md)",
+ "ro": "[Documentație completă](../cartacolibri.md) · [README motor Colibrì](https://github.com/JustVugg/colibri) · [Contribuții](../../CONTRIBUTING.md)",
+ "fr": "[Documentation complète](../cartacolibri.md) · [README du moteur Colibrì](https://github.com/JustVugg/colibri) · [Contribuer](../../CONTRIBUTING.md)",
+ "it": "[Documentazione completa](../cartacolibri.md) · [README del motore Colibrì](https://github.com/JustVugg/colibri) · [Contribuire](../../CONTRIBUTING.md)",
+ "es": "[Documentación completa](../cartacolibri.md) · [README del motor Colibrì](https://github.com/JustVugg/colibri) · [Contribuir](../../CONTRIBUTING.md)",
+ "pt": "[Documentação completa](../cartacolibri.md) · [README do motor Colibrì](https://github.com/JustVugg/colibri) · [Contribuir](../../CONTRIBUTING.md)",
+ "de": "[Vollständige Dokumentation](../cartacolibri.md) · [README der Colibrì-Engine](https://github.com/JustVugg/colibri) · [Mitmachen](../../CONTRIBUTING.md)",
+ "hu": "[Teljes dokumentáció](../cartacolibri.md) · [A Colibrì motor README-je](https://github.com/JustVugg/colibri) · [Közreműködés](../../CONTRIBUTING.md)"},
 "dl": {"en": "Download", "ro": "Descarcă", "fr": "Télécharger", "it": "Scarica", "es": "Descargar", "pt": "Transferir", "de": "Herunterladen", "hu": "Letöltés"},
 "dl_sub": {
  "en": "Portable (Windows, Linux, macOS): unzip, run the launcher, done.",
@@ -138,14 +147,16 @@ X = {  # key -> {lang: text}
 START_CODE = """```bash
 git clone https://github.com/chiuta/CartaColibri
 cd CartaColibri
-./start-here.sh            # Windows: START-HERE.bat
-coli web --model ~/colibri-models/<model>   # then open http://127.0.0.1:8790/carta.html
+cargo build --release                       # Rust 1.90+, or use the portable zip
+./target/release/cartacolibri serve         # then open http://127.0.0.1:8765/
+coli web --model ~/colibri-models/<model>   # Colibrì engine, only for the AI tasks
 ```"""
 CLI_CODE = """```bash
-coli carta add ~/Documents
-coli carta search "contract*" --ext pdf,docx
-coli carta group set Contracts ~/Documents/contracts
-coli carta synthesize "payment terms" --group Contracts --save --mock
+cartacolibri add ~/Documents
+cartacolibri search "contract*" --ext pdf,docx
+cartacolibri group set Contracts ~/Documents/contracts
+cartacolibri synthesize "payment terms" --group Contracts --save --mock
+cartacolibri grab https://example.org/article      # web-grab
 ```"""
 
 
@@ -171,6 +182,7 @@ def md_readme(lang, root=False):
 - {t('f2')}
 - {t('f3')}
 - {t('f4')}
+- {t('f5')}
 
 ## {t('h_start')}
 
@@ -235,22 +247,23 @@ footer{{border-top:1px solid var(--line);padding:26px 5vw;color:var(--mute);text
 <video id="vid" controls preload="metadata" poster="img/en-4.png" style="width:100%;border-radius:14px;border:1px solid var(--line)"><source src="media/cartacolibri-demo.mp4" type="video/mp4">{"".join(f'<track kind="subtitles" src="media/demo.{l}.vtt" srclang="{l}" label="{NAMES[l]}">' for l in LANGS)}</video>
 <div class="grid" style="margin-top:16px"><img id="g1" style="width:100%;border-radius:12px;border:1px solid var(--line)"><img id="g2" style="width:100%;border-radius:12px;border:1px solid var(--line)"><img id="g4" style="width:100%;border-radius:12px;border:1px solid var(--line)"></div>
 <p style="margin-top:14px"><a id="tutpdf" class="btn" href="#"></a></p>
-<h2 id="h_what"></h2><div class="grid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div></div>
+<h2 id="h_what"></h2><div class="grid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div><div class="card" id="f5"></div></div>
 <h2 id="h_layers"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" style="text-align:center;color:var(--mute)"></p>
 <h2 id="h_start"></h2><p id="start1"></p><pre>git clone https://github.com/chiuta/CartaColibri
 cd CartaColibri
-./start-here.sh            # Windows: START-HERE.bat
-coli web --model ~/colibri-models/&lt;model&gt;
-# http://127.0.0.1:8790/carta.html</pre><p id="start2"></p><pre>coli carta add ~/Documents
-coli carta search "contract*" --ext pdf,docx
-coli carta group set Contracts ~/Documents/contracts
-coli carta synthesize "payment terms" --group Contracts --save --mock</pre>
+cargo build --release
+./target/release/cartacolibri serve
+# http://127.0.0.1:8765/</pre><p id="start2"></p><pre>cartacolibri add ~/Documents
+cartacolibri search "contract*" --ext pdf,docx
+cartacolibri group set Contracts ~/Documents/contracts
+cartacolibri synthesize "payment terms" --group Contracts --save --mock
+cartacolibri grab https://example.org/article</pre>
 <h2 id="h_lic"></h2><p id="lic"></p></main>
-<footer>© CartaColibri · Apache-2.0 · <a href="{REPO}">{REPO.split('//')[1]}</a></footer>
+<footer>© CartaColibri · MIT · <a href="{REPO}">{REPO.split('//')[1]}</a></footer>
 <script>
 const D={data},N={names};let L=(()=>{{try{{const s=localStorage.getItem('cc.lang');if(s&&N[s])return s}}catch(e){{}};const n=(navigator.language||'en').slice(0,2);return N[n]?n:'en'}})();
 const sel=document.getElementById('l');sel.innerHTML=Object.entries(N).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('');
-function go(){{document.documentElement.lang=L;sel.value=L;for(const k of ['tagline','intro','h_demo','demo_sub','h_what','f1','f2','f3','f4','h_layers','layers','h_start','start1','start2','h_lic','lic'])document.getElementById(k).innerHTML=D[k][L];
+function go(){{document.documentElement.lang=L;sel.value=L;for(const k of ['tagline','intro','h_demo','demo_sub','h_what','f1','f2','f3','f4','f5','h_layers','layers','h_start','start1','start2','h_lic','lic'])document.getElementById(k).innerHTML=D[k][L];
 document.getElementById('dl').textContent=D.dl[L];
 const tp=document.getElementById('tutpdf');tp.textContent='📄 '+D.tut[L];tp.href='media/CartaColibri-Tutorial.'+L+'.pdf';
 [['g1',1],['g2',2],['g4',4]].forEach(([id,n])=>document.getElementById(id).src='img/'+L+'-'+n+'.png');
