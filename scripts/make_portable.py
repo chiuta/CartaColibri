@@ -12,7 +12,7 @@
     Other/                              icon, release notes template
 
 Also: --sums writes dist/SHA256SUMS for every zip in dist/.
-Usage: python3 scripts/make_portable.py --version 0.2.0-alpha.1 --binary target/release/cartacolibri --target linux-x86_64 [--browser PATH]
+Usage: python3 scripts/make_portable.py --version 0.2.0-alpha.2 --binary target/release/cartacolibri --target linux-x86_64 [--browser PATH]
        python3 scripts/make_portable.py --sums"""
 import argparse, glob, hashlib, os, re, zipfile
 

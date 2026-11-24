@@ -174,7 +174,7 @@ First try `cartacolibri doctor`: it checks your setup and tells you what to fix.
 
 ## Honest status
 
-CartaColibri is **alpha** software (version 0.2.0-alpha): it works, but expect rough edges and keep backups of anything important. Linux is the best-tested platform: the web-grab browser is self-tested there in CI. On **Windows and macOS** the browser is compiled in CI but has **never been run by hand**. The automatic checks on GitHub (CI) are **not yet verified**: the jobs have been stuck in the queue. Your documents are safe either way, because they are only ever read. The pre-release **v0.2.0-alpha.1** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.
+CartaColibri is **alpha** software (version 0.2.0-alpha): it works, but expect rough edges and keep backups of anything important. Linux is the best-tested platform: the web-grab browser is self-tested there in CI. On **Windows and macOS** the browser is compiled in CI but has **never been run by hand**. The automatic checks on GitHub (CI) are **not yet verified**: the jobs have been stuck in the queue. Your documents are safe either way, because they are only ever read. The pre-release **v0.2.0-alpha.2** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.
 
 ## Security
 

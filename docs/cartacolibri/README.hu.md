@@ -174,7 +174,7 @@ Először próbáld ki a `cartacolibri doctor` parancsot: ellenőrzi a beállít
 
 ## Őszinte állapotjelentés
 
-A CartaColibri **alfa** állapotú szoftver (0.2.0-alpha verzió): működik, de számíts apróbb hibákra, és a fontos dolgaidról tarts mentést. A Linux a legjobban tesztelt platform: ott a web-grab böngészőt a CI automatikusan kipróbálja. **Windowson és macOS-en** a böngészőt a CI lefordítja, de **kézzel még soha nem futtattuk**. A GitHubon az automatikus ellenőrzések (CI) **még nincsenek megerősítve**: a feladatok elakadtak a sorban. A dokumentumaid így is biztonságban vannak, mert csak olvassa őket. A GitHubon a **v0.2.0-alpha.1** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.
+A CartaColibri **alfa** állapotú szoftver (0.2.0-alpha verzió): működik, de számíts apróbb hibákra, és a fontos dolgaidról tarts mentést. A Linux a legjobban tesztelt platform: ott a web-grab böngészőt a CI automatikusan kipróbálja. **Windowson és macOS-en** a böngészőt a CI lefordítja, de **kézzel még soha nem futtattuk**. A GitHubon az automatikus ellenőrzések (CI) **még nincsenek megerősítve**: a feladatok elakadtak a sorban. A dokumentumaid így is biztonságban vannak, mert csak olvassa őket. A GitHubon a **v0.2.0-alpha.2** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.
 
 ## Biztonság
 

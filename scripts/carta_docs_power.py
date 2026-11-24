@@ -295,12 +295,12 @@ TROUBLE = {
 }
 
 STATUS_EXTRA = {
- "en": "The pre-release **v0.2.0-alpha.1** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.",
- "ro": "Pre-lansarea **v0.2.0-alpha.1** de pe GitHub este încă o **ciornă**, deci descărcările portabile nu sunt încă publice; până atunci, compilează din sursă.",
- "fr": "La préversion **v0.2.0-alpha.1** sur GitHub est encore un **brouillon** : les téléchargements portables ne sont donc pas encore publics ; d’ici là, compile depuis les sources.",
- "it": "La pre-release **v0.2.0-alpha.1** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.",
- "es": "La versión preliminar **v0.2.0-alpha.1** en GitHub sigue siendo un **borrador**, así que las descargas portátiles aún no son públicas; mientras tanto, compila desde el código fuente.",
- "pt": "A pré-versão **v0.2.0-alpha.1** no GitHub ainda é um **rascunho**, por isso as transferências portáteis ainda não são públicas; até lá, compila a partir do código-fonte.",
- "de": "Das Pre-Release **v0.2.0-alpha.1** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.",
- "hu": "A GitHubon a **v0.2.0-alpha.1** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.",
+ "en": "The pre-release **v0.2.0-alpha.2** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.",
+ "ro": "Pre-lansarea **v0.2.0-alpha.2** de pe GitHub este încă o **ciornă**, deci descărcările portabile nu sunt încă publice; până atunci, compilează din sursă.",
+ "fr": "La préversion **v0.2.0-alpha.2** sur GitHub est encore un **brouillon** : les téléchargements portables ne sont donc pas encore publics ; d’ici là, compile depuis les sources.",
+ "it": "La pre-release **v0.2.0-alpha.2** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.",
+ "es": "La versión preliminar **v0.2.0-alpha.2** en GitHub sigue siendo un **borrador**, así que las descargas portátiles aún no son públicas; mientras tanto, compila desde el código fuente.",
+ "pt": "A pré-versão **v0.2.0-alpha.2** no GitHub ainda é um **rascunho**, por isso as transferências portáteis ainda não são públicas; até lá, compila a partir do código-fonte.",
+ "de": "Das Pre-Release **v0.2.0-alpha.2** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.",
+ "hu": "A GitHubon a **v0.2.0-alpha.2** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.",
 }

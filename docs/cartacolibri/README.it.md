@@ -174,7 +174,7 @@ Prova prima `cartacolibri doctor`: controlla la tua installazione e ti dice cosa
 
 ## Stato reale
 
-CartaColibri è un software **alfa** (versione 0.2.0-alpha): funziona, ma aspettati qualche spigolo e tieni copie di sicurezza di ciò che conta. Linux è la piattaforma meglio testata: lì il browser web-grab è autotestato in CI. Su **Windows e macOS** il browser viene compilato in CI ma **non è mai stato avviato a mano**. I controlli automatici su GitHub (CI) **non sono ancora verificati**: i job sono rimasti bloccati in coda. I tuoi documenti sono al sicuro comunque, perché vengono solo letti. La pre-release **v0.2.0-alpha.1** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.
+CartaColibri è un software **alfa** (versione 0.2.0-alpha): funziona, ma aspettati qualche spigolo e tieni copie di sicurezza di ciò che conta. Linux è la piattaforma meglio testata: lì il browser web-grab è autotestato in CI. Su **Windows e macOS** il browser viene compilato in CI ma **non è mai stato avviato a mano**. I controlli automatici su GitHub (CI) **non sono ancora verificati**: i job sono rimasti bloccati in coda. I tuoi documenti sono al sicuro comunque, perché vengono solo letti. La pre-release **v0.2.0-alpha.2** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.
 
 ## Sicurezza
 
