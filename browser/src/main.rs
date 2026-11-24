@@ -1439,8 +1439,8 @@ fn main() {
                 ..
             } => {
                 let b = full_bounds(&window);
-                tabs.iter().for_each(|t| {
-                    let _ = t.wv.set_bounds(b);
+                tabs.iter().filter_map(|t| t.wv.as_ref()).for_each(|wv| {
+                    let _ = wv.set_bounds(b);
                 });
             }
             Event::WindowEvent {
