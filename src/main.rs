@@ -354,11 +354,21 @@ fn main() {
         }
         default_hook(info)
     }));
-    let c = Cli::parse();
-    let lang = tour::resolve(c.lang.as_deref());
-    if let Err(m) = run(c, lang) {
-        tour::print_error(lang, &m);
-        std::process::exit(1);
+    // The command tree and `run` are large: give them a roomy stack so a 1 MB Windows main
+    // thread (debug builds especially) cannot overflow.
+    let t = std::thread::Builder::new()
+        .stack_size(32 * 1024 * 1024)
+        .spawn(|| {
+            let c = Cli::parse();
+            let lang = tour::resolve(c.lang.as_deref());
+            if let Err(m) = run(c, lang) {
+                tour::print_error(lang, &m);
+                std::process::exit(1);
+            }
+        })
+        .expect("cannot start the main thread");
+    if t.join().is_err() {
+        std::process::exit(101);
     }
 }
 
