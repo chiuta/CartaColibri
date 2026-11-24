@@ -36,3 +36,22 @@ Routes: `GET library|status|search|doc`, `POST folders|index|upload|groups|run|g
 
 ## web-grab
 See [`web-grab/README.md`](../web-grab/README.md).
+
+## More commands (power features)
+
+| Command | What it does |
+|---|---|
+| `task NAME [request] --group G / --tag T / --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions (plus summarize / extract / synthesize); `--verify` marks sentences whose `[S#]` is not backed by the text |
+| `chat [--group G]` | multi-turn questions over your library; answers are cited, or say "not found in your documents" |
+| `tag add/rm/list/show`, `star`, `note` | your own organization, kept across re-indexing |
+| `saved add/list/run/rm` | saved searches / smart collections |
+| `recent`, `related PATH` | what you opened lately, similar documents |
+| `export --format md\|csv\|json\|zip` | share a group, tag or saved search with citations |
+| `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP`, `verify [--repair]` | one-file backup with checksums; index check and rebuild |
+| `stats`, `timeline` | numbers about your library, documents by month |
+| `import PATH` | bookmarks `.html`, Obsidian folder, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
+| `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | RSS/Atom subscriptions saved as notes |
+| `webwatch`, `history` | watched pages with diff; opt-in browsing history |
+
+Also indexed now: `.eml .mbox .ics .vcf .tsv .srt .vtt .ipynb .tex .org .adoc .ndjson` and the text inside `.zip` files.
+Web-grab refuses loopback / private addresses unless `CARTACOLIBRI_GRAB_LOCAL=1` is set.

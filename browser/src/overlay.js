@@ -23,14 +23,33 @@
     de: { tourT: "Willkommen — eine Tour in 30 Sekunden", next: "Weiter", back: "Zurück", skip: "Überspringen", done: "Verstanden", t1: "Drücke 💾 (oder Strg+S), um diese Seite in deiner Bibliothek zu behalten. Erneutes Speichern aktualisiert dieselbe Datei.", t2: "Drücke ✨ (oder Strg+Umschalt+A) und frag alles zu dieser Seite. Die Antwort kommt von deinem lokalen Colibrì.", t3: "Markiere Text und drücke 🖍 (oder Strg+H). Er bleibt markiert, wenn du wiederkommst.", t4: "Drücke 👁, um die Seite zu beobachten: Du siehst, wann sie sich ändert. Mit F1 öffnest du jederzeit die Hilfe.", helpT: "Hilfe", sc: "Tastenkürzel", btn: "Was die Schaltflächen tun", esc: "Fenster schließen", reopen: "Geschlossenen Tab wieder öffnen", tabsNav: "Neuer Tab · Tab schließen · nächster Tab", ab: "Adressleiste", cc: "Strg+Klick oder Mittelklick auf einen Link: öffnet ihn in einem neuen Tab", saved: "Gespeichert ✔ — du findest es in deiner Bibliothek: {p}", hlok: "Markiert ✔ — wird mit dieser Seite gespeichert", hlnone: "Markiere zuerst Text und drücke dann 🖍", watchok: "Wird beobachtet ✔ — du siehst, wann sich die Seite ändert", histon: "Verlauf an — besuchte Seiten bleiben nur auf diesem Computer", histoff: "Verlauf aus — nichts Neues wird aufgezeichnet", tabsok: "{n} Tabs zusammen als Gruppe gespeichert ✔", nohttp: "Nur Webseiten (http/https) können gespeichert oder befragt werden.", nopage: "Diese Seite hat noch keinen lesbaren Text. Warte, bis sie fertig geladen ist, oder markiere Text und versuche es erneut.", gw: "Dein lokaler Colibrì antwortet nicht. Starte ihn oder starte den Browser mit --mock neu, um Offline-Demoantworten zu bekommen (simuliert, nicht von einem echten Modell).", oops: "Etwas ist schiefgelaufen: {e}", mockn: "Demomodus (--mock): Die Antworten stammen aus einer Simulation, nicht von einem echten Modell.", sTitle: "Deine Bibliothek", sRecent: "Zuletzt gespeichert", sWatch: "Beobachtete Seiten", sEmpty: "Noch nichts gespeichert — öffne eine Seite und drücke 💾.", sNoWatch: "Noch keine beobachteten Seiten — drücke 👁 auf einer Seite.", sHint: "Tipp: Tippe ? und eine Frage, um deine ganze Bibliothek zu fragen.", helpb: "Hilfe (F1)" },
     hu: { tourT: "Üdv — egy 30 másodperces körút", next: "Tovább", back: "Vissza", skip: "Kihagyom", done: "Értem", t1: "Nyomd meg a 💾 gombot (vagy Ctrl+S), hogy az oldal a könyvtáradba kerüljön. Újramentéskor ugyanaz a fájl frissül.", t2: "Nyomd meg a ✨ gombot (vagy Ctrl+Shift+A), és kérdezz bármit az oldalról. A választ a helyi Colibrìd adja.", t3: "Jelölj ki szöveget, és nyomd meg a 🖍 gombot (vagy Ctrl+H). Kiemelve marad, valahányszor visszatérsz.", t4: "A 👁 gombbal figyelheted az oldalt: látni fogod, ha változik. Az F1 bármikor megnyitja a súgót.", helpT: "Súgó", sc: "Billentyűparancsok", btn: "Mit csinálnak a gombok", esc: "Panelek bezárása", reopen: "Bezárt lap újranyitása", tabsNav: "Új lap · lap bezárása · következő lap", ab: "Címsor", cc: "Ctrl+kattintás vagy középső kattintás egy linkre: új lapon nyitja meg", saved: "Elmentve ✔ — megtalálod a könyvtáradban: {p}", hlok: "Kiemelve ✔ — az oldallal együtt megmarad", hlnone: "Előbb jelölj ki szöveget, aztán nyomd meg a 🖍 gombot", watchok: "Figyelem ✔ — látni fogod, ha az oldal megváltozik", histon: "Előzmények bekapcsolva — a meglátogatott oldalak csak ezen a gépen maradnak", histoff: "Előzmények kikapcsolva — semmi új nem kerül rögzítésre", tabsok: "{n} lap együtt mentve egy csoportként ✔", nohttp: "Csak weboldalakat (http/https) lehet menteni vagy megkérdezni.", nopage: "Ennek az oldalnak még nincs olvasható szövege. Várd meg, amíg betölt, vagy jelölj ki szöveget, és próbáld újra.", gw: "A helyi Colibrìd nem válaszol. Indítsd el, vagy indítsd újra a böngészőt a --mock kapcsolóval offline bemutató válaszokhoz (szimuláltak, nem valódi modelltől).", oops: "Valami elromlott: {e}", mockn: "Bemutató mód (--mock): a válaszok szimulációból jönnek, nem valódi modellből.", sTitle: "A könyvtárad", sRecent: "Nemrég mentett", sWatch: "Figyelt oldalak", sEmpty: "Még nincs mentve semmi — nyiss meg egy oldalt, és nyomd meg a 💾 gombot.", sNoWatch: "Még nincs figyelt oldal — nyomd meg a 👁 gombot egy oldalon.", sHint: "Tipp: írj ?-et és egy kérdést, hogy az egész könyvtáradtól kérdezz.", helpb: "Súgó (F1)" },
   };
+  const Y = {
+    en: { rd: "Reader view (Ctrl+Shift+R)", rdA: "Read aloud", rdStop: "Stop reading", rdNoTts: "Read aloud is not available in this webview.", rdEmpty: "No article text found on this page.", rdTheme: "Dark / light / sepia", rdSmall: "Smaller text", rdBig: "Larger text", selAsk: "Ask", selNote: "Note", selHl: "Highlight", selTr: "Translate", selEx: "Explain simply", selAskPre: "About this passage: ", noteok: "Note saved in your library ✔", tabColor: "Color of this tab", noColor: "No color", tabSave: "Save this group", tabAsk: "Ask this group", qgrp: "Question about this tab group…", discard: "Put this tab to sleep", discardAll: "Put inactive tabs to sleep", dupes: "Close duplicate tabs", dupTab: "Duplicate of another tab", slept: "{n} tab(s) put to sleep ✔ (they wake when you open them)", dedup: "{n} duplicate tab(s) closed ✔", tsearch: "Search tabs and library (Ctrl+Shift+K)", tsPh: "Search open tabs and your library…", tsTabs: "Open tabs", tsLib: "In your library", tsNone: "Nothing found", copyPath: "Click to copy the file path", showDiff: "Show what changed", refreshCopy: "Refresh my saved copy", noDiff: "No differences found.", cite: "Cite this page (APA / MLA / BibTeX)", copied: "Copied ✔", copyClean: "Copy clean link (no tracking parameters)", cleaned: "Link copied without tracking parameters ✔", nocopy: "Could not copy — select the text and press Ctrl+C.", later: "Read later (saves the page in your library)", laterOk: "Added to your reading list ✔ — it is saved in your library", laterOff: "Removed from your reading list", sLater: "Reading list", sNoLater: "Nothing to read later — press ☰ → 📖 on a page.", dlOffer: "This is a document ({f}). Add it to your library?", dlAdd: "Add to library", dlOpen: "Open anyway", dlOk: "Added to your library ✔ — {p}", dlBusy: "Downloading…", find: "Find in page (Ctrl+F)", findPh: "Find in page…", findN: "{i} of {n}", findNone: "No matches", trackers: "Block known trackers", trkOn: "Tracker blocking on — known tracking addresses are not opened", trkOff: "Tracker blocking off", trkBlk: "Blocked a tracking address: {h}", more: "More tools", on: "on", off: "off" },
+    ro: { rd: "Mod citire (Ctrl+Shift+R)", rdA: "Citește cu voce tare", rdStop: "Oprește citirea", rdNoTts: "Citirea cu voce tare nu este disponibilă în acest webview.", rdEmpty: "Nu am găsit text de articol pe pagină.", rdTheme: "Închis / deschis / sepia", rdSmall: "Text mai mic", rdBig: "Text mai mare", selAsk: "Întreabă", selNote: "Notă", selHl: "Evidențiază", selTr: "Traduce", selEx: "Explică simplu", selAskPre: "Despre acest pasaj: ", noteok: "Nota a fost salvată în bibliotecă ✔", tabColor: "Culoarea acestui tab", noColor: "Fără culoare", tabSave: "Salvează acest grup", tabAsk: "Întreabă acest grup", qgrp: "Întrebare despre acest grup de taburi…", discard: "Adoarme acest tab", discardAll: "Adoarme taburile inactive", dupes: "Închide taburile duplicate", dupTab: "Duplicat al altui tab", slept: "{n} tab(uri) adormite ✔ (se trezesc când le deschizi)", dedup: "{n} tab(uri) duplicate închise ✔", tsearch: "Caută în taburi și bibliotecă (Ctrl+Shift+K)", tsPh: "Caută în taburile deschise și în bibliotecă…", tsTabs: "Taburi deschise", tsLib: "În biblioteca ta", tsNone: "Nu am găsit nimic", copyPath: "Clic pentru a copia calea fișierului", showDiff: "Arată ce s-a schimbat", refreshCopy: "Reîmprospătează copia mea salvată", noDiff: "Nu am găsit diferențe.", cite: "Citează această pagină (APA / MLA / BibTeX)", copied: "Copiat ✔", copyClean: "Copiază linkul curat (fără parametri de urmărire)", cleaned: "Linkul a fost copiat fără parametri de urmărire ✔", nocopy: "Nu am putut copia — selectează textul și apasă Ctrl+C.", later: "Citește mai târziu (salvează pagina în bibliotecă)", laterOk: "Adăugat în lista de citit ✔ — e salvat în bibliotecă", laterOff: "Scos din lista de citit", sLater: "Listă de citit", sNoLater: "Nimic de citit mai târziu — apasă ☰ → 📖 pe o pagină.", dlOffer: "Acesta este un document ({f}). Îl adaug în bibliotecă?", dlAdd: "Adaugă în bibliotecă", dlOpen: "Deschide oricum", dlOk: "Adăugat în bibliotecă ✔ — {p}", dlBusy: "Se descarcă…", find: "Caută în pagină (Ctrl+F)", findPh: "Caută în pagină…", findN: "{i} din {n}", findNone: "Nicio potrivire", trackers: "Blochează trackerele cunoscute", trkOn: "Blocarea trackerelor pornită — adresele de urmărire cunoscute nu se deschid", trkOff: "Blocarea trackerelor oprită", trkBlk: "Am blocat o adresă de urmărire: {h}", more: "Mai multe unelte", on: "pornit", off: "oprit" },
+    fr: { rd: "Mode lecture (Ctrl+Maj+R)", rdA: "Lire à voix haute", rdStop: "Arrêter la lecture", rdNoTts: "La lecture à voix haute n'est pas disponible dans ce webview.", rdEmpty: "Aucun texte d'article trouvé sur cette page.", rdTheme: "Sombre / clair / sépia", rdSmall: "Texte plus petit", rdBig: "Texte plus grand", selAsk: "Demander", selNote: "Note", selHl: "Surligner", selTr: "Traduire", selEx: "Expliquer simplement", selAskPre: "À propos de ce passage : ", noteok: "Note enregistrée dans ta bibliothèque ✔", tabColor: "Couleur de cet onglet", noColor: "Sans couleur", tabSave: "Enregistrer ce groupe", tabAsk: "Interroger ce groupe", qgrp: "Question sur ce groupe d'onglets…", discard: "Mettre cet onglet en veille", discardAll: "Mettre les onglets inactifs en veille", dupes: "Fermer les onglets en double", dupTab: "Doublon d'un autre onglet", slept: "{n} onglet(s) mis en veille ✔ (ils se réveillent à l'ouverture)", dedup: "{n} onglet(s) en double fermé(s) ✔", tsearch: "Chercher dans les onglets et la bibliothèque (Ctrl+Maj+K)", tsPh: "Chercher dans les onglets ouverts et ta bibliothèque…", tsTabs: "Onglets ouverts", tsLib: "Dans ta bibliothèque", tsNone: "Rien trouvé", copyPath: "Clique pour copier le chemin du fichier", showDiff: "Voir ce qui a changé", refreshCopy: "Actualiser ma copie enregistrée", noDiff: "Aucune différence.", cite: "Citer cette page (APA / MLA / BibTeX)", copied: "Copié ✔", copyClean: "Copier le lien propre (sans paramètres de suivi)", cleaned: "Lien copié sans paramètres de suivi ✔", nocopy: "Copie impossible — sélectionne le texte et appuie sur Ctrl+C.", later: "Lire plus tard (enregistre la page dans ta bibliothèque)", laterOk: "Ajouté à ta liste de lecture ✔ — enregistré dans ta bibliothèque", laterOff: "Retiré de ta liste de lecture", sLater: "Liste de lecture", sNoLater: "Rien à lire plus tard — appuie sur ☰ → 📖 sur une page.", dlOffer: "C'est un document ({f}). L'ajouter à ta bibliothèque ?", dlAdd: "Ajouter à la bibliothèque", dlOpen: "Ouvrir quand même", dlOk: "Ajouté à ta bibliothèque ✔ — {p}", dlBusy: "Téléchargement…", find: "Chercher dans la page (Ctrl+F)", findPh: "Chercher dans la page…", findN: "{i} sur {n}", findNone: "Aucun résultat", trackers: "Bloquer les traceurs connus", trkOn: "Blocage des traceurs activé — les adresses de suivi connues ne s'ouvrent pas", trkOff: "Blocage des traceurs désactivé", trkBlk: "Adresse de suivi bloquée : {h}", more: "Plus d'outils", on: "activé", off: "désactivé" },
+    it: { rd: "Modalità lettura (Ctrl+Maiusc+R)", rdA: "Leggi ad alta voce", rdStop: "Ferma la lettura", rdNoTts: "La lettura ad alta voce non è disponibile in questo webview.", rdEmpty: "Nessun testo di articolo trovato in questa pagina.", rdTheme: "Scuro / chiaro / seppia", rdSmall: "Testo più piccolo", rdBig: "Testo più grande", selAsk: "Chiedi", selNote: "Nota", selHl: "Evidenzia", selTr: "Traduci", selEx: "Spiega semplice", selAskPre: "Su questo passaggio: ", noteok: "Nota salvata nella tua biblioteca ✔", tabColor: "Colore di questa scheda", noColor: "Nessun colore", tabSave: "Salva questo gruppo", tabAsk: "Interroga questo gruppo", qgrp: "Domanda su questo gruppo di schede…", discard: "Metti in pausa questa scheda", discardAll: "Metti in pausa le schede inattive", dupes: "Chiudi le schede duplicate", dupTab: "Duplicato di un'altra scheda", slept: "{n} scheda/e in pausa ✔ (si riattivano quando le apri)", dedup: "{n} scheda/e duplicata/e chiusa/e ✔", tsearch: "Cerca in schede e biblioteca (Ctrl+Maiusc+K)", tsPh: "Cerca nelle schede aperte e nella biblioteca…", tsTabs: "Schede aperte", tsLib: "Nella tua biblioteca", tsNone: "Nessun risultato", copyPath: "Clicca per copiare il percorso del file", showDiff: "Mostra cosa è cambiato", refreshCopy: "Aggiorna la mia copia salvata", noDiff: "Nessuna differenza.", cite: "Cita questa pagina (APA / MLA / BibTeX)", copied: "Copiato ✔", copyClean: "Copia il link pulito (senza parametri di tracciamento)", cleaned: "Link copiato senza parametri di tracciamento ✔", nocopy: "Impossibile copiare — seleziona il testo e premi Ctrl+C.", later: "Leggi dopo (salva la pagina nella biblioteca)", laterOk: "Aggiunto alla lista di lettura ✔ — salvato nella biblioteca", laterOff: "Rimosso dalla lista di lettura", sLater: "Lista di lettura", sNoLater: "Niente da leggere dopo — premi ☰ → 📖 su una pagina.", dlOffer: "Questo è un documento ({f}). Lo aggiungo alla biblioteca?", dlAdd: "Aggiungi alla biblioteca", dlOpen: "Apri comunque", dlOk: "Aggiunto alla biblioteca ✔ — {p}", dlBusy: "Download in corso…", find: "Trova nella pagina (Ctrl+F)", findPh: "Trova nella pagina…", findN: "{i} di {n}", findNone: "Nessun risultato", trackers: "Blocca i tracker noti", trkOn: "Blocco dei tracker attivo — gli indirizzi di tracciamento noti non si aprono", trkOff: "Blocco dei tracker disattivato", trkBlk: "Indirizzo di tracciamento bloccato: {h}", more: "Altri strumenti", on: "attivo", off: "disattivo" },
+    es: { rd: "Modo lectura (Ctrl+Mayús+R)", rdA: "Leer en voz alta", rdStop: "Detener la lectura", rdNoTts: "La lectura en voz alta no está disponible en este webview.", rdEmpty: "No se encontró texto de artículo en esta página.", rdTheme: "Oscuro / claro / sepia", rdSmall: "Texto más pequeño", rdBig: "Texto más grande", selAsk: "Preguntar", selNote: "Nota", selHl: "Resaltar", selTr: "Traducir", selEx: "Explicar fácil", selAskPre: "Sobre este pasaje: ", noteok: "Nota guardada en tu biblioteca ✔", tabColor: "Color de esta pestaña", noColor: "Sin color", tabSave: "Guardar este grupo", tabAsk: "Preguntar a este grupo", qgrp: "Pregunta sobre este grupo de pestañas…", discard: "Dormir esta pestaña", discardAll: "Dormir las pestañas inactivas", dupes: "Cerrar pestañas duplicadas", dupTab: "Duplicada de otra pestaña", slept: "{n} pestaña(s) dormida(s) ✔ (se despiertan al abrirlas)", dedup: "{n} pestaña(s) duplicada(s) cerrada(s) ✔", tsearch: "Buscar en pestañas y biblioteca (Ctrl+Mayús+K)", tsPh: "Buscar en las pestañas abiertas y en tu biblioteca…", tsTabs: "Pestañas abiertas", tsLib: "En tu biblioteca", tsNone: "No se encontró nada", copyPath: "Haz clic para copiar la ruta del archivo", showDiff: "Ver qué ha cambiado", refreshCopy: "Actualizar mi copia guardada", noDiff: "No hay diferencias.", cite: "Citar esta página (APA / MLA / BibTeX)", copied: "Copiado ✔", copyClean: "Copiar enlace limpio (sin parámetros de rastreo)", cleaned: "Enlace copiado sin parámetros de rastreo ✔", nocopy: "No se pudo copiar — selecciona el texto y pulsa Ctrl+C.", later: "Leer después (guarda la página en tu biblioteca)", laterOk: "Añadido a tu lista de lectura ✔ — guardado en tu biblioteca", laterOff: "Quitado de tu lista de lectura", sLater: "Lista de lectura", sNoLater: "Nada para leer después — pulsa ☰ → 📖 en una página.", dlOffer: "Esto es un documento ({f}). ¿Lo añado a tu biblioteca?", dlAdd: "Añadir a la biblioteca", dlOpen: "Abrir de todos modos", dlOk: "Añadido a tu biblioteca ✔ — {p}", dlBusy: "Descargando…", find: "Buscar en la página (Ctrl+F)", findPh: "Buscar en la página…", findN: "{i} de {n}", findNone: "Sin coincidencias", trackers: "Bloquear rastreadores conocidos", trkOn: "Bloqueo de rastreadores activado — no se abren las direcciones de rastreo conocidas", trkOff: "Bloqueo de rastreadores desactivado", trkBlk: "Dirección de rastreo bloqueada: {h}", more: "Más herramientas", on: "activado", off: "desactivado" },
+    pt: { rd: "Modo de leitura (Ctrl+Shift+R)", rdA: "Ler em voz alta", rdStop: "Parar a leitura", rdNoTts: "A leitura em voz alta não está disponível neste webview.", rdEmpty: "Não foi encontrado texto de artigo nesta página.", rdTheme: "Escuro / claro / sépia", rdSmall: "Texto mais pequeno", rdBig: "Texto maior", selAsk: "Perguntar", selNote: "Nota", selHl: "Destacar", selTr: "Traduzir", selEx: "Explicar simples", selAskPre: "Sobre esta passagem: ", noteok: "Nota guardada na tua biblioteca ✔", tabColor: "Cor deste separador", noColor: "Sem cor", tabSave: "Guardar este grupo", tabAsk: "Perguntar a este grupo", qgrp: "Pergunta sobre este grupo de separadores…", discard: "Adormecer este separador", discardAll: "Adormecer separadores inativos", dupes: "Fechar separadores duplicados", dupTab: "Duplicado de outro separador", slept: "{n} separador(es) adormecido(s) ✔ (acordam quando os abrires)", dedup: "{n} separador(es) duplicado(s) fechado(s) ✔", tsearch: "Pesquisar separadores e biblioteca (Ctrl+Shift+K)", tsPh: "Pesquisar nos separadores abertos e na biblioteca…", tsTabs: "Separadores abertos", tsLib: "Na tua biblioteca", tsNone: "Nada encontrado", copyPath: "Clica para copiar o caminho do ficheiro", showDiff: "Ver o que mudou", refreshCopy: "Atualizar a minha cópia guardada", noDiff: "Sem diferenças.", cite: "Citar esta página (APA / MLA / BibTeX)", copied: "Copiado ✔", copyClean: "Copiar ligação limpa (sem parâmetros de rastreio)", cleaned: "Ligação copiada sem parâmetros de rastreio ✔", nocopy: "Não foi possível copiar — seleciona o texto e carrega em Ctrl+C.", later: "Ler mais tarde (guarda a página na biblioteca)", laterOk: "Adicionado à lista de leitura ✔ — guardado na biblioteca", laterOff: "Removido da lista de leitura", sLater: "Lista de leitura", sNoLater: "Nada para ler mais tarde — carrega em ☰ → 📖 numa página.", dlOffer: "Isto é um documento ({f}). Adiciono à biblioteca?", dlAdd: "Adicionar à biblioteca", dlOpen: "Abrir mesmo assim", dlOk: "Adicionado à biblioteca ✔ — {p}", dlBusy: "A transferir…", find: "Procurar na página (Ctrl+F)", findPh: "Procurar na página…", findN: "{i} de {n}", findNone: "Sem resultados", trackers: "Bloquear rastreadores conhecidos", trkOn: "Bloqueio de rastreadores ligado — os endereços de rastreio conhecidos não abrem", trkOff: "Bloqueio de rastreadores desligado", trkBlk: "Endereço de rastreio bloqueado: {h}", more: "Mais ferramentas", on: "ligado", off: "desligado" },
+    de: { rd: "Lesemodus (Strg+Umschalt+R)", rdA: "Vorlesen", rdStop: "Vorlesen beenden", rdNoTts: "Vorlesen ist in diesem Webview nicht verfügbar.", rdEmpty: "Auf dieser Seite wurde kein Artikeltext gefunden.", rdTheme: "Dunkel / hell / Sepia", rdSmall: "Kleinerer Text", rdBig: "Größerer Text", selAsk: "Fragen", selNote: "Notiz", selHl: "Markieren", selTr: "Übersetzen", selEx: "Einfach erklären", selAskPre: "Zu dieser Passage: ", noteok: "Notiz in deiner Bibliothek gespeichert ✔", tabColor: "Farbe dieses Tabs", noColor: "Keine Farbe", tabSave: "Diese Gruppe speichern", tabAsk: "Diese Gruppe befragen", qgrp: "Frage zu dieser Tab-Gruppe…", discard: "Diesen Tab schlafen legen", discardAll: "Inaktive Tabs schlafen legen", dupes: "Doppelte Tabs schließen", dupTab: "Doppelt zu einem anderen Tab", slept: "{n} Tab(s) schlafen gelegt ✔ (sie wachen beim Öffnen auf)", dedup: "{n} doppelte(r) Tab(s) geschlossen ✔", tsearch: "Tabs und Bibliothek durchsuchen (Strg+Umschalt+K)", tsPh: "Offene Tabs und deine Bibliothek durchsuchen…", tsTabs: "Offene Tabs", tsLib: "In deiner Bibliothek", tsNone: "Nichts gefunden", copyPath: "Klicken, um den Dateipfad zu kopieren", showDiff: "Änderungen anzeigen", refreshCopy: "Meine gespeicherte Kopie aktualisieren", noDiff: "Keine Unterschiede gefunden.", cite: "Diese Seite zitieren (APA / MLA / BibTeX)", copied: "Kopiert ✔", copyClean: "Sauberen Link kopieren (ohne Tracking-Parameter)", cleaned: "Link ohne Tracking-Parameter kopiert ✔", nocopy: "Kopieren nicht möglich — Text markieren und Strg+C drücken.", later: "Später lesen (speichert die Seite in der Bibliothek)", laterOk: "Zur Leseliste hinzugefügt ✔ — in deiner Bibliothek gespeichert", laterOff: "Aus der Leseliste entfernt", sLater: "Leseliste", sNoLater: "Nichts zum späteren Lesen — drücke ☰ → 📖 auf einer Seite.", dlOffer: "Das ist ein Dokument ({f}). Zur Bibliothek hinzufügen?", dlAdd: "Zur Bibliothek hinzufügen", dlOpen: "Trotzdem öffnen", dlOk: "Zur Bibliothek hinzugefügt ✔ — {p}", dlBusy: "Wird heruntergeladen…", find: "In Seite suchen (Strg+F)", findPh: "In Seite suchen…", findN: "{i} von {n}", findNone: "Keine Treffer", trackers: "Bekannte Tracker blockieren", trkOn: "Tracker-Blockierung an — bekannte Tracking-Adressen werden nicht geöffnet", trkOff: "Tracker-Blockierung aus", trkBlk: "Tracking-Adresse blockiert: {h}", more: "Weitere Werkzeuge", on: "an", off: "aus" },
+    hu: { rd: "Olvasó nézet (Ctrl+Shift+R)", rdA: "Felolvasás", rdStop: "Felolvasás leállítása", rdNoTts: "A felolvasás nem érhető el ebben a webview-ban.", rdEmpty: "Nem találtam cikkszöveget ezen az oldalon.", rdTheme: "Sötét / világos / szépia", rdSmall: "Kisebb szöveg", rdBig: "Nagyobb szöveg", selAsk: "Kérdés", selNote: "Jegyzet", selHl: "Kiemelés", selTr: "Fordítás", selEx: "Egyszerű magyarázat", selAskPre: "Erről a részletről: ", noteok: "Jegyzet elmentve a könyvtáradba ✔", tabColor: "A lap színe", noColor: "Nincs szín", tabSave: "A csoport mentése", tabAsk: "Kérdés a csoporthoz", qgrp: "Kérdés erről a laccsoportról…", discard: "A lap elaltatása", discardAll: "Az inaktív lapok elaltatása", dupes: "Ismétlődő lapok bezárása", dupTab: "Egy másik lap másolata", slept: "{n} lap elaltatva ✔ (megnyitáskor felébrednek)", dedup: "{n} ismétlődő lap bezárva ✔", tsearch: "Keresés a lapokban és a könyvtárban (Ctrl+Shift+K)", tsPh: "Keresés a nyitott lapokban és a könyvtárban…", tsTabs: "Nyitott lapok", tsLib: "A könyvtáradban", tsNone: "Nincs találat", copyPath: "Kattints a fájl útvonalának másolásához", showDiff: "Mi változott?", refreshCopy: "Mentett példányom frissítése", noDiff: "Nincs különbség.", cite: "Az oldal hivatkozása (APA / MLA / BibTeX)", copied: "Kimásolva ✔", copyClean: "Tiszta link másolása (követőparaméterek nélkül)", cleaned: "Link kimásolva követőparaméterek nélkül ✔", nocopy: "Nem sikerült másolni — jelöld ki a szöveget, és nyomd meg a Ctrl+C-t.", later: "Olvasd később (az oldal a könyvtárba kerül)", laterOk: "Felvéve az olvasólistára ✔ — a könyvtáradba mentve", laterOff: "Eltávolítva az olvasólistáról", sLater: "Olvasólista", sNoLater: "Nincs mit később olvasni — nyomd meg a ☰ → 📖 gombot egy oldalon.", dlOffer: "Ez egy dokumentum ({f}). Hozzáadjam a könyvtárhoz?", dlAdd: "Hozzáadás a könyvtárhoz", dlOpen: "Megnyitás mégis", dlOk: "Hozzáadva a könyvtárhoz ✔ — {p}", dlBusy: "Letöltés…", find: "Keresés az oldalon (Ctrl+F)", findPh: "Keresés az oldalon…", findN: "{i} / {n}", findNone: "Nincs találat", trackers: "Ismert követők blokkolása", trkOn: "Követőblokkolás bekapcsolva — az ismert követőcímek nem nyílnak meg", trkOff: "Követőblokkolás kikapcsolva", trkBlk: "Követőcím blokkolva: {h}", more: "További eszközök", on: "be", off: "ki" },
+  };
   const lang = (navigator.language || "en").slice(0, 2);
-  const L = Object.assign({}, D.en, X.en, D[lang] || {}, X[lang] || {});
+  const L = Object.assign({}, D.en, X.en, Y.en, D[lang] || {}, X[lang] || {}, Y[lang] || {});
   const web = () => /^https?:$/.test(location.protocol);
   const send = (o) => post(JSON.stringify(Object.assign({ n: N, t: T }, o)));
   const pageHtml = () => { try { return document.documentElement.outerHTML.slice(0, 3000000); } catch (e) { return ""; } };
   const pageText = () => String(getSelection()) || (document.body ? document.body.innerText : "");
+  const TRK = /^(utm_|oly_|fbclid$|gclid$|dclid$|msclkid$|mc_eid$|mc_cid$|igshid$|yclid$|_hsenc$|_hsmi$|mkt_tok$|ref_src$|spm$|vero_id$)/i;
+  const cleanUrl = (u) => { try { const x = new URL(u); for (const k of [...x.searchParams.keys()]) if (TRK.test(k)) x.searchParams.delete(k); return x.href; } catch (e) { return u; } };
+  const COL = ["", "#e5484d", "#fdb93a", "#3dd68c", "#5fd7e6", "#8e7cf0", "#f06fb2"];
+  const copy = (t) => {
+    const done = () => toast(L.copied), fail = () => toast(L.nocopy, "err");
+    try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(done, () => legacy()); } catch (e) { /* fall through */ }
+    function legacy() { try { const a = document.createElement("textarea"); a.value = t; a.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(a); a.select(); const ok = document.execCommand("copy"); a.remove(); ok ? done() : fail(); } catch (e) { fail(); } }
+    legacy();
+  };
   const el = (tag, txt, cls) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (cls) e.className = cls; return e; };
-  let $, $hist, sh, panel, qrow, qin, urlIn, tabsEl, badge, toastEl, helpEl, tourEl, startEl, startIn, info = null, mock = false, tt, ti = -1;
+  let $, $hist, sh, hostEl, panel, selm, menuEl, frow, fin, fcnt, rdEl, tsEl, ctxEl, prefs = {}, tabList = [], activeTab = 0, groupColor = 0, selTxt = "", fi = 0, fn = 0, rdText = "", rdSize = 19, rdTheme = "", qrow, qin, urlIn, tabsEl, badge, toastEl, helpEl, tourEl, startEl, startIn, info = null, mock = false, tt, ti = -1;
   const show = (t, cls) => { panel.textContent = t; panel.className = cls || ""; panel.style.display = t ? "block" : "none"; };
   const toast = (t, cls) => {
     if (!sh) return;
@@ -44,30 +63,36 @@
     return L.oops.replace("{e}", raw.slice(0, 300));
   };
   const act = function (cmd, q) {
-    if (["save", "highlight", "watch", "ask"].includes(cmd) && !web()) return toast(L.nohttp, "err");
-    if (cmd === "save") { show("…"); send({ cmd, url: location.href, title: document.title, text: pageText(), html: pageHtml() }); }
-    else if (cmd === "highlight") { const sel = String(getSelection()).trim(); if (!sel) return toast(L.hlnone, "err"); send({ cmd, url: location.href, title: document.title, text: document.body ? document.body.innerText : "", sel }); applyHL([sel]); }
-    else if (cmd === "watch") { send({ cmd, url: location.href }); }
+    if (["save", "highlight", "watch", "ask", "later"].includes(cmd) && !web()) return toast(L.nohttp, "err");
+    if (cmd === "later") { send({ cmd, url: cleanUrl(location.href), title: document.title, text: pageText(), html: pageHtml() }); return; }
+    if (cmd === "save") { show("…"); send({ cmd, url: cleanUrl(location.href), title: document.title, text: pageText(), html: pageHtml() }); }
+    else if (cmd === "highlight") { const sel = String(getSelection()).trim(); if (!sel) return toast(L.hlnone, "err"); send({ cmd, url: cleanUrl(location.href), title: document.title, text: document.body ? document.body.innerText : "", sel }); applyHL([sel]); }
+    else if (cmd === "watch") { send({ cmd, url: cleanUrl(location.href) }); }
     else if (cmd === "history") { send({ cmd }); }
     else if (cmd === "ask") { show(L.think); send({ cmd, q, url: location.href, title: document.title, text: pageText() }); }
-    else if (cmd === "ask_tabs") { show(L.think); send({ cmd, q, task: arguments[2] || "synthesize" }); }
-    else if (cmd === "save_tabs") { show("…"); send({ cmd }); }
+    else if (cmd === "ask_tabs") { show(L.think); send({ cmd, q, task: arguments[2] || "synthesize", color: groupColor }); }
+    else if (cmd === "save_tabs") { show("…"); send({ cmd, color: arguments[2] || 0 }); }
   };
   const hidden = (name, fn) => Object.defineProperty(window, name + N, { enumerable: false, value: fn });
   hidden("__cc_", (m) => {
     if (!sh) return;
+    if (m.k === "ts") return renderTs(m.x || []);
     if (!m.ok) return show(friendly(m.text), "err");
     const x = m.x;
-    const f = { save: () => L.saved.replace("{p}", (x && x.path) || ""), hl: () => L.hlok, watch: () => L.watchok, hist: () => (x ? L.histon : L.histoff), tabs: () => L.tabsok.replace("{n}", x) }[m.k];
-    if (f) { show(""); toast(f()); } else show(m.text, "ok");
+    if (m.k === "dl") return offerDoc(x);
+    if (m.k === "blk") return toast(L.trkBlk.replace("{h}", x), "err");
+    const f = { later: () => (x && x.on ? L.laterOk : L.laterOff), note: () => L.noteok, dlok: () => L.dlOk.replace("{p}", (x && x.path) || ""), trk: () => { prefs.trackers = !!x; return x ? L.trkOn : L.trkOff; }, slept: () => L.slept.replace("{n}", x), dedup: () => L.dedup.replace("{n}", x), save: () => L.saved.replace("{p}", (x && x.path) || ""), hl: () => L.hlok, watch: () => L.watchok, hist: () => (x ? L.histon : L.histoff), tabs: () => L.tabsok.replace("{n}", x) }[m.k];
+    if (f) { if (m.k !== "trk") show(""); toast(f()); } else show(m.text, "ok");
   });
   hidden("__cc_do_", (c, q, k) => act(c, q, k));
   hidden("__cc_tabs_", (s) => {
     if (!sh) return;
-    tabsEl.textContent = "";
+    tabsEl.textContent = ""; tabList = s.tabs; activeTab = s.active;
     for (const t of s.tabs) {
-      const e = el("div", null, "tab" + (t.id === s.active ? " on" : ""));
-      const lab = el("span", (t.title || t.url || "·").slice(0, 28)); lab.title = t.url;
+      const e = el("div", null, "tab" + (t.id === s.active ? " on" : "") + (t.sleep ? " zz" : ""));
+      if (t.color) e.style.boxShadow = "inset 0 -3px 0 " + COL[t.color];
+      e.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); tabMenu(t, ev); };
+      const lab = el("span", (t.sleep ? "💤 " : "") + (t.dup ? "⧉ " : "") + (t.title || t.url || "·").slice(0, 28)); lab.title = (t.dup ? L.dupTab + "\n" : "") + t.url;
       const x = el("b", "×");
       e.onclick = () => send({ cmd: "activate", id: t.id }); x.onclick = (ev) => { ev.stopPropagation(); send({ cmd: "close", id: t.id }); };
       e.append(lab, x); tabsEl.append(e);
@@ -119,7 +144,9 @@
       return c;
     };
     const go = (u) => send({ cmd: "go", q: u });
-    cols.append(col("📚 " + L.sRecent, d.recent || [], L.sEmpty, go), col("👁 " + L.sWatch, (d.watched || []).map((u) => ({ url: u })), L.sNoWatch, go));
+    const lc = col("📖 " + L.sLater, d.later || [], L.sNoLater, go);
+    lc.querySelectorAll(".item").forEach((r) => { const u = r.title; const x = el("b", "✓"); x.title = L.laterOff; x.onclick = (ev) => { ev.stopPropagation(); send({ cmd: "later_done", url: u }); r.remove(); }; r.append(x); });
+    cols.append(lc, col("📚 " + L.sRecent, d.recent || [], L.sEmpty, go), col("👁 " + L.sWatch, (d.watched || []).map((u) => ({ url: u })), L.sNoWatch, go));
     box.append(cols); startEl.append(box);
     startEl.style.display = "block";
     setTimeout(() => startIn.focus(), 50);
@@ -152,15 +179,195 @@
       helpEl.append(el("h3", title));
       for (const [a, b] of rows) { const r = el("div", null, "hr"); r.append(el("kbd", a), el("span", b)); helpEl.append(r); }
     };
-    table(L.sc, [["Ctrl+S", L.save], ["Ctrl+Shift+A", L.ask], ["Ctrl+H", L.hl], ["F1", L.helpT], ["Esc", L.esc], ["Ctrl+Shift+T", L.reopen], ["Ctrl+T · Ctrl+W · Ctrl+Tab", L.tabsNav], ["Ctrl+L", L.ab], ["Ctrl+🖱", L.cc]]);
-    table(L.btn, [["💾", L.t1], ["✨", L.t2], ["🖍", L.t3], ["👁", L.t4], ["🕘", L.hist], ["🗂", L.sg], ["🗂✨", L.aa], ["🗂📝", L.sall], ["🗂📊", L.xall], ["📚 / 🔗", L.inlib + " · " + L.related], ["?…", L.asklib]]);
+    table(L.sc, [["Ctrl+S", L.save], ["Ctrl+Shift+A", L.ask], ["Ctrl+H", L.hl], ["F1", L.helpT], ["Esc", L.esc], ["Ctrl+Shift+T", L.reopen], ["Ctrl+T · Ctrl+W · Ctrl+Tab", L.tabsNav], ["Ctrl+L", L.ab], ["Ctrl+F", L.find], ["Ctrl+Shift+R", L.rd], ["Ctrl+Shift+K", L.tsearch], ["Ctrl+🖱", L.cc]]);
+    table(L.btn, [["💾", L.t1], ["✨", L.t2], ["🖍", L.t3], ["👁", L.t4], ["🕘", L.hist], ["🗂", L.sg], ["🗂✨", L.aa], ["🗂📝", L.sall], ["🗂📊", L.xall], ["📚 / 🔗", L.inlib + " · " + L.related], ["?…", L.asklib], ["☰", L.more], ["📖", L.later], ["❝", L.cite], ["🛡", L.trackers]]);
     if (mock) helpEl.append(el("p", "⚠ " + L.mockn, "hint"));
     const again = el("button", "🎓 " + L.tourT); again.onclick = () => { helpEl.className = ""; tour(0); }; helpEl.append(again);
     helpEl.className = "on";
   };
+  // ---- rich panel helpers, documents, diff, citations
+  const showNode = (...nodes) => { panel.textContent = ""; panel.append(...nodes); panel.className = "ok"; panel.style.display = "block"; };
+  const btn = (txt, fn, cls) => { const b = el("button", txt, cls); b.onclick = fn; return b; };
+  const offerDoc = (x) => {
+    const f = file0(x.url);
+    const row = el("div", null, "acts");
+    row.append(btn("➕ " + L.dlAdd, () => { show(L.dlBusy); send({ cmd: "dl", url: x.url }); }, "go"));
+    if (x.open) row.append(btn(L.dlOpen, () => { show(""); send({ cmd: "open_raw", url: x.url }); }));
+    showNode(el("div", "📄 " + L.dlOffer.replace("{f}", f)), row);
+  };
+  const file0 = (u) => { try { return decodeURIComponent(new URL(u).pathname.split("/").pop() || u); } catch (e) { return u; } };
+  const showStatus = () => {
+    if (!info) return;
+    const box = el("div");
+    if (info.status) {
+      box.append(el("div", "📚 " + info.status.path + (info.status.snapshot ? "\n🖼 " + L.snap + ": " + info.status.snapshot : ""), "pre"));
+      if (info.status.changed) {
+        box.append(el("div", "⚠ " + L.changed, "warnl"), el("div", L.diffh + ":", "dh"));
+        const d = el("div", null, "diff");
+        for (const ln of info.status.diff || []) d.append(el("div", ln, ln[0] === "+" ? "add" : ln[0] === "-" ? "del" : ""));
+        if (!(info.status.diff || []).length) d.append(el("div", L.noDiff, "hint"));
+        const acts = el("div", null, "acts"); acts.append(btn("💾 " + L.refreshCopy, () => act("save"), "go")); box.append(d, acts);
+      }
+    }
+    if (info.related && info.related.length) {
+      box.append(el("div", "🔗 " + L.related + ":", "dh"));
+      for (const r of info.related) box.append(el("div", " • " + r.score + "%  " + r.path + "\n     " + r.snippet, "pre"));
+    }
+    showNode(box);
+  };
+  const meta = (...names) => { for (const n of names) { const m = document.querySelector('meta[name="' + n + '"],meta[property="' + n + '"],meta[itemprop="' + n + '"]'); if (m && m.content) return m.content.trim(); } return ""; };
+  const citeData = () => {
+    const url = cleanUrl(location.href), now = new Date();
+    let author = meta("author", "article:author", "dc.creator", "citation_author");
+    let pub = meta("article:published_time", "datePublished", "dc.date", "citation_publication_date", "date");
+    let d = pub ? new Date(pub) : null; if (d && isNaN(d)) d = null;
+    const site = meta("og:site_name", "application-name") || location.hostname.replace(/^www\./, "");
+    return { url, title: (meta("og:title") || document.title || url).trim(), author, site, d, now };
+  };
+  const fmtDate = (d, f) => d.toLocaleDateString(lang, f);
+  const citations = () => {
+    const c = citeData(), y = c.d ? c.d.getFullYear() : "n.d.";
+    const acc = c.now.toISOString().slice(0, 10), accLong = fmtDate(c.now, { year: "numeric", month: "long", day: "numeric" });
+    const who = c.author || c.site;
+    const apa = who + ". (" + (c.d ? y + ", " + fmtDate(c.d, { month: "long", day: "numeric" }) : "n.d.") + "). " + c.title + ". " + (c.author ? c.site + ". " : "") + c.url;
+    const mla = (c.author ? c.author + ". " : "") + "“" + c.title + ".” " + c.site + ", " + (c.d ? fmtDate(c.d, { day: "numeric", month: "short", year: "numeric" }) + ", " : "") + c.url + ". Accessed " + c.now.getDate() + " " + c.now.toLocaleDateString("en", { month: "short" }) + " " + c.now.getFullYear() + ".";
+    const key = ((c.author || c.site).split(/[ ,]/)[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "web") + (c.d ? y : "nd");
+    const esc = (t) => String(t).replace(/[{}]/g, "");
+    const bib = "@misc{" + key + ",\n  title = {" + esc(c.title) + "},\n" + (c.author ? "  author = {" + esc(c.author) + "},\n" : "") + "  howpublished = {" + esc(c.site) + "},\n" + (c.d ? "  year = {" + y + "},\n" : "") + "  url = {" + c.url + "},\n  note = {Accessed: " + acc + "}\n}";
+    return [["APA", apa], ["MLA", mla], ["BibTeX", bib]].map(([k, v]) => [k, v, accLong]);
+  };
+  const citeOpen = () => {
+    if (!web()) return toast(L.nohttp, "err");
+    const box = el("div"); box.append(el("div", "❝ " + L.cite, "dh"));
+    for (const [k, v] of citations()) { const r = el("div", null, "cite"); r.append(btn("📋 " + k, () => copy(v)), el("div", v, "pre")); box.append(r); }
+    showNode(box);
+  };
+  const copyClean = () => { if (!web()) return toast(L.nohttp, "err"); const u = cleanUrl(location.href); try { if (navigator.clipboard) return navigator.clipboard.writeText(u).then(() => toast(L.cleaned), () => copy(u)); } catch (e) { /* */ } copy(u); };
+
+  // ---- reader view and read aloud
+  const readerBlocks = () => {
+    const cands = [...document.querySelectorAll("article,main,[role=main],#content,.post,.entry-content,.article-body")].concat([document.body]);
+    let best = document.body, bs = -1;
+    for (const c of cands) { if (!c) continue; const sc = [...c.querySelectorAll("p")].reduce((a, p) => a + (p.innerText || "").length, 0); if (sc > bs) { bs = sc; best = c; } }
+    const out = [];
+    for (const n of best.querySelectorAll("h1,h2,h3,h4,p,li,blockquote,pre")) {
+      if (n.closest("nav,aside,footer,form,script,style,noscript,[aria-hidden=true]")) continue;
+      if (n.parentElement && n.parentElement.closest("blockquote,li") && n.tagName === "P") continue;
+      const t = (n.innerText || "").replace(/\s+/g, " ").trim();
+      if (t.length < (n.tagName[0] === "H" ? 2 : 25)) continue;
+      out.push([n.tagName.toLowerCase(), t]);
+    }
+    if (out.reduce((a, b) => a + b[1].length, 0) < 120) return (document.body.innerText || "").split(/\n{2,}/).map((t) => ["p", t.trim()]).filter((b) => b[1].length > 1).slice(0, 2000);
+    return out.slice(0, 3000);
+  };
+  const tts = () => (typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined" ? speechSynthesis : null);
+  const speakStop = () => { try { tts() && tts().cancel(); } catch (e) { /* */ } };
+  const speakToggle = () => {
+    const t = tts(); if (!t) return toast(L.rdNoTts, "err");
+    if (t.speaking) { t.cancel(); return; }
+    const parts = rdText.match(/[^.!?\n]+[.!?]*\s*/g) || [rdText];
+    for (const p of parts) { if (!p.trim()) continue; const u = new SpeechSynthesisUtterance(p.trim()); u.lang = document.documentElement.lang || navigator.language; t.speak(u); }
+  };
+  const readerOn = () => rdEl.style.display === "block";
+  const readerClose = () => { speakStop(); rdEl.style.display = "none"; rdEl.textContent = ""; };
+  const readerPaint = () => {
+    const th = rdTheme || (matchMedia("(prefers-color-scheme:light)").matches ? "light" : "dark");
+    rdEl.className = "rd-" + th; const c = rdEl.querySelector(".rdc"); if (c) c.style.fontSize = rdSize + "px";
+  };
+  const readerOpen = () => {
+    if (readerOn()) return readerClose();
+    if (!web()) return toast(L.nohttp, "err");
+    const blocks = readerBlocks();
+    if (!blocks.length) return toast(L.rdEmpty, "err");
+    rdText = blocks.map((b) => b[1]).join("\n");
+    rdEl.textContent = "";
+    const bar = el("div", null, "rdbar");
+    const th = () => { const o = ["dark", "light", "sepia"]; rdTheme = o[(o.indexOf(rdTheme || (matchMedia("(prefers-color-scheme:light)").matches ? "light" : "dark")) + 1) % 3]; send({ cmd: "pref", k: "rd_theme", v: rdTheme }); readerPaint(); };
+    const sz = (d) => { rdSize = Math.max(12, Math.min(40, rdSize + d)); send({ cmd: "pref", k: "rd_size", v: rdSize }); readerPaint(); };
+    const b1 = btn("A−", () => sz(-2)); b1.title = L.rdSmall; const b2 = btn("A+", () => sz(2)); b2.title = L.rdBig;
+    const b3 = btn("◐", th); b3.title = L.rdTheme;
+    bar.append(b1, b2, b3);
+    if (tts()) { const b4 = btn("🔊", speakToggle); b4.title = L.rdA + " / " + L.rdStop; bar.append(b4); }
+    const x = btn("✕", readerClose); x.title = "Esc"; bar.append(el("span", "", "sp"), x);
+    const art = el("div", null, "rdc");
+    art.append(el("h1", (document.title || location.hostname).slice(0, 200)));
+    for (const [tag, t] of blocks) art.append(el(tag === "li" ? "p" : /^h[1-4]$/.test(tag) ? "h2" : tag === "pre" ? "pre" : tag === "blockquote" ? "blockquote" : "p", (tag === "li" ? "• " : "") + t));
+    rdEl.append(bar, art); rdEl.style.display = "block"; readerPaint(); rdEl.scrollTop = 0;
+  };
+
+  // ---- find in page
+  const findCount = (q) => { if (!q) return 0; const t = (document.body ? document.body.innerText : "").toLowerCase(); const needle = q.toLowerCase(); let n = 0, i = 0; while ((i = t.indexOf(needle, i)) >= 0) { n++; i += needle.length; } return n; };
+  const findUpdate = () => { fcnt.textContent = !fin.value ? "" : fn ? (fi ? L.findN.replace("{i}", fi).replace("{n}", fn) : String(fn)) : L.findNone; };
+  const findGo = (back, fresh) => {
+    const q = fin.value; fn = findCount(q); if (fresh) fi = 0;
+    if (!q || !fn) { fi = 0; return findUpdate(); }
+    let ok = false; try { ok = window.find(q, false, !!back, true, false, false, false); } catch (e) { /* */ }
+    if (ok) fi = back ? (fi <= 1 ? fn : fi - 1) : (fi >= fn ? 1 : fi + 1);
+    findUpdate();
+  };
+  const findOpen = () => { if (!web()) return toast(L.nohttp, "err"); frow.classList.add("on"); const s0 = String(getSelection()).trim(); if (s0 && s0.length < 80) fin.value = s0; fin.focus(); fin.select(); if (fin.value) findGo(false, true); };
+  const findClose = () => { frow.classList.remove("on"); fi = 0; try { getSelection().removeAllRanges(); } catch (e) { /* */ } };
+
+  // ---- tab search (open tabs + library), tab colour menu, more-tools menu
+  const tsOpen = () => { closeMenus(); tsEl.style.display = "block"; const i = tsEl.querySelector("input"); i.value = ""; renderTs(null); i.focus(); };
+  const tsClose = () => { tsEl.style.display = "none"; };
+  let tsHits = null, tsTimer;
+  const renderTs = (hits) => {
+    if (hits) tsHits = hits; else tsHits = null;
+    if (tsEl.style.display !== "block") return;
+    const q = tsEl.querySelector("input").value.trim().toLowerCase(), list = tsEl.querySelector(".list"); list.textContent = "";
+    const tl = tabList.filter((t) => !q || (t.title + " " + t.url).toLowerCase().includes(q));
+    list.append(el("h3", L.tsTabs));
+    for (const t of tl) { const r = el("div", null, "item"); r.append(el("span", (t.color ? "● " : "") + (t.title || t.url || "·")), el("small", t.url)); if (t.color) r.firstChild.style.color = COL[t.color]; r.onclick = () => { tsClose(); send({ cmd: "activate", id: t.id }); }; list.append(r); }
+    if (!tl.length) list.append(el("p", L.tsNone, "hint"));
+    if (q) {
+      list.append(el("h3", L.tsLib));
+      for (const h of tsHits || []) { const r = el("div", null, "item"); r.append(el("span", h.path.split("/").pop()), el("small", h.snippet.slice(0, 140))); r.title = L.copyPath; r.onclick = () => copy(h.path); list.append(r); }
+      if (tsHits && !tsHits.length) list.append(el("p", L.tsNone, "hint"));
+    }
+  };
+  const closeMenus = () => { menuEl.style.display = "none"; ctxEl.style.display = "none"; };
+  const placeMenu = (m, x, y) => { m.style.display = "block"; m.style.left = Math.max(4, Math.min(innerWidth - 270, x)) + "px"; m.style.top = y + "px"; };
+  const tabMenu = (t, ev) => {
+    closeMenus(); ctxEl.textContent = "";
+    const dots = el("div", null, "dots2"); dots.append(el("small", L.tabColor));
+    for (let k = 0; k <= 6; k++) { const d = el("i", k ? "" : "∅"); d.style.background = COL[k] || "transparent"; d.title = k ? "" : L.noColor; d.onclick = () => { closeMenus(); send({ cmd: "tabcolor", id: t.id, color: k }); }; dots.append(d); }
+    ctxEl.append(dots);
+    const item = (txt, fn) => { const b = el("div", txt, "mi"); b.onclick = () => { closeMenus(); fn(); }; ctxEl.append(b); };
+    if (t.color) { item("💾 " + L.tabSave, () => act("save_tabs", null, t.color)); item("✨ " + L.tabAsk, () => { groupColor = t.color; qrow.classList.add("on"); qin.placeholder = L.qgrp; qin.focus(); }); }
+    if (t.id !== activeTab && !t.sleep) item("💤 " + L.discard, () => send({ cmd: "discard", id: t.id }));
+    placeMenu(ctxEl, ev.clientX, 40);
+  };
+  const moreMenu = () => {
+    if (menuEl.style.display === "block") return closeMenus();
+    closeMenus(); menuEl.textContent = "";
+    const item = (ico, txt, fn) => { const b = el("div", ico + " " + txt, "mi"); b.onclick = () => { closeMenus(); fn(); }; menuEl.append(b); };
+    item("📖", L.later, () => act("later")); item("📄", L.rd, readerOpen); item("🔎", L.find, findOpen); item("❝", L.cite, citeOpen); item("🔗", L.copyClean, copyClean);
+    item("🗂", L.tsearch, tsOpen); item("💤", L.discardAll, () => send({ cmd: "discard" })); item("⧉", L.dupes, () => send({ cmd: "dedupe" }));
+    item("🛡", L.trackers + " (" + (prefs.trackers ? L.on : L.off) + ")", () => send({ cmd: "trackers" }));
+    placeMenu(menuEl, innerWidth - 280, 78);
+  };
+  // ---- floating mini-menu on a text selection
+  const selHide = () => { if (selm) selm.style.display = "none"; };
+  const selShow = () => {
+    if (!sh || !web()) return;
+    const s0 = getSelection(), t = String(s0 || "").trim();
+    if (t.length < 2 || t.length > 4000 || !s0.rangeCount) return selHide();
+    const r = s0.getRangeAt(0).getBoundingClientRect();
+    if (!r.width && !r.height) return selHide();
+    selTxt = t; selm.style.display = "flex";
+    selm.style.left = Math.max(6, Math.min(innerWidth - 330, r.left)) + "px"; selm.style.top = Math.max(84, Math.min(innerHeight - 50, r.bottom + 8)) + "px";
+  };
+  const selDo = (k) => {
+    const t = selTxt; selHide(); if (!t) return;
+    if (k === "ask") { qrow.classList.add("on"); qin.value = L.selAskPre + "«" + t.slice(0, 240) + "» "; qin.focus(); }
+    else if (k === "note") send({ cmd: "note", url: cleanUrl(location.href), title: document.title, sel: t });
+    else if (k === "hl") act("highlight");
+    else { show(L.think); send({ cmd: "sel", mode: k, sel: t, lang, title: document.title }); }
+  };
   hidden("__cc_boot_", (b) => {
     if (!sh) return;
-    mock = !!b.mock;
+    mock = !!b.mock; prefs = b.prefs || {}; if (prefs.rd_size) rdSize = +prefs.rd_size || 19; rdTheme = prefs.rd_theme || "";
     if (b.start && !web()) renderStart(b.start);
     if (b.tour) tour(0);
   });
@@ -198,16 +405,44 @@
       .sbox{max-width:880px;margin:0 auto;padding:16px 20px}.sbox h1{font-size:28px;color:var(--acc);margin:6px 0 14px}.sbox input{width:100%;font-size:16px;padding:12px 16px;border-radius:99px}
       .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:20px}.col h2{font-size:15px;margin:0 0 8px}
       .item{display:flex;flex-direction:column;padding:8px 12px;margin-bottom:6px;border-radius:10px;background:var(--bg2);border:1px solid var(--bd);cursor:pointer;overflow:hidden}.item:hover{border-color:var(--acc)}
+      .acts{display:flex;gap:8px;margin-top:8px}.pre{white-space:pre-wrap;margin:4px 0}.warnl{color:#fdb93a;margin:6px 0}.dh{font-weight:700;color:var(--acc);margin:8px 0 4px}
+      .diff{max-height:30vh;overflow:auto;border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font:12px ui-monospace,monospace;background:var(--bg)}.diff div{white-space:pre-wrap;font:12px ui-monospace,monospace}.add{color:#3dd68c}.del{color:#e5484d}
+      .cite{margin:6px 0;display:flex;gap:8px;align-items:flex-start}.cite .pre{flex:1;font-size:12px}
+      .tab.zz{opacity:.55}.item b{position:absolute;right:10px;color:var(--acc)}.item{position:relative}
+      #selm,#menu,#ctx{display:none;position:fixed;z-index:6;background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:10px;box-shadow:0 8px 28px var(--sh)}
+      #selm{gap:4px;padding:5px}#menu,#ctx{width:262px;padding:4px}.mi{padding:7px 10px;border-radius:7px;cursor:pointer}.mi:hover{background:var(--bgb)}
+      .dots2{display:flex;gap:6px;align-items:center;padding:6px 8px;flex-wrap:wrap}.dots2 small{width:100%;color:var(--mut)}.dots2 i{width:20px;height:20px;border-radius:50%;border:1px solid var(--bd);cursor:pointer;text-align:center;font-style:normal;font-size:11px;line-height:18px}
+      #frow input{max-width:320px}#fcnt{color:var(--mut);min-width:80px}
+      #reader{display:none;position:fixed;inset:0;z-index:1;overflow:auto;padding-top:80px}
+      #reader.rd-dark{background:#14161b;color:#e6e9ef}#reader.rd-light{background:#fbfbf8;color:#1b1f2a}#reader.rd-sepia{background:#f4ecd8;color:#433422}
+      .rdbar{position:sticky;top:0;display:flex;gap:8px;padding:8px 14px;background:inherit;border-bottom:1px solid #8884}.rdbar .sp{flex:1}
+      .rdc{max-width:42em;margin:0 auto;padding:12px 22px 80px;line-height:1.65;font-family:Georgia,serif;font-size:19px}.rdc *{font-family:inherit;font-size:inherit}.rdc h1{font-size:1.7em;line-height:1.25}.rdc h2{font-size:1.3em;margin-top:1.4em}.rdc blockquote{border-left:3px solid #8886;margin:1em 0;padding-left:1em;font-style:italic}.rdc pre{white-space:pre-wrap;font-family:ui-monospace,monospace}
+      #tsrch{display:none;position:fixed;z-index:7;top:90px;left:50%;transform:translateX(-50%);width:min(620px,94vw);max-height:70vh;overflow:auto;background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 28px var(--sh);padding:12px}#tsrch input{width:100%;flex:none}
       .item span,.item small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item small{color:var(--mut)}
     </style>
     <div id="start"></div><div id="tabs"></div>
     <div class="bar"><button id="b">◀</button><button id="f">▶</button><button id="r">⟳</button>
-      <input id="u" spellcheck="false"><span id="badge"></span><button id="s" class="go"></button><button id="a"></button><button id="hl"></button><button id="wt"></button><button id="hi"></button><button id="sg"></button><button id="hp"></button></div>
+      <input id="u" spellcheck="false"><span id="badge"></span><button id="s" class="go"></button><button id="a"></button><button id="hl"></button><button id="wt"></button><button id="hi"></button><button id="sg"></button><button id="hp"></button><button id="mm">☰</button></div>
+    <div class="row" id="frow"><input id="fin" spellcheck="false"><button id="fp">▲</button><button id="fnx">▼</button><span id="fcnt"></span><button id="fx">✕</button></div>
     <div class="row" id="qrow"><input id="q"><button id="qq" class="go">➤</button><button id="qa"></button><button id="qs"></button><button id="qx"></button></div><div id="panel"></div>
-    <div id="toast"></div><div id="tour"></div><div id="help"></div>`;
+    <div id="toast"></div><div id="tour"></div><div id="help"></div>
+    <div id="selm"></div><div id="menu"></div><div id="ctx"></div><div id="reader"></div><div id="tsrch"><input id="tsin"><div class="list"></div></div>`;
     $ = (i) => sh.getElementById(i);
     panel = $("panel"); qrow = $("qrow"); qin = $("q"); urlIn = $("u"); tabsEl = $("tabs"); badge = $("badge");
     toastEl = $("toast"); helpEl = $("help"); tourEl = $("tour"); startEl = $("start");
+    hostEl = host; selm = $("selm"); menuEl = $("menu"); ctxEl = $("ctx"); rdEl = $("reader"); tsEl = $("tsrch"); frow = $("frow"); fin = $("fin"); fcnt = $("fcnt");
+    $("mm").title = L.more; $("mm").onclick = moreMenu;
+    fin.placeholder = L.findPh; $("fnx").onclick = () => findGo(false); $("fp").onclick = () => findGo(true); $("fx").onclick = findClose;
+    fin.oninput = () => findGo(false, true);
+    fin.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); findGo(e.shiftKey); } else if (e.key === "Escape") { e.stopPropagation(); findClose(); } };
+    const tin = $("tsin"); tin.placeholder = L.tsPh; tin.oninput = () => { renderTs(null); clearTimeout(tsTimer); tsTimer = setTimeout(() => tin.value.trim() && send({ cmd: "tsearch", q: tin.value.trim() }), 250); };
+    tin.onkeydown = (e) => { if (e.key === "Escape") { e.stopPropagation(); tsClose(); } };
+    selm.onmousedown = (e) => e.preventDefault();
+    for (const [k, ico, tip] of [["ask", "✨", L.selAsk], ["note", "📝", L.selNote], ["hl", "🖍", L.selHl], ["translate", "🌐", L.selTr], ["explain", "💡", L.selEx]]) { const b = el("button", ico + " " + tip); b.onclick = () => selDo(k); selm.append(b); }
+    addEventListener("mouseup", (e) => { if (e.target !== host) setTimeout(selShow, 12); }, true);
+    addEventListener("keyup", (e) => { if (e.shiftKey && /^Arrow|Home|End/.test(e.key)) setTimeout(selShow, 12); }, true);
+    addEventListener("mousedown", (e) => { if (e.target !== host) { selHide(); closeMenus(); } }, true);
+    addEventListener("scroll", selHide, true);
     toastEl.onclick = () => { toastEl.className = ""; };
     urlIn.value = web() ? location.href : ""; urlIn.placeholder = L.addr;
     $("s").textContent = "💾 " + L.save; $("s").title = L.t1 + " (Ctrl+S)"; $("a").textContent = "✨ " + L.ask; $("a").title = L.t2 + " (Ctrl+Shift+A)"; $("sg").textContent = "🗂"; $("sg").title = L.sg; $("qa").textContent = "🗂✨"; $("qa").title = L.aa; $("qs").textContent = "🗂📝"; $("qs").title = L.sall; $("qx").textContent = "🗂📊"; $("qx").title = L.xall;
@@ -219,28 +454,23 @@
     $("s").onclick = () => act("save");
     $("sg").onclick = () => act("save_tabs");
     const openAsk = () => { if (!web()) return toast(L.nohttp, "err"); qrow.classList.add("on"); qin.focus(); };
-    $("a").onclick = () => { if (qrow.classList.contains("on")) qrow.classList.remove("on"); else openAsk(); };
+    $("a").onclick = () => { if (qrow.classList.contains("on")) { qrow.classList.remove("on"); groupColor = 0; qin.placeholder = L.q; } else openAsk(); };
     const ask = () => qin.value.trim() && act("ask", qin.value.trim());
     const askAll = (k) => qin.value.trim() && act("ask_tabs", qin.value.trim(), k);
     $("qq").onclick = ask; $("qa").onclick = () => askAll("synthesize"); $("qs").onclick = () => askAll("summarize"); $("qx").onclick = () => askAll("extract");
     qin.onkeydown = (e) => { if (e.key === "Enter") (e.ctrlKey ? () => askAll("synthesize") : ask)(); };
-    badge.onclick = () => {
-      if (!info) return;
-      const lines = [];
-      if (info.status) {
-        lines.push("📚 " + info.status.path + (info.status.snapshot ? "\n🖼 " + L.snap + ": " + info.status.snapshot : ""));
-        if (info.status.changed) { lines.push("⚠ " + L.changed + " — 💾 " + L.refresh); lines.push("", L.diffh + ":", ...(info.status.diff || []).map((d) => "  " + d)); }
-      }
-      if (info.related && info.related.length) { lines.push("", "🔗 " + L.related + ":"); for (const r of info.related) lines.push(" • " + r.score + "%  " + r.path + "\n     " + r.snippet); }
-      show(lines.join("\n"), "ok");
-    };
+    badge.onclick = showStatus;
     document.documentElement.appendChild(host);
     document.documentElement.style.setProperty("margin-top", "78px", "important");
     addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
+        if (tsEl.style.display === "block") { e.preventDefault(); tsClose(); return; }
+        if (readerOn()) { e.preventDefault(); readerClose(); return; }
+        if (frow.classList.contains("on")) { e.preventDefault(); findClose(); return; }
+        if (menuEl.style.display === "block" || ctxEl.style.display === "block") { closeMenus(); return; }
         const open = ti >= 0 || helpOpen() || panel.style.display === "block" || toastEl.className || qrow.classList.contains("on");
         if (!open) return;
-        e.preventDefault(); closeTour(); helpEl.className = ""; toastEl.className = ""; show(""); qrow.classList.remove("on");
+        e.preventDefault(); closeTour(); helpEl.className = ""; toastEl.className = ""; show(""); qrow.classList.remove("on"); groupColor = 0; qin.placeholder = L.q;
         return;
       }
       if (e.key === "F1") { e.preventDefault(); help(); return; }
@@ -250,6 +480,9 @@
       else if (k === "w") { e.preventDefault(); send({ cmd: "close", id: T }); }
       else if (k === "Tab") { e.preventDefault(); send({ cmd: "cycle", back: e.shiftKey }); }
       else if (k === "l") { e.preventDefault(); urlIn.focus(); urlIn.select(); }
+      else if (k === "f" && !e.shiftKey) { e.preventDefault(); findOpen(); }
+      else if (k === "r" && e.shiftKey) { e.preventDefault(); readerOpen(); }
+      else if (k === "k" && e.shiftKey) { e.preventDefault(); tsOpen(); }
       else if (k === "s" && !e.shiftKey) { e.preventDefault(); act("save"); }
       else if (k === "a" && e.shiftKey) { e.preventDefault(); openAsk(); }
       else if (k === "h" && !e.shiftKey) { e.preventDefault(); act("highlight"); }

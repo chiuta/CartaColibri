@@ -12,7 +12,28 @@ use tiny_http::{Header, Method, Request, Response, Server};
 const UI: &str = include_str!("../assets/carta.html");
 const LOGO: &[u8] = include_bytes!("../assets/cartacolibri-logo.png");
 const MARK: &[u8] = include_bytes!("../assets/cartacolibri-mark.png");
-const MAX_BODY: u64 = 200 * 1024 * 1024;
+const MAX_UPLOAD: u64 = 100 * 1024 * 1024;
+const MAX_JSON: u64 = 2 * 1024 * 1024;
+const MAX_CONCURRENT: usize = 32;
+static ACTIVE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Reads the body, refusing (413) instead of silently truncating.
+fn read_body(r: &mut Request, limit: u64) -> Result<Vec<u8>, ()> {
+    if r.body_length().is_some_and(|n| n as u64 > limit) {
+        return Err(());
+    }
+    let mut body = Vec::new();
+    let _ = r.as_reader().take(limit + 1).read_to_end(&mut body);
+    if body.len() as u64 > limit {
+        Err(())
+    } else {
+        Ok(body)
+    }
+}
+
+fn same(a: &str, b: &str) -> bool {
+    a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |d, (x, y)| d | (x ^ y)) == 0
+}
 
 fn hdr(k: &str, v: &str) -> Header {
     Header::from_bytes(k.as_bytes(), v.as_bytes()).unwrap()
@@ -34,23 +55,48 @@ fn get<'a>(r: &'a Request, k: &str) -> Option<&'a str> {
         .map(|h| h.value.as_str())
 }
 
+fn write_private(p: &std::path::Path, t: &str) {
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(p)
+        {
+            let _ = f.write_all(t.as_bytes());
+        }
+        let _ = std::fs::set_permissions(p, std::fs::Permissions::from_mode(0o600));
+    }
+    #[cfg(not(unix))]
+    let _ = std::fs::write(p, t);
+}
+
 pub fn token(home: &std::path::Path) -> String {
     let p = home.join("clip.token");
     if let Ok(t) = std::fs::read_to_string(&p)
         && t.trim().len() >= 16
     {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o600));
+        }
         return t.trim().to_string();
     }
-    use sha1::{Digest, Sha1};
-    let mut seed = format!("{:?}{}", std::time::SystemTime::now(), std::process::id());
-    if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
-        let mut b = [0u8; 16];
-        if f.read_exact(&mut b).is_ok() {
-            seed.push_str(&hex::encode(b));
-        }
-    }
-    let t = hex::encode(Sha1::digest(seed.as_bytes()));
-    let _ = std::fs::write(&p, &t);
+    let mut b = [0u8; 20];
+    let t = if getrandom::fill(&mut b).is_ok() {
+        hex::encode(b)
+    } else {
+        use sha1::{Digest, Sha1};
+        hex::encode(Sha1::digest(
+            format!("{:?}{}", std::time::SystemTime::now(), std::process::id()).as_bytes(),
+        ))
+    };
+    write_private(&p, &t);
     t
 }
 
@@ -59,7 +105,14 @@ fn respond(r: Request, code: u16, ctype: &str, body: Vec<u8>, extra: &[Header]) 
         .with_status_code(code)
         .with_header(hdr("Content-Type", ctype))
         .with_header(hdr("Cache-Control", "no-store"));
-    resp = resp.with_header(hdr("X-Content-Type-Options", "nosniff"));
+    resp = resp
+        .with_header(hdr("X-Content-Type-Options", "nosniff"))
+        .with_header(hdr("X-Frame-Options", "DENY"))
+        .with_header(hdr("Referrer-Policy", "no-referrer"))
+        .with_header(hdr(
+            "Content-Security-Policy",
+            "frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'",
+        ));
     for h in extra {
         resp = resp.with_header(h.clone());
     }
@@ -88,7 +141,7 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
     }
     if let Some(o) = get(&r, "Origin")
         && o != format!("http://{host}")
-        && !r.url().starts_with("/carta/clip")
+        && r.url().split('?').next() != Some("/carta/clip")
     {
         return json(
             r,
@@ -102,7 +155,7 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
     let method = r.method().clone();
     let home_path = library::state_dir(home.as_deref()).ok();
 
-    if path.starts_with("/carta/clip") {
+    if path == "/carta/clip" {
         let cors = [
             hdr("Access-Control-Allow-Origin", "*"),
             hdr("Access-Control-Allow-Headers", "Content-Type"),
@@ -114,7 +167,7 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
         let q = parse_query(qs);
         let ok = home_path
             .as_ref()
-            .is_some_and(|h| q.get("token").is_some_and(|t| *t == token(h)));
+            .is_some_and(|h| q.get("token").is_some_and(|t| same(t, &token(h))));
         if !ok || method != Method::Post {
             return json(
                 r,
@@ -123,8 +176,14 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
                 &cors,
             );
         }
-        let mut body = Vec::new();
-        let _ = r.as_reader().take(MAX_BODY).read_to_end(&mut body);
+        let Ok(body) = read_body(&mut r, MAX_JSON) else {
+            return json(
+                r,
+                413,
+                serde_json::json!({"error": "request too large"}),
+                &cors,
+            );
+        };
         let req = api::Req {
             method: "POST",
             route: "grab",
@@ -168,9 +227,20 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
             &[],
         );
     }
-    let mut body = Vec::new();
-    let _ = r.as_reader().take(MAX_BODY).read_to_end(&mut body);
     let route = path.trim_start_matches("/carta/").trim_end_matches('/');
+    let limit = if route == "upload" {
+        MAX_UPLOAD
+    } else {
+        MAX_JSON
+    };
+    let Ok(body) = read_body(&mut r, limit) else {
+        return json(
+            r,
+            413,
+            serde_json::json!({"error": "request too large"}),
+            &[],
+        );
+    };
     let filename =
         get(&r, "X-File-Name").map(|f| percent_decode_str(f).decode_utf8_lossy().into_owned());
     let req = api::Req {
@@ -208,7 +278,20 @@ pub fn serve(addr: &str, home: Option<String>, backend: String) -> Result<(), St
     }
     for req in server.incoming_requests() {
         let (h, b) = (home.clone(), backend.clone());
-        std::thread::spawn(move || handle(req, h, b));
+        if ACTIVE.fetch_add(1, std::sync::atomic::Ordering::SeqCst) >= MAX_CONCURRENT {
+            ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            json(
+                req,
+                503,
+                serde_json::json!({"error": "busy, try again"}),
+                &[],
+            );
+            continue;
+        }
+        std::thread::spawn(move || {
+            handle(req, h, b);
+            ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        });
     }
     Ok(())
 }

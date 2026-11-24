@@ -24,6 +24,19 @@ pub const DEFAULT_EXT: &[&str] = &[
     ".jsonl",
     ".yaml",
     ".yml",
+    ".eml",
+    ".mbox",
+    ".ics",
+    ".vcf",
+    ".tsv",
+    ".srt",
+    ".vtt",
+    ".ipynb",
+    ".tex",
+    ".org",
+    ".adoc",
+    ".ndjson",
+    ".zip",
     ".html",
     ".htm",
     ".rtf",
@@ -45,7 +58,6 @@ const SKIP_DIRS: &[&str] = &[
     "target",
 ];
 const HEAVY_EXT: &[&str] = &[
-    ".zip",
     ".7z",
     ".rar",
     ".tar",
@@ -206,6 +218,23 @@ fn is_glob(s: &str) -> bool {
     s.contains(['*', '?', '['])
 }
 
+fn init_db(home: &Path) -> Res<Connection> {
+    let db = Connection::open(home.join("index.sqlite")).map_err(e)?;
+    db.busy_timeout(Duration::from_secs(30)).map_err(e)?;
+    db.execute_batch(
+        "CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY);
+         CREATE TABLE IF NOT EXISTS docs(id INTEGER PRIMARY KEY, root TEXT, path TEXT UNIQUE, ext TEXT,
+             size INTEGER, mtime_ns INTEGER, sha1 TEXT, chars INTEGER, pages INTEGER, indexed_at REAL);
+         CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(text, doc_id UNINDEXED, loc UNINDEXED, seq UNINDEXED,
+             tokenize='unicode61 remove_diacritics 2');
+         CREATE TABLE IF NOT EXISTS problems(path TEXT PRIMARY KEY, reason TEXT, at REAL);
+         CREATE INDEX IF NOT EXISTS docs_sha1 ON docs(sha1);
+         CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks,'row');",
+    )
+    .map_err(e)?;
+    Ok(db)
+}
+
 pub struct Library {
     pub home: PathBuf,
     pub exts: BTreeSet<String>,
@@ -222,25 +251,40 @@ impl Library {
         if ocr {
             exts.extend(IMG_EXT.iter().map(|s| s.to_string()));
         }
-        let db = Connection::open(home.join("index.sqlite")).map_err(e)?;
-        db.busy_timeout(Duration::from_secs(30)).map_err(e)?;
-        db.execute_batch(
-            "CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY);
-             CREATE TABLE IF NOT EXISTS docs(id INTEGER PRIMARY KEY, root TEXT, path TEXT UNIQUE, ext TEXT,
-                 size INTEGER, mtime_ns INTEGER, sha1 TEXT, chars INTEGER, pages INTEGER, indexed_at REAL);
-             CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(text, doc_id UNINDEXED, loc UNINDEXED, seq UNINDEXED,
-                 tokenize='unicode61 remove_diacritics 2');
-             CREATE TABLE IF NOT EXISTS problems(path TEXT PRIMARY KEY, reason TEXT, at REAL);
-             CREATE INDEX IF NOT EXISTS docs_sha1 ON docs(sha1);
-             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks,'row');",
-        )
-        .map_err(e)?;
+        let db = init_db(&home)?;
         Ok(Library {
             home,
             exts,
             ocr,
             db,
         })
+    }
+
+    /// The index connection, for sibling modules (organize).
+    pub(crate) fn conn(&self) -> &Connection {
+        &self.db
+    }
+
+    /// Throw the index away and start an empty one (same folders registered; the caller re-runs
+    /// `update`). Used to recover from a corrupt index.
+    pub fn reset_index(&mut self) -> Res<()> {
+        let roots = self.roots();
+        self.db = Connection::open_in_memory().map_err(e)?;
+        for n in [
+            "index.sqlite",
+            "index.sqlite-wal",
+            "index.sqlite-shm",
+            "index.sqlite-journal",
+        ] {
+            let _ = std::fs::remove_file(self.home.join(n));
+        }
+        self.db = init_db(&self.home)?;
+        for r in roots {
+            self.db
+                .execute("INSERT OR IGNORE INTO roots VALUES(?)", [&r])
+                .map_err(e)?;
+        }
+        Ok(())
     }
 
     // ---- folders
@@ -456,6 +500,22 @@ impl Library {
             );
             let outputs = self.home.join("outputs"); // RAG-CARTA results are never re-indexed
             files.retain(|p| !p.starts_with(&outputs));
+            // a link planted inside the folder must not pull in files from elsewhere (e.g. ~/.ssh)
+            if let Ok(croot) = std::fs::canonicalize(&root) {
+                files.retain(|p| match std::fs::symlink_metadata(p) {
+                    Ok(m) if m.file_type().is_symlink() => match std::fs::canonicalize(p) {
+                        Ok(c) if c.starts_with(&croot) => true,
+                        _ => {
+                            walk_probs.push((
+                                p.to_string_lossy().into_owned(),
+                                "This link points outside the folder, so it was skipped.".into(),
+                            ));
+                            false
+                        }
+                    },
+                    _ => true,
+                });
+            }
             let mut seen: HashSet<String> = HashSet::new();
             let tx = self.db.unchecked_transaction().map_err(e)?;
             let prefix = format!("{}{}", root.trim_end_matches('/'), "/");

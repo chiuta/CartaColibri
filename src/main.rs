@@ -1,5 +1,6 @@
 //! `cartacolibri` — command line + local UI server.
 
+mod cli_more;
 use cartacolibri::carta::{self, Backend, Options};
 use cartacolibri::doctor::{self, Level};
 use cartacolibri::library::{Filter, Library};
@@ -145,6 +146,8 @@ enum Cmd {
     },
     #[command(subcommand)]
     Group(GroupCmd),
+    #[command(flatten)]
+    More(cli_more::More),
     Summarize(TaskArgs),
     Extract(TaskArgs),
     Synthesize(TaskArgs),
@@ -446,6 +449,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             return Ok(());
         }
         Cmd::Doctor { port, url } => return doctor_cmd(lang, home, url, *port),
+        Cmd::More(cli_more::More::Restore { zip }) => return cli_more::restore(home, zip),
         Cmd::Start {
             folder,
             port,
@@ -489,6 +493,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
     let mut lib = Library::open(home, c.ocr)?;
     match cmd {
         Cmd::Start { .. } | Cmd::Doctor { .. } | Cmd::Completions { .. } => unreachable!(),
+        Cmd::More(m) => cli_more::run(&mut lib, m)?,
         Cmd::History { action } => match action.as_str() {
             "on" => {
                 grab::set_history(&lib.home, true);

@@ -40,20 +40,121 @@ fn slug(s: &str) -> String {
     t.chars().take(60).collect()
 }
 
-/// Fetch a page and return (title, text).
+static ALLOW_LOCAL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Allow grabbing loopback / private addresses (off by default; also `CARTACOLIBRI_GRAB_LOCAL=1`).
+pub fn allow_local(on: bool) {
+    ALLOW_LOCAL.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn host_of(url: &str) -> Option<(String, u16)> {
+    let rest = url.split_once("://")?.1;
+    let auth = rest.split(['/', '?', '#']).next()?;
+    let auth = auth.rsplit_once('@').map(|x| x.1).unwrap_or(auth);
+    let default = if url.starts_with("https") { 443 } else { 80 };
+    if let Some(v6) = auth.strip_prefix('[') {
+        let (h, tail) = v6.split_once(']')?;
+        let port = tail
+            .strip_prefix(':')
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(default);
+        return Some((h.to_string(), port));
+    }
+    match auth.rsplit_once(':') {
+        Some((h, p)) if p.chars().all(|c| c.is_ascii_digit()) && !p.is_empty() => {
+            Some((h.to_string(), p.parse().ok()?))
+        }
+        _ => Some((auth.to_string(), default)),
+    }
+}
+
+/// True when the address behind `url` is this machine or a private network.
+fn blocked(url: &str) -> bool {
+    use std::net::{IpAddr, ToSocketAddrs};
+    if ALLOW_LOCAL.load(std::sync::atomic::Ordering::Relaxed)
+        || std::env::var("CARTACOLIBRI_GRAB_LOCAL").is_ok_and(|v| v == "1")
+    {
+        return false;
+    }
+    let Some((host, port)) = host_of(url) else {
+        return true;
+    };
+    let bad = |ip: IpAddr| match ip {
+        IpAddr::V4(v) => {
+            v.is_loopback()
+                || v.is_private()
+                || v.is_link_local()
+                || v.is_unspecified()
+                || v.is_broadcast()
+        }
+        IpAddr::V6(v) => {
+            v.is_loopback()
+                || v.is_unspecified()
+                || (v.segments()[0] & 0xfe00) == 0xfc00
+                || (v.segments()[0] & 0xffc0) == 0xfe80
+                || v.to_ipv4_mapped().is_some_and(bad4)
+        }
+    };
+    fn bad4(v: std::net::Ipv4Addr) -> bool {
+        v.is_loopback() || v.is_private() || v.is_link_local() || v.is_unspecified()
+    }
+    (host.as_str(), port)
+        .to_socket_addrs()
+        .map(|mut a| a.any(|s| bad(s.ip())))
+        .unwrap_or(true)
+}
+
+fn absolute(base: &str, loc: &str) -> Option<String> {
+    if loc.starts_with("http://") || loc.starts_with("https://") {
+        return Some(loc.to_string());
+    }
+    let (scheme, rest) = base.split_once("://")?;
+    let auth = rest.split(['/', '?', '#']).next()?;
+    loc.starts_with('/')
+        .then(|| format!("{scheme}://{auth}{loc}"))
+}
+
+/// Fetch a page and return (title, text). Loopback and private addresses are refused (also after redirects).
 pub fn fetch(url: &str) -> Result<(String, String), String> {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return Err("only http:// and https:// addresses can be grabbed".into());
     }
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(60)))
+        .max_redirects(0)
+        .http_status_as_error(false)
         .user_agent("CartaColibri-web-grab/0.2 (+local; https://github.com/chiuta/CartaColibri)")
         .build()
         .into();
-    let mut r = agent
-        .get(url)
-        .call()
-        .map_err(|e| format!("cannot fetch {url}: {e}"))?;
+    let mut cur = url.to_string();
+    let mut r = None;
+    for _ in 0..6 {
+        if blocked(&cur) {
+            return Err(format!(
+                "{cur} is on this machine or a private network; web-grab only fetches public pages (set CARTACOLIBRI_GRAB_LOCAL=1 to allow it)"
+            ));
+        }
+        let resp = agent
+            .get(&cur)
+            .call()
+            .map_err(|e| format!("cannot fetch {cur}: {e}"))?;
+        let code = resp.status().as_u16();
+        if (300..400).contains(&code) {
+            let loc = resp
+                .headers()
+                .get("location")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+            cur = absolute(&cur, loc).ok_or_else(|| format!("bad redirect from {cur}"))?;
+            continue;
+        }
+        if code >= 400 {
+            return Err(format!("cannot fetch {cur}: HTTP {code}"));
+        }
+        r = Some(resp);
+        break;
+    }
+    let mut r = r.ok_or_else(|| format!("too many redirects from {url}"))?;
     let ctype = r
         .headers()
         .get("content-type")

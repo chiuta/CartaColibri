@@ -411,7 +411,7 @@ let LANG=(()=>{try{const s=localStorage.getItem('carta.lang');if(s&&L[s])return 
 const T=k=>(D[k]&&(D[k][LANG]||D[k].en))||k;
 const F=(k,o)=>T(k).replace(/\{(\w+)\}/g,(m,x)=>o&&o[x]!==undefined?o[x]:m);
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pref=(k,v)=>{try{if(v===undefined)return localStorage.getItem('carta.'+k);localStorage.setItem('carta.'+k,v)}catch(e){}return null};
 function applyLang(){document.documentElement.lang=LANG;
   $$('[data-i]').forEach(e=>{const t=T(e.dataset.i);if(e.dataset.tip!==undefined){e.dataset.tip=t;e.setAttribute('aria-label',t)}else e.textContent=t});

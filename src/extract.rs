@@ -539,6 +539,7 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
     match ext {
         ".pdf" => return pdf_pages(path, ocr),
         ".xlsx" => return xlsx_text(&mut open_zip(path)?),
+        ".zip" => return zip_parts(&mut open_zip(path)?),
         ".epub" => {
             let mut z = open_zip(path)?;
             let mut names: Vec<String> = z
@@ -613,6 +614,9 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
             "This file looks like a binary file renamed with a text extension, not text.".into(),
         );
     }
+    if let Some(r) = text_parts(ext, &raw) {
+        return r;
+    }
     let mut text = decode(&raw);
     match ext {
         ".html" | ".htm" => text = html_to_text(&text),
@@ -670,4 +674,771 @@ pub fn chunk(text: &str, size: usize) -> Vec<String> {
         out.push(cur);
     }
     out
+}
+
+// ------------------------------------------------------------------ wave 2: more formats
+
+/// Hard ceiling on the text any one of the wave-2 readers produces (characters).
+const MAX_OUT: usize = 32 * 1024 * 1024;
+/// Zip listing guards: members listed, nesting depth, total unpacked bytes read.
+const ZIP_MAX_MEMBERS: usize = 5000;
+const ZIP_MAX_DEPTH: usize = 3;
+const ZIP_MAX_TOTAL: u64 = 256 * 1024 * 1024;
+const ZIP_MAX_MEMBER: u64 = 20 * 1024 * 1024;
+
+/// Extensions the zip reader opens as plain text members.
+const ZIP_TEXT_EXT: &[&str] = &[
+    ".txt",
+    ".md",
+    ".markdown",
+    ".log",
+    ".yaml",
+    ".yml",
+    ".org",
+    ".rst",
+    ".adoc",
+    ".html",
+    ".htm",
+    ".csv",
+    ".tsv",
+    ".json",
+    ".jsonl",
+    ".ipynb",
+    ".eml",
+    ".mbox",
+    ".ics",
+    ".vcf",
+    ".srt",
+    ".vtt",
+    ".tex",
+];
+
+fn cap(mut s: String) -> String {
+    if s.len() > MAX_OUT {
+        let mut c = MAX_OUT;
+        while !s.is_char_boundary(c) {
+            c -= 1;
+        }
+        s.truncate(c);
+    }
+    s
+}
+
+/// Readers for the wave-2 text formats. `None` = not one of them (caller falls back to plain text).
+pub fn text_parts(ext: &str, raw: &[u8]) -> Option<Res<Parts>> {
+    let one = |t: String| Some(Ok(vec![(String::new(), cap(t))]));
+    match ext {
+        ".eml" => one(eml_text(&decode(raw))),
+        ".mbox" => Some(Ok(mbox_parts(&decode(raw)))),
+        ".ics" => one(ics_text(&decode(raw))),
+        ".vcf" => one(vcf_text(&decode(raw))),
+        ".csv" => one(table_text(&decode(raw), b',')),
+        ".tsv" => one(table_text(&decode(raw), b'\t')),
+        ".json" => {
+            let t = decode(raw);
+            match serde_json::from_str::<serde_json::Value>(&t) {
+                Ok(v) => {
+                    let mut out = String::new();
+                    flatten_json(&v, "", 0, &mut out);
+                    one(out)
+                }
+                Err(_) => one(t),
+            }
+        }
+        ".jsonl" | ".ndjson" => Some(Ok(jsonl_parts(&decode(raw)))),
+        ".srt" | ".vtt" => one(subtitle_text(&decode(raw))),
+        ".ipynb" => {
+            let t = decode(raw);
+            match notebook_text(&t) {
+                Some(x) => one(x),
+                None => one(t),
+            }
+        }
+        ".tex" => one(tex_text(&decode(raw))),
+        _ => None,
+    }
+}
+
+// ---- base64 / quoted-printable / RFC 2047
+
+pub(crate) fn b64_decode(s: &str) -> Vec<u8> {
+    let mut out = Vec::with_capacity(s.len() / 4 * 3);
+    let (mut acc, mut bits) = (0u32, 0u32);
+    for b in s.bytes() {
+        let v = match b {
+            b'A'..=b'Z' => b - b'A',
+            b'a'..=b'z' => b - b'a' + 26,
+            b'0'..=b'9' => b - b'0' + 52,
+            b'+' | b'-' => 62,
+            b'/' | b'_' => 63,
+            _ => continue,
+        };
+        acc = (acc << 6) | v as u32;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    out
+}
+
+fn hexv(b: u8) -> Option<u8> {
+    (b as char).to_digit(16).map(|d| d as u8)
+}
+
+fn qp_decode(s: &str, header: bool) -> Vec<u8> {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'=' if i + 1 < b.len() && (b[i + 1] == b'\n' || b[i + 1] == b'\r') => {
+                i += 2;
+                if b[i - 1] == b'\r' && i < b.len() && b[i] == b'\n' {
+                    i += 1;
+                }
+                continue;
+            }
+            b'=' if i + 2 < b.len() && hexv(b[i + 1]).is_some() && hexv(b[i + 2]).is_some() => {
+                out.push(hexv(b[i + 1]).unwrap() * 16 + hexv(b[i + 2]).unwrap());
+                i += 3;
+                continue;
+            }
+            b'_' if header => out.push(b' '),
+            c => out.push(c),
+        }
+        i += 1;
+    }
+    out
+}
+
+fn charset_decode(bytes: &[u8], charset: &str) -> String {
+    match encoding_rs::Encoding::for_label(charset.trim().as_bytes()) {
+        Some(enc) => enc.decode(bytes).0.into_owned(),
+        None => decode(bytes),
+    }
+}
+
+fn mime_words(s: &str) -> String {
+    static R: OnceLock<Regex> = OnceLock::new();
+    re(&R, r"=\?([^?\s]+)\?([bBqQ])\?([^?\s]*)\?=")
+        .replace_all(s, |c: &regex::Captures| {
+            let bytes = if c[2].eq_ignore_ascii_case("b") {
+                b64_decode(&c[3])
+            } else {
+                qp_decode(&c[3], true)
+            };
+            charset_decode(&bytes, &c[1])
+        })
+        .into_owned()
+}
+
+// ---- e-mail
+
+type Headers = Vec<(String, String)>;
+
+fn split_message(s: &str) -> (Headers, String) {
+    let s = s.replace("\r\n", "\n");
+    let (head, body) = match s.find("\n\n") {
+        Some(i) => (&s[..i], &s[i + 2..]),
+        None => (&s[..], ""),
+    };
+    let mut hs: Headers = Vec::new();
+    for line in head.lines() {
+        if line.starts_with([' ', '\t']) {
+            if let Some(last) = hs.last_mut() {
+                last.1.push(' ');
+                last.1.push_str(line.trim());
+            }
+        } else if let Some((k, v)) = line.split_once(':') {
+            hs.push((k.trim().to_lowercase(), v.trim().to_string()));
+        }
+    }
+    (hs, body.to_string())
+}
+
+fn hget<'a>(h: &'a Headers, k: &str) -> &'a str {
+    h.iter()
+        .find(|(n, _)| n == k)
+        .map(|(_, v)| v.as_str())
+        .unwrap_or("")
+}
+
+fn header_param(v: &str, name: &str) -> Option<String> {
+    let low = v.to_lowercase();
+    let key = format!("{name}=");
+    let mut from = 0;
+    while let Some(p) = low[from..].find(&key) {
+        let at = from + p;
+        let ok = at == 0 || matches!(low.as_bytes()[at - 1], b';' | b' ' | b'\t' | b'*');
+        from = at + key.len();
+        if !ok {
+            continue;
+        }
+        let rest = v.get(from..)?.trim_start();
+        return Some(if let Some(r) = rest.strip_prefix('"') {
+            r.split('"').next().unwrap_or("").to_string()
+        } else {
+            rest.split(';').next().unwrap_or("").trim().to_string()
+        });
+    }
+    None
+}
+
+#[derive(Default)]
+struct Mime {
+    plain: String,
+    html: String,
+    attachments: Vec<String>,
+}
+
+fn mime_walk(h: &Headers, body: &str, depth: usize, m: &mut Mime) {
+    let ctype = hget(h, "content-type");
+    let lc = ctype.to_lowercase();
+    if lc.starts_with("multipart/")
+        && depth < 8
+        && let Some(b) = header_param(ctype, "boundary").filter(|b| !b.is_empty())
+    {
+        {
+            let delim = format!("--{b}");
+            let mut parts = body.split(&delim);
+            parts.next(); // preamble
+            for p in parts.take(2000) {
+                if p.starts_with("--") {
+                    break;
+                }
+                let p = p.strip_prefix('\n').unwrap_or(p);
+                let (ph, pb) = split_message(p);
+                mime_walk(&ph, &pb, depth + 1, m);
+            }
+            return;
+        }
+    }
+    let disp = hget(h, "content-disposition");
+    let fname = header_param(disp, "filename").or_else(|| header_param(ctype, "name"));
+    let is_text = lc.is_empty() || lc.starts_with("text/plain") || lc.starts_with("text/html");
+    if disp.to_lowercase().starts_with("attachment") || (fname.is_some() && !is_text) {
+        m.attachments.push(mime_words(
+            &fname.unwrap_or_else(|| "(unnamed attachment)".into()),
+        ));
+        return;
+    }
+    if !is_text {
+        return;
+    }
+    let bytes = match hget(h, "content-transfer-encoding").to_lowercase().as_str() {
+        "base64" => b64_decode(body),
+        "quoted-printable" => qp_decode(body, false),
+        _ => body.as_bytes().to_vec(),
+    };
+    let text = charset_decode(&bytes, &header_param(ctype, "charset").unwrap_or_default());
+    if lc.starts_with("text/html") {
+        m.html.push_str(&html_to_text(&text));
+        m.html.push('\n');
+    } else {
+        m.plain.push_str(&text);
+        m.plain.push('\n');
+    }
+}
+
+fn eml_text(raw: &str) -> String {
+    let (h, body) = split_message(raw);
+    let mut m = Mime::default();
+    mime_walk(&h, &body, 0, &mut m);
+    let mut out = String::new();
+    for (label, key) in [
+        ("From", "from"),
+        ("To", "to"),
+        ("Cc", "cc"),
+        ("Date", "date"),
+        ("Subject", "subject"),
+    ] {
+        let v = hget(&h, key);
+        if !v.is_empty() {
+            out.push_str(&format!("{label}: {}\n", mime_words(v)));
+        }
+    }
+    out.push('\n');
+    out.push_str(if m.plain.trim().is_empty() {
+        m.html.trim()
+    } else {
+        m.plain.trim()
+    });
+    if !m.attachments.is_empty() {
+        out.push_str("\n\nAttachments:\n");
+        for a in &m.attachments {
+            out.push_str(&format!("- {a}\n"));
+        }
+    }
+    out
+}
+
+fn mbox_parts(raw: &str) -> Parts {
+    let mut msgs: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    let mut prev_blank = true;
+    for line in raw.lines() {
+        if prev_blank && line.starts_with("From ") {
+            if !cur.trim().is_empty() {
+                msgs.push(std::mem::take(&mut cur));
+            }
+            cur.clear();
+            if msgs.len() >= 100_000 {
+                break;
+            }
+        } else {
+            cur.push_str(line);
+            cur.push('\n');
+        }
+        prev_blank = line.trim().is_empty();
+    }
+    if !cur.trim().is_empty() {
+        msgs.push(cur);
+    }
+    msgs.iter()
+        .enumerate()
+        .map(|(i, m)| (format!("message {}", i + 1), eml_text(m)))
+        .collect()
+}
+
+// ---- calendar / contacts
+
+fn unfold(s: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for line in s.replace("\r\n", "\n").split('\n') {
+        if line.starts_with([' ', '\t'])
+            && let Some(l) = out.last_mut()
+        {
+            l.push_str(&line[1..]);
+            continue;
+        }
+        out.push(line.to_string());
+    }
+    out
+}
+
+fn prop(line: &str) -> Option<(String, String)> {
+    let (k, v) = line.split_once(':')?;
+    let name = k.split(';').next()?.trim().to_uppercase();
+    let v = v
+        .replace("\\n", "\n")
+        .replace("\\N", "\n")
+        .replace("\\,", ",")
+        .replace("\\;", ";")
+        .replace("\\\\", "\\");
+    Some((name, v))
+}
+
+fn ics_date(v: &str) -> String {
+    let b: Vec<char> = v.chars().collect();
+    if b.len() >= 8 && b[..8].iter().all(|c| c.is_ascii_digit()) {
+        let d: String = b[..8].iter().collect();
+        let mut o = format!("{}-{}-{}", &d[..4], &d[4..6], &d[6..8]);
+        if b.len() >= 13 && b[8] == 'T' {
+            let t: String = b[9..13].iter().collect();
+            o.push_str(&format!(" {}:{}", &t[..2], &t[2..]));
+        }
+        o
+    } else {
+        v.to_string()
+    }
+}
+
+fn ics_text(raw: &str) -> String {
+    let mut out = String::new();
+    let mut block: Option<Vec<(String, String)>> = None;
+    for l in unfold(raw) {
+        let up = l.trim().to_uppercase();
+        if up == "BEGIN:VEVENT" || up == "BEGIN:VTODO" || up == "BEGIN:VJOURNAL" {
+            block = Some(Vec::new());
+        } else if up == "END:VEVENT" || up == "END:VTODO" || up == "END:VJOURNAL" {
+            if let Some(b) = block.take() {
+                let g = |k: &str| {
+                    b.iter()
+                        .find(|(n, _)| n == k)
+                        .map(|(_, v)| v.trim().to_string())
+                        .unwrap_or_default()
+                };
+                out.push_str(&format!("Event: {}\n", g("SUMMARY")));
+                let (s, e) = (ics_date(&g("DTSTART")), ics_date(&g("DTEND")));
+                if !s.is_empty() {
+                    out.push_str(&format!(
+                        "When: {s}{}\n",
+                        if e.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" - {e}")
+                        }
+                    ));
+                }
+                for (lbl, k) in [
+                    ("Where", "LOCATION"),
+                    ("Organizer", "ORGANIZER"),
+                    ("Description", "DESCRIPTION"),
+                ] {
+                    if !g(k).is_empty() {
+                        out.push_str(&format!("{lbl}: {}\n", g(k)));
+                    }
+                }
+                out.push('\n');
+            }
+        } else if let (Some(b), Some(p)) = (block.as_mut(), prop(&l)) {
+            if b.len() < 200 {
+                b.push(p);
+            }
+        } else if let Some((n, v)) = prop(&l)
+            && n == "X-WR-CALNAME"
+        {
+            out.push_str(&format!("Calendar: {v}\n\n"));
+        }
+    }
+    out
+}
+
+fn vcf_text(raw: &str) -> String {
+    let mut out = String::new();
+    let mut card: Option<Vec<(String, String)>> = None;
+    for l in unfold(raw) {
+        let up = l.trim().to_uppercase();
+        if up == "BEGIN:VCARD" {
+            card = Some(Vec::new());
+        } else if up == "END:VCARD" {
+            if let Some(c) = card.take() {
+                for (n, v) in &c {
+                    let label = match n.as_str() {
+                        "FN" => "Name",
+                        "ORG" => "Organization",
+                        "TITLE" => "Title",
+                        "TEL" => "Phone",
+                        "EMAIL" => "Email",
+                        "ADR" => "Address",
+                        "URL" => "Web",
+                        "NOTE" => "Note",
+                        "BDAY" => "Birthday",
+                        _ => continue,
+                    };
+                    let v = v.replace(';', " ");
+                    out.push_str(&format!("{label}: {}\n", v.trim()));
+                }
+                out.push('\n');
+            }
+        } else if let (Some(c), Some(p)) = (card.as_mut(), prop(&l))
+            && c.len() < 200
+        {
+            c.push(p);
+        }
+    }
+    out
+}
+
+// ---- tables / json
+
+/// Minimal RFC 4180 reader (quotes, doubled quotes, newlines inside quotes).
+pub fn csv_rows(text: &str, delim: u8) -> Vec<Vec<String>> {
+    let d = delim as char;
+    let mut rows = Vec::new();
+    let (mut row, mut field) = (Vec::<String>::new(), String::new());
+    let (mut inq, mut had) = (false, false);
+    let mut it = text.chars().peekable();
+    while let Some(c) = it.next() {
+        if inq {
+            if c == '"' {
+                if it.peek() == Some(&'"') {
+                    field.push('"');
+                    it.next();
+                } else {
+                    inq = false;
+                }
+            } else {
+                field.push(c);
+            }
+        } else if c == '"' && field.is_empty() {
+            inq = true;
+            had = true;
+        } else if c == d {
+            row.push(std::mem::take(&mut field));
+            had = true;
+        } else if c == '\n' || c == '\r' {
+            if c == '\r' && it.peek() == Some(&'\n') {
+                it.next();
+            }
+            if had || !field.is_empty() || !row.is_empty() {
+                row.push(std::mem::take(&mut field));
+                rows.push(std::mem::take(&mut row));
+            }
+            had = false;
+            if rows.len() >= 2_000_000 {
+                return rows;
+            }
+        } else {
+            field.push(c);
+            had = true;
+        }
+    }
+    if had || !field.is_empty() || !row.is_empty() {
+        row.push(field);
+        rows.push(row);
+    }
+    rows
+}
+
+fn table_text(text: &str, delim: u8) -> String {
+    let rows = csv_rows(text, delim);
+    let Some((head, body)) = rows.split_first() else {
+        return String::new();
+    };
+    // Header-aware only when the first row looks like labels (non-empty, no pure numbers).
+    let header_ok = !head.is_empty()
+        && head
+            .iter()
+            .all(|h| !h.trim().is_empty() && h.trim().parse::<f64>().is_err());
+    let mut out = String::new();
+    let mut emit = |cells: &[String], names: Option<&Vec<String>>| {
+        let line: Vec<String> = cells
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| !v.trim().is_empty())
+            .map(|(i, v)| match names.and_then(|n| n.get(i)) {
+                Some(n) => format!("{}: {}", n.trim(), v.trim()),
+                None => v.trim().to_string(),
+            })
+            .collect();
+        if !line.is_empty() {
+            out.push_str(&line.join("; "));
+            out.push('\n');
+        }
+    };
+    if header_ok {
+        for r in body {
+            emit(r, Some(head));
+        }
+    } else {
+        for r in &rows {
+            emit(r, None);
+        }
+    }
+    out
+}
+
+fn flatten_json(v: &serde_json::Value, path: &str, depth: usize, out: &mut String) {
+    use serde_json::Value;
+    if out.len() > MAX_OUT || depth > 64 {
+        return;
+    }
+    let leaf = |out: &mut String, s: String| {
+        if path.is_empty() {
+            out.push_str(&s);
+        } else {
+            out.push_str(&format!("{path}: {s}"));
+        }
+        out.push('\n');
+    };
+    match v {
+        Value::Null => {}
+        Value::Bool(b) => leaf(out, b.to_string()),
+        Value::Number(n) => leaf(out, n.to_string()),
+        Value::String(s) => leaf(out, s.clone()),
+        Value::Array(a) => {
+            for (i, x) in a.iter().enumerate() {
+                flatten_json(x, &format!("{path}[{i}]"), depth + 1, out);
+            }
+        }
+        Value::Object(m) => {
+            for (k, x) in m {
+                let p = if path.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{path}.{k}")
+                };
+                flatten_json(x, &p, depth + 1, out);
+            }
+        }
+    }
+}
+
+fn jsonl_parts(text: &str) -> Parts {
+    let mut parts = Vec::new();
+    for (i, line) in text.lines().enumerate().take(2_000_000) {
+        let l = line.trim();
+        if l.is_empty() {
+            continue;
+        }
+        let t = match serde_json::from_str::<serde_json::Value>(l) {
+            Ok(v) => {
+                let mut o = String::new();
+                flatten_json(&v, "", 0, &mut o);
+                o
+            }
+            Err(_) => l.to_string(),
+        };
+        parts.push((format!("line {}", i + 1), t));
+    }
+    // Merge to bounded-size parts so the index is not flooded with tiny rows.
+    let mut merged: Parts = Vec::new();
+    for (loc, t) in parts {
+        match merged.last_mut() {
+            Some((_, cur)) if cur.len() + t.len() < 4000 => {
+                cur.push('\n');
+                cur.push_str(&t);
+            }
+            _ => merged.push((loc, t)),
+        }
+    }
+    merged
+}
+
+fn subtitle_text(s: &str) -> String {
+    static TAG: OnceLock<Regex> = OnceLock::new();
+    let tag = re(&TAG, r"<[^>]*>|\{\\[^}]*\}");
+    let mut out: Vec<String> = Vec::new();
+    for l in s.replace('\r', "").lines() {
+        let t = l.trim().trim_start_matches('\u{feff}');
+        if t.is_empty()
+            || t.contains("-->")
+            || t.starts_with("WEBVTT")
+            || t.starts_with("NOTE")
+            || t.starts_with("STYLE")
+            || t.chars().all(|c| c.is_ascii_digit())
+        {
+            continue;
+        }
+        let t = tag.replace_all(t, "").trim().to_string();
+        if !t.is_empty() && out.last() != Some(&t) {
+            out.push(t);
+        }
+    }
+    out.join("\n")
+}
+
+fn notebook_text(s: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(s).ok()?;
+    let src = |c: &serde_json::Value| match &c["source"] {
+        serde_json::Value::String(t) => t.clone(),
+        serde_json::Value::Array(a) => a.iter().filter_map(|x| x.as_str()).collect::<String>(),
+        _ => String::new(),
+    };
+    let cells = v
+        .get("cells")
+        .or_else(|| v.pointer("/worksheets/0/cells"))?
+        .as_array()?;
+    let mut out = String::new();
+    for c in cells.iter().take(100_000) {
+        let t = src(c);
+        match c["cell_type"].as_str() {
+            Some("markdown") => out.push_str(&format!("{t}\n\n")),
+            Some("code") => out.push_str(&format!("```\n{t}\n```\n\n")),
+            _ => {}
+        }
+        if out.len() > MAX_OUT {
+            break;
+        }
+    }
+    Some(out)
+}
+
+fn tex_text(s: &str) -> String {
+    static CMT: OnceLock<Regex> = OnceLock::new();
+    static SEC: OnceLock<Regex> = OnceLock::new();
+    static ENV: OnceLock<Regex> = OnceLock::new();
+    static CMD: OnceLock<Regex> = OnceLock::new();
+    let t = re(&CMT, r"(?m)(^|[^\\])%.*$").replace_all(s, "$1");
+    let t = re(
+        &SEC,
+        r"\\(?:part|chapter|section|subsection|subsubsection|paragraph|title)\*?\{([^{}]*)\}",
+    )
+    .replace_all(&t, "\n# $1\n");
+    let t = re(&ENV, r"\\(?:begin|end)\{[^{}]*\}").replace_all(&t, "\n");
+    let t = re(&CMD, r"\\[a-zA-Z@]+\*?(\[[^\]]*\])?").replace_all(&t, "");
+    t.replace("\\\\", "\n")
+        .replace(['{', '}'], "")
+        .replace('~', " ")
+}
+
+// ---- zip listing
+
+fn zip_parts(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
+    let mut parts = Parts::new();
+    let mut budget = ZIP_MAX_TOTAL;
+    zip_walk(z, "", 0, &mut budget, &mut parts)?;
+    Ok(parts)
+}
+
+fn zip_walk<R: Read + std::io::Seek>(
+    z: &mut zip::ZipArchive<R>,
+    prefix: &str,
+    depth: usize,
+    budget: &mut u64,
+    parts: &mut Parts,
+) -> Res<()> {
+    let n = z.len().min(ZIP_MAX_MEMBERS);
+    let mut listing = String::new();
+    let mut todo: Vec<(usize, String, u64)> = Vec::new();
+    for i in 0..n {
+        let Ok(f) = z.by_index(i) else { continue };
+        if f.is_dir() {
+            continue;
+        }
+        let name = f.name().to_string();
+        listing.push_str(&format!("{prefix}{name} ({} bytes)\n", f.size()));
+        todo.push((i, name, f.size()));
+    }
+    if z.len() > n {
+        listing.push_str(&format!("... and {} more entries\n", z.len() - n));
+    }
+    parts.push((
+        format!("{}listing", prefix),
+        format!("Files in archive:\n{listing}"),
+    ));
+    for (i, name, size) in todo {
+        let lower = name.to_lowercase();
+        let ext = lower.rfind('.').map(|p| &lower[p..]).unwrap_or("");
+        let nested = ext == ".zip" && depth + 1 < ZIP_MAX_DEPTH;
+        if !(nested || ZIP_TEXT_EXT.contains(&ext)) || size > ZIP_MAX_MEMBER || size > *budget {
+            continue;
+        }
+        let mut buf = Vec::new();
+        let Ok(f) = z.by_index(i) else { continue };
+        if f.take(ZIP_MAX_MEMBER + 1).read_to_end(&mut buf).is_err()
+            || buf.len() as u64 > ZIP_MAX_MEMBER
+        {
+            continue;
+        }
+        *budget = budget.saturating_sub(buf.len() as u64);
+        let p = format!("{prefix}{name}");
+        if nested {
+            if let Ok(mut inner) = zip::ZipArchive::new(std::io::Cursor::new(buf)) {
+                let _ = zip_walk(&mut inner, &format!("{p}!/"), depth + 1, budget, parts);
+            }
+            continue;
+        }
+        let r = match text_parts(ext, &buf) {
+            Some(r) => r.ok(),
+            None => {
+                let t = decode(&buf);
+                Some(vec![(
+                    String::new(),
+                    if ext == ".html" || ext == ".htm" {
+                        html_to_text(&t)
+                    } else {
+                        t
+                    },
+                )])
+            }
+        };
+        for (loc, t) in r.unwrap_or_default() {
+            if !t.trim().is_empty() {
+                parts.push((
+                    if loc.is_empty() {
+                        p.clone()
+                    } else {
+                        format!("{p} {loc}")
+                    },
+                    t,
+                ));
+            }
+        }
+    }
+    Ok(())
 }

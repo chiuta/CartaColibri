@@ -742,6 +742,7 @@ fn diff_snapshot_history_and_watch() {
         }
     });
     let wurl = format!("http://127.0.0.1:{port}/");
+    grab::allow_local(true); // the test page lives on loopback
     assert_eq!(grab::watch_check(&mut lib, false).len(), 0);
     grab::watch_set(&lib.home, vec![wurl.clone()]);
     assert_eq!(grab::watch_check(&mut lib, false)[0]["state"], "not-saved");
