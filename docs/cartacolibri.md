@@ -63,3 +63,10 @@ Web-grab refuses loopback / private addresses unless `CARTACOLIBRI_GRAB_LOCAL=1`
 - **Live status and usage:** running model in the header, tokens and tokens/s under each answer, one request at a time.
 - **web-grab pages:** `POST /carta/grab` accepts `"fmt": "html" | "mhtml"`; the import dialog has a web-grab section; `.mhtml` files are indexed.
 - **web-grab browser:** toolbar buttons *Save to folder*, *Grab website HTML* (Shift+click: MHTML) and *PDF* (silent on Linux; the print dialog on Windows and macOS).
+
+## New in 0.2.0-alpha.4
+
+- **Inline filters:** `ext:pdf,docx`, `path:text`, `size:>500kb` / `size:<2mb` in any query (web, CLI, API). A filter-only query is an "empty query" error.
+- **Smart search:** `GET /carta/find?q=…&smart=1` asks the engine for up to 8 synonyms (plain words only, added with OR); the response lists them under `expanded`. No engine, no expansion.
+- **Chat mode:** `POST /carta/chat` accepts `"mode": "query"` — a single question, no memory kept.
+- **MCP server:** `cartacolibri mcp [--url URL] [--mock]` speaks MCP over stdio (JSON-RPC 2.0, one message per line). Tools: `search`, `read_document` (by id from `search`), `list_groups`, `ask`. Read-only. Example for an MCP client: `{"command": "cartacolibri", "args": ["mcp"]}`.

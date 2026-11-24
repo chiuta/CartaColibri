@@ -206,6 +206,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
     </div>
     <div class="body">
       <form class="bar" id="qform" role="search"><button class="btn sm" id="sideToggle2" type="button" aria-expanded="false" data-i="side_toggle" style="display:none"></button><input type="text" id="q" data-ph="query_ph" data-al="search" autocomplete="off"><button class="btn pri" id="go" type="submit" data-i="search"></button><span class="muted" id="resCount" role="status"></span><button class="btn sm" id="expRes" type="button" data-i="export"></button></form>
+      <div class="row" style="margin:4px 0 0;flex-wrap:wrap"><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="smart"><span data-i="sm_label"></span></label><span class="muted" style="font-size:.85em" data-i="f_hint"></span></div>
       <div class="dym" id="dym" hidden></div>
       <div class="scroll"><table id="resTable"><thead><tr><th><input type="checkbox" id="resAll" data-al="select_all"></th><th class="n" data-i="score"></th><th data-i="name"></th><th class="c-type" data-i="type"></th><th class="n c-size" data-i="size"></th><th class="c-path" data-i="path"></th></tr></thead><tbody id="resRows"></tbody></table><div class="empty" id="resEmpty"></div></div>
     </div>
@@ -248,6 +249,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
     </div>
     <div id="chatPane" hidden>
       <div class="row"><label for="chatGroup" data-i="chat_scope" style="flex:none"></label><select id="chatGroup" style="flex:1"></select><button class="btn sm" id="chatNew" data-i="chat_new"></button></div>
+      <div class="row"><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="chatOne"><span data-i="ch_one"></span></label></div>
       <p class="muted" id="chatEmpty" data-i="chat_empty"></p>
       <div id="chatLog" role="log" aria-live="polite" data-al="tab_chat"></div>
     </div>
@@ -422,6 +424,10 @@ gw_detect:{en:'Find the engine',ro:'Caută motorul',fr:'Chercher le moteur',it:'
 gw_start:{en:'Start Colibri Companion',ro:'Pornește Colibri Companion',fr:'Lancer Colibri Companion',it:'Avvia Colibri Companion',es:'Iniciar Colibri Companion',pt:'Iniciar o Colibri Companion',de:'Colibri Companion starten',hu:'Colibri Companion indítása'},
 gw_started:{en:'Colibri Companion started — wait a moment, then press “Find the engine”.',ro:'Colibri Companion a pornit — așteaptă puțin, apoi apasă „Caută motorul”.',fr:'Colibri Companion est lancé — attends un instant, puis appuie sur « Chercher le moteur ».',it:'Colibri Companion è partito — attendi un attimo, poi premi «Cerca il motore».',es:'Colibri Companion se ha iniciado — espera un momento y pulsa «Buscar el motor».',pt:'O Colibri Companion arrancou — espera um momento e carrega em «Procurar o motor».',de:'Colibri Companion wurde gestartet — warte kurz und drücke dann „Engine suchen“.',hu:'A Colibri Companion elindult — várj egy kicsit, majd nyomd meg a „Motor keresése” gombot.'},
 gw_nostart:{en:'Colibri Companion is not installed here. Install it, or run `coli serve`.',ro:'Colibri Companion nu e instalat aici. Instalează-l sau rulează `coli serve`.',fr:'Colibri Companion n’est pas installé ici. Installe-le ou lance `coli serve`.',it:'Colibri Companion non è installato qui. Installalo o esegui `coli serve`.',es:'Colibri Companion no está instalado aquí. Instálalo o ejecuta `coli serve`.',pt:'O Colibri Companion não está instalado aqui. Instala-o ou executa `coli serve`.',de:'Colibri Companion ist hier nicht installiert. Installiere es oder führe `coli serve` aus.',hu:'A Colibri Companion nincs telepítve itt. Telepítsd, vagy futtasd a `coli serve`-et.'},
+sm_label:{en:'Smart search (adds related words)',ro:'Căutare inteligentă (adaugă cuvinte înrudite)',fr:'Recherche intelligente (ajoute des mots proches)',it:'Ricerca intelligente (aggiunge parole affini)',es:'Búsqueda inteligente (añade palabras afines)',pt:'Pesquisa inteligente (acrescenta palavras afins)',de:'Intelligente Suche (ergänzt verwandte Wörter)',hu:'Okos keresés (rokon szavakat ad hozzá)'},
+sm_also:{en:'Also searched:',ro:'Am căutat și:',fr:'Aussi cherché :',it:'Cercato anche:',es:'También se buscó:',pt:'Também pesquisado:',de:'Auch gesucht:',hu:'Még kerestem:'},
+f_hint:{en:'Filters in the box: ext:pdf  path:contracts  size:>1mb',ro:'Filtre în căsuță: ext:pdf  path:contracte  size:>1mb',fr:'Filtres dans la zone : ext:pdf  path:contrats  size:>1mb',it:'Filtri nella casella: ext:pdf  path:contratti  size:>1mb',es:'Filtros en la casilla: ext:pdf  path:contratos  size:>1mb',pt:'Filtros na caixa: ext:pdf  path:contratos  size:>1mb',de:'Filter im Suchfeld: ext:pdf  path:vertraege  size:>1mb',hu:'Szűrők a mezőben: ext:pdf  path:szerzodesek  size:>1mb'},
+ch_one:{en:'Each question on its own (no memory of earlier ones)',ro:'Fiecare întrebare separat (fără memoria celor anterioare)',fr:'Chaque question à part (sans mémoire des précédentes)',it:'Ogni domanda a sé (senza memoria delle precedenti)',es:'Cada pregunta por separado (sin memoria de las anteriores)',pt:'Cada pergunta à parte (sem memória das anteriores)',de:'Jede Frage einzeln (ohne Erinnerung an frühere)',hu:'Minden kérdés külön (előzőkre nem emlékezik)'},
 gw_none:{en:'No engine found on this computer. Start Colibri Companion or `coli serve`, then try again.',ro:'Nu am găsit niciun motor pe acest calculator. Pornește Colibri Companion sau `coli serve` și încearcă din nou.',fr:'Aucun moteur trouvé sur cet ordinateur. Lance Colibri Companion ou `coli serve`, puis réessaie.',it:'Nessun motore trovato su questo computer. Avvia Colibri Companion o `coli serve` e riprova.',es:'No se encontró ningún motor en este ordenador. Inicia Colibri Companion o `coli serve` y vuelve a intentarlo.',pt:'Não encontrei nenhum motor neste computador. Inicia o Colibri Companion ou `coli serve` e tenta de novo.',de:'Keine Engine auf diesem Rechner gefunden. Starte Colibri Companion oder `coli serve` und versuche es erneut.',hu:'Nem találtam motort ezen a gépen. Indítsd el a Colibri Companiont vagy a `coli serve`-et, majd próbáld újra.'},
 gw_use:{en:'Use',ro:'Folosește',fr:'Utiliser',it:'Usa',es:'Usar',pt:'Usar',de:'Nutzen',hu:'Használd'},
 gw_auto:{en:'found automatically',ro:'găsit automat',fr:'trouvé automatiquement',it:'trovato automaticamente',es:'encontrado automáticamente',pt:'encontrado automaticamente',de:'automatisch gefunden',hu:'automatikusan megtalálva'},
@@ -899,13 +905,13 @@ $('#clearF').onclick=clearFilters;
 
 /* ---- search ---- */
 let searchSeq=0,searchDeb=0;
-function searchParams(q){const p=new URLSearchParams({q});
+function searchParams(q,auto){const p=new URLSearchParams({q});
   if(S.extOn.size)p.set('ext',[...S.extOn].join(','));if($('#minKb').value)p.set('min',$('#minKb').value*1024);if($('#maxKb').value)p.set('max',$('#maxKb').value*1024);
   if($('#pathLike').value)p.set('path',$('#pathLike').value);if(S.group)p.set('group',S.group);
-  if($('#fTag').value)p.set('tag',$('#fTag').value);if($('#fStar').checked)p.set('starred','1');return p}
+  if($('#fTag').value)p.set('tag',$('#fTag').value);if($('#fStar').checked)p.set('starred','1');if($('#smart').checked&&!auto)p.set('smart','1');return p}
 async function search(o){o=o||{};const q=$('#q').value.trim();clearTimeout(searchDeb);
   if(!q&&!$('#fTag').value&&!$('#fStar').checked){if(o.auto){S.results=[];S.dym=null;S.searched=false;S.selRes=new Set();renderRes();renderDym()}else $('#q').focus();return}
-  const p=searchParams(q),my=++searchSeq;if(!o.auto)$('#resCount').textContent=T('searching');
+  const p=searchParams(q,o.auto),my=++searchSeq;if(!o.auto)$('#resCount').textContent=T('searching');
   try{const exact=o.exact&&!p.get('tag')&&!p.get('starred');
     const r=exact?{query:q,hits:await api('search?'+p),corrected:null,suggestions:[]}:await api('find?'+p);
     if(my!==searchSeq)return;
@@ -918,6 +924,7 @@ function renderDym(){const e=$('#dym'),r=S.dym;if(!r||!S.searched){e.hidden=true
   if(r.corrected)h+=`<div role="status">${T('dym_showing')} <b>${esc(r.corrected)}</b> — ${T('dym_instead')} <button class="linkbtn" type="button" data-exact="${esc(r.query)}">${esc(r.query)}</button></div>`;
   const sg=(r.suggestions||[]).filter(x=>x!==r.corrected&&x!==r.query).slice(0,5);
   if(sg.length&&(!r.hits.length||r.corrected))h+=`<div class="chips" role="group" aria-label="${esc(T('dym_try'))}"><span class="muted">${T('dym_try')}</span> ${sg.map(x=>`<button type="button" class="chip" data-sg="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
+  if((r.expanded||[]).length)h+=`<div role="status" class="muted">${esc(T('sm_also'))} ${r.expanded.map(x=>`<code>${esc(x)}</code>`).join(' ')}</div>`;
   e.innerHTML=h;e.hidden=!h}
 $('#qform').onsubmit=e=>{e.preventDefault();search()};
 $('#gFromSel').onclick=async()=>{const n=$('#gName').value.trim();const ids=S.selRes.size?S.selRes:S.selLib;if(!n||!ids.size){toast(T('need_selection'),1);return}
@@ -959,7 +966,7 @@ function renderBot(w,j){const mb=w.querySelector('.mb');
   mb.innerHTML=h;showUsage(mb,j.usage);w.scrollIntoView({block:'end'})}
 async function chatSend(){const q=$('#chatIn').value.trim();if(!q)return;$('#chatIn').value='';addMsg('u',q);const w=addMsg('b',null,true);$('#chatSend').disabled=true;
   const again=()=>{w.remove();$('#chatIn').value=q;chatSend()};
-  try{renderBot(w,await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value}))}
+  try{renderBot(w,await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value,mode:$('#chatOne').checked?'query':'chat'}))}
   catch(e){errBox(w.querySelector('.mb'),e,again,()=>{$('#mock').checked=true;pref('mock','1');again()})}
   $('#chatSend').disabled=false;$('#chatIn').focus()}
 $('#chatSend').onclick=chatSend;$('#chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();chatSend()}});

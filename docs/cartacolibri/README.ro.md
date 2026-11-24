@@ -40,6 +40,13 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Partajează și protejează** — exportă un grup, o etichetă sau o căutare ca Markdown, CSV, JSON sau zip, cu citări; o vedere Statistici cu grafice și cronologie; o copie de rezervă într-un singur fișier, cu sume de control; Verifică/Repară pentru index.
 - **Adu lucruri înăuntru** — importă marcaje de browser, un folder Obsidian, Zotero/BibTeX, CSV Pocket/Raindrop sau exporturi Evernote și urmărește fluxuri RSS/Atom (OPML import și export): devin notițe căutabile. Sunt indexate și e-mailurile, calendarele, subtitrările și caietele.
 
+## Noutăți în 0.2.0-alpha.4
+
+- **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte` sau `size:>1mb` lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
+- **Căutare inteligentă** — Bifează „Căutare inteligentă” și AI-ul tău local adaugă câteva sinonime și cuvinte înrudite (ca un simplu OR, deci potrivirile exacte rămân primele). Cuvintele în plus apar sub căsuță. Fără motor pornit primești pur și simplu căutarea normală.
+- **Chat cu întrebări separate** — Bifează „Fiecare întrebare separat” și chatul uită întrebările anterioare: fiecare răspuns vine doar din documentele tale, cu sursele lui.
+- **Server MCP pentru alte aplicații AI** — `cartacolibri mcp` lasă alte aplicații AI să-ți caute în bibliotecă, să citească un document și să pună întrebări despre el prin Model Context Protocol. E doar în citire, rulează pe calculatorul tău și ajunge doar la documentele returnate de căutare.
+
 ## Noutăți în 0.2.0-alpha.2
 
 - **Adresa motorului merge direct** — `http://127.0.0.1:8000` și `http://127.0.0.1:8000/v1` sunt ambele bune. CartaColibri citește lista de modele din `/v1/models`, alege singur modelul încărcat și nu mai are nevoie de o pagină `/health`. Asta rezolvă mesajul „AI engine not running (404)”.

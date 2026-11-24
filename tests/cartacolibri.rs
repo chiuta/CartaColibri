@@ -765,3 +765,28 @@ fn diff_snapshot_history_and_watch() {
         "refresh updated the saved copy"
     );
 }
+
+#[test]
+fn inline_filters_in_the_query_box() {
+    let fx = fixture();
+    let lib = ing(&fx);
+    // "lunii" appears in contract.txt; the filters narrow by extension, path and size
+    assert!(s(&lib, "lunii").contains(&"contract.txt".to_string()));
+    assert_eq!(s(&lib, "lunii ext:txt"), vec!["contract.txt"]);
+    assert!(s(&lib, "lunii ext:md").is_empty());
+    assert!(s(&lib, "valoarea path:sub").contains(&"notes.md".to_string()));
+    assert!(s(&lib, "valoarea path:nonexistent").is_empty());
+    assert!(s(&lib, "lunii size:>1gb").is_empty());
+    assert_eq!(s(&lib, "lunii size:<1mb ext:.txt"), vec!["contract.txt"]);
+    // a malformed filter is just a word, never an error
+    let _ = lib
+        .search("lunii size:>abc ext:", &Filter::default())
+        .unwrap();
+    // filters only: a clean "empty query" error, no crash
+    assert!(lib.search_friendly("ext:txt", &Filter::default()).is_err());
+    // the friendly search honours them too
+    let fr = lib
+        .search_friendly("lunii ext:md", &Filter::default())
+        .unwrap();
+    assert!(fr.hits.is_empty());
+}

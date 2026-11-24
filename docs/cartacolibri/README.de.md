@@ -40,6 +40,13 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Teilen und sichern** — exportiere eine Gruppe, ein Tag oder eine Suche als Markdown, CSV, JSON oder Zip, mit Quellenangaben; eine Statistik-Ansicht mit Diagrammen und Zeitleiste; ein Backup in einer einzigen Datei mit Prüfsummen; Prüfen/Reparieren für den Index.
 - **Importieren** — hole Browser-Lesezeichen, einen Obsidian-Ordner, Zotero/BibTeX, Pocket/Raindrop-CSV oder Evernote-Exporte herein und abonniere RSS/Atom-Feeds (OPML rein und raus): Sie werden zu durchsuchbaren Notizen. E-Mails, Kalender, Untertitel und Notebooks werden ebenfalls indiziert.
 
+## Neu in 0.2.0-alpha.4
+
+- **Filter direkt im Suchfeld** — Tippe `ext:pdf`, `path:vertraege` oder `size:>1mb` neben deine Wörter, und die Treffer werden eingegrenzt. Sie funktionieren auf der Webseite, in der Kommandozeile und über die API.
+- **Intelligente Suche** — Hake „Intelligente Suche“ an, und deine lokale KI ergänzt ein paar Synonyme und verwandte Wörter (als einfaches OR, exakte Treffer stehen also weiter vorn). Die zusätzlichen Wörter erscheinen unter dem Feld. Ohne laufende Engine bekommst du die normale Suche.
+- **Chat mit Einzelfragen** — Hake „Jede Frage einzeln“ an, und der Chat vergisst frühere Fragen: Jede Antwort stammt nur aus deinen Dokumenten, mit ihren Quellen.
+- **Ein MCP-Server für andere KI-Apps** — `cartacolibri mcp` lässt andere KI-Anwendungen über das Model Context Protocol in deiner Bibliothek suchen, ein Dokument lesen und Fragen dazu stellen. Er ist nur lesend, läuft auf deinem Rechner und erreicht nur Dokumente, die die Suche geliefert hat.
+
 ## Neu in 0.2.0-alpha.2
 
 - **Die Engine-Adresse funktioniert einfach** — `http://127.0.0.1:8000` und `http://127.0.0.1:8000/v1` sind beide richtig. CartaColibri liest die Modellliste von `/v1/models`, wählt das geladene Modell selbst und braucht keine `/health`-Seite mehr. Das behebt die Meldung „AI engine not running (404)“.

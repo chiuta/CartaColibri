@@ -674,3 +674,29 @@ fn start_companion_never_runs_anything_the_page_chose() {
     assert!(matches!(r.code, 200 | 404), "{}", r.code);
     assert!(!std::path::Path::new("/tmp/pwned").exists());
 }
+
+#[test]
+fn query_mode_chat_inline_filters_and_smart_flag() {
+    let (s, _ids) = indexed();
+    let val = |r: Resp| -> Value { serde_json::from_slice(&r.body).unwrap_or(Value::Null) };
+    // single-question mode answers with sources and keeps no session
+    for _ in 0..2 {
+        let c = post(
+            &s,
+            "/carta/chat",
+            json!({"sid": "q-1", "q": "What are the payment terms?", "mock": true, "mode": "query"}),
+        );
+        assert_eq!(c.code, 200, "{}", c.text());
+        assert_eq!(c.json()["found"], true);
+    }
+    // inline filters through the web search route
+    let all = val(get(&s, "/carta/find?q=payment"));
+    let n_all = all["hits"].as_array().map_or(0, Vec::len);
+    assert!(n_all > 0);
+    let none = val(get(&s, "/carta/find?q=payment%20ext%3Anope"));
+    assert_eq!(none["hits"].as_array().map_or(99, Vec::len), 0);
+    // smart search never fails: with no engine it is the plain search plus an empty expansion
+    let sm = val(get(&s, "/carta/find?q=payment&smart=1"));
+    assert_eq!(sm["hits"].as_array().map_or(0, Vec::len), n_all);
+    assert_eq!(sm["expanded"].as_array().map_or(99, Vec::len), 0);
+}

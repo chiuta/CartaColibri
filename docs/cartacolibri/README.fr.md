@@ -40,6 +40,13 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Partage et protège** — exporte un groupe, une étiquette ou une recherche en Markdown, CSV, JSON ou zip, avec citations ; une vue Statistiques avec graphiques et chronologie ; une sauvegarde en un seul fichier avec sommes de contrôle ; Vérifier/Réparer pour l’index.
 - **Fais entrer des choses** — importe les favoris du navigateur, un dossier Obsidian, Zotero/BibTeX, un CSV Pocket/Raindrop ou des exports Evernote, et suis des flux RSS/Atom (OPML en import et export) : ils deviennent des notes interrogeables. Les e-mails, agendas, sous-titres et notebooks sont aussi indexés.
 
+## Nouveautés de la 0.2.0-alpha.4
+
+- **Des filtres directement dans la zone de recherche** — Écris `ext:pdf`, `path:contrats` ou `size:>1mb` à côté de tes mots et les résultats se resserrent. Ils marchent dans la page web, en ligne de commande et via l’API.
+- **Recherche intelligente** — Coche « Recherche intelligente » et ton IA locale ajoute quelques synonymes et mots proches (en simple OR : les correspondances exactes restent en tête). Les mots ajoutés s’affichent sous la zone. Sans moteur en marche, tu obtiens simplement la recherche normale.
+- **Chat question par question** — Coche « Chaque question à part » et le chat oublie les questions précédentes : chaque réponse vient uniquement de tes documents, avec ses sources.
+- **Un serveur MCP pour d’autres applications d’IA** — `cartacolibri mcp` permet à d’autres applications d’IA de chercher dans ta bibliothèque, de lire un document et de l’interroger via le Model Context Protocol. Il est en lecture seule, tourne sur ton ordinateur et n’atteint que les documents renvoyés par la recherche.
+
 ## Nouveautés de la 0.2.0-alpha.2
 
 - **L’adresse du moteur fonctionne toute seule** — `http://127.0.0.1:8000` et `http://127.0.0.1:8000/v1` conviennent toutes les deux. CartaColibri lit la liste des modèles sur `/v1/models`, choisit seul le modèle chargé et n’a plus besoin d’une page `/health`. Cela corrige le message « AI engine not running (404) ».

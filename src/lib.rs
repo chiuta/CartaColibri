@@ -13,6 +13,7 @@ pub mod feeds;
 pub mod grab;
 pub mod import;
 pub mod library;
+pub mod mcp;
 pub mod organize;
 pub mod server;
 pub mod tour;

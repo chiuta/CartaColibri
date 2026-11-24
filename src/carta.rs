@@ -344,6 +344,54 @@ pub struct Found {
     pub models: Vec<String>,
 }
 
+/// "Smart search": asks the engine for a few synonyms / closely related words (same language) to widen a
+/// keyword query. Only plain words come back (letters and digits), so nothing the model says can change the
+/// query syntax. Empty on any failure: the normal search still runs.
+pub fn expand_query(be: &Backend, q: &str) -> Vec<String> {
+    if be.mock || q.trim().is_empty() {
+        return vec![];
+    }
+    let user = format!(
+        "Search words: {}\nWrite up to 8 synonyms or closely related single words in the same language as the search words, one per line, lowercase, nothing else.",
+        q.chars().take(300).collect::<String>().replace('\n', " ")
+    );
+    let Ok(out) = be.complete(
+        "You help a keyword search find more of what the person means.",
+        &user,
+    ) else {
+        return vec![];
+    };
+    let own: std::collections::HashSet<String> = q
+        .split(|c: char| !c.is_alphanumeric())
+        .map(|w| w.to_lowercase())
+        .collect();
+    let mut seen = std::collections::HashSet::new();
+    out.lines()
+        .map(|l| {
+            // "1. word" / "2) word" numbered lists
+            let l = l.trim();
+            let digits = l.chars().take_while(char::is_ascii_digit).count();
+            match l[digits..].chars().next() {
+                Some('.' | ')') if digits > 0 => &l[digits + 1..],
+                _ => l,
+            }
+        })
+        .map(|l| {
+            l.trim()
+                .trim_start_matches(|c: char| !c.is_alphanumeric())
+                .trim_end_matches(|c: char| !c.is_alphanumeric())
+        })
+        .filter(|w| {
+            (3..=30).contains(&w.chars().count())
+                && w.chars().all(|c| c.is_alphanumeric())
+                && !matches!(w.to_uppercase().as_str(), "AND" | "OR" | "NOT" | "NEAR")
+        })
+        .map(str::to_lowercase)
+        .filter(|w| !own.contains(w) && seen.insert(w.clone()))
+        .take(8)
+        .collect()
+}
+
 /// Colibri Companion keeps its own settings (`server_url`, `api_key`) in its data folder.
 pub fn companion_settings_files() -> Vec<std::path::PathBuf> {
     let mut v = vec![];

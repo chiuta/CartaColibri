@@ -40,6 +40,13 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Share and safeguard** — export a group, tag or search as Markdown, CSV, JSON or zip, with citations; a Stats view with charts and a timeline; a one-file Backup with checksums; Check/Repair for the index.
 - **Bring things in** — import browser bookmarks, an Obsidian folder, Zotero/BibTeX, Pocket/Raindrop CSV or Evernote exports, and follow RSS/Atom feeds (OPML in and out): they become searchable notes. Email, calendar, subtitles and notebooks are indexed too.
 
+## New in 0.2.0-alpha.4
+
+- **Filters right in the search box** — Type `ext:pdf`, `path:contracts` or `size:>1mb` next to your words and the results narrow down. They work in the web page, on the command line and through the API.
+- **Smart search** — Tick “Smart search” and your local AI adds a few synonyms and related words (as a plain OR, so exact matches still rank first). The extra words are shown under the box. With no engine running, you simply get the normal search.
+- **Single-question chat** — Tick “Each question on its own” and the chat forgets earlier questions: every answer comes only from your documents, with its sources.
+- **An MCP server for other AI apps** — `cartacolibri mcp` lets other AI applications search your library, read a document and ask questions about it through the Model Context Protocol. It is read-only, runs on your computer and only reaches documents that search has returned.
+
 ## New in 0.2.0-alpha.2
 
 - **The engine address just works** — `http://127.0.0.1:8000` and `http://127.0.0.1:8000/v1` are both fine. CartaColibri reads the model list from `/v1/models`, picks the loaded model by itself and no longer needs a `/health` page. That fixes the “AI engine not running (404)” message.

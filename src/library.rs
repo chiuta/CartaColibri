@@ -245,6 +245,62 @@ const MAX_QUERY_BYTES: usize = 4096;
 const MAX_QUERY_TERMS: usize = 64;
 const MAX_SUGGEST_WORDS: usize = 16;
 
+/// Inline filters typed in the query box: `ext:pdf,docx`, `path:contracts`, `size:>500kb`, `size:<2mb`.
+/// They are removed from the text and merged into the filter (the explicit filter keeps what it already has).
+pub fn parse_inline(query: &str, f: &Filter) -> (String, Filter) {
+    let mut f = f.clone();
+    let mut rest: Vec<&str> = vec![];
+    for tok in query.split_whitespace() {
+        let low = tok.to_lowercase();
+        if let Some(v) = low.strip_prefix("ext:") {
+            let exts: Vec<String> = v
+                .split(',')
+                .map(|e| e.trim_start_matches('.').to_string())
+                .filter(|e| !e.is_empty() && e.chars().all(|c| c.is_ascii_alphanumeric()))
+                .collect();
+            if !exts.is_empty() {
+                f.ext.extend(exts);
+                continue;
+            }
+        } else if let Some(v) = tok.get(5..).filter(|_| low.starts_with("path:")) {
+            if !v.is_empty() {
+                f.path_like = Some(v.trim_matches('"').to_string());
+                continue;
+            }
+        } else if let Some(v) = low.strip_prefix("size:") {
+            let (op, num) = v.split_at(
+                v.chars()
+                    .next()
+                    .filter(|c| matches!(c, '<' | '>'))
+                    .map_or(0, |_| 1),
+            );
+            let digits: String = num
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.')
+                .collect();
+            let unit = &num[digits.len()..];
+            let mult = match unit {
+                "" | "b" => Some(1.0),
+                "k" | "kb" => Some(1024.0),
+                "m" | "mb" => Some(1024.0 * 1024.0),
+                "g" | "gb" => Some(1024.0 * 1024.0 * 1024.0),
+                _ => None,
+            };
+            if let (Ok(n), Some(m), false) = (digits.parse::<f64>(), mult, op.is_empty()) {
+                let bytes = (n * m) as i64;
+                if op == ">" {
+                    f.min_size = Some(bytes);
+                } else {
+                    f.max_size = Some(bytes);
+                }
+                continue;
+            }
+        }
+        rest.push(tok);
+    }
+    (rest.join(" "), f)
+}
+
 fn clip(q: &str) -> &str {
     if q.len() <= MAX_QUERY_BYTES {
         return q;
@@ -968,7 +1024,9 @@ impl Library {
 
     /// Returns the hits and the FTS match string that actually produced them.
     fn search_core(&self, query: &str, f: &Filter, fallback: bool) -> Res<(Vec<Hit>, String)> {
-        let query = clip(query);
+        let (inline, fi) = parse_inline(query, f);
+        let f = &fi;
+        let query = clip(&inline);
         let word = Regex::new(r"\w+").unwrap();
         let plain: Vec<&str> = word
             .find_iter(query)
@@ -1111,6 +1169,8 @@ impl Library {
     /// Search that forgives typos: exact -> corrected spelling -> word stems; if still nothing,
     /// "did you mean" suggestions are returned.
     pub fn search_friendly(&self, query: &str, f: &Filter) -> Res<FriendlyResult> {
+        let (inline, fi) = parse_inline(query, f);
+        let (query, f) = (inline.as_str(), &fi);
         let (hits, _) = self.search_core(query, f, false)?;
         if !hits.is_empty() {
             return Ok(FriendlyResult {

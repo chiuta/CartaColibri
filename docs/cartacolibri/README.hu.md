@@ -40,6 +40,13 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Megosztás és mentés** — exportálj egy csoportot, címkét vagy keresést Markdown, CSV, JSON vagy zip formátumban, hivatkozásokkal; Statisztika nézet diagramokkal és idővonallal; egyfájlos, ellenőrzőösszeges biztonsági mentés; Ellenőrzés/Javítás az indexhez.
 - **Behozatal** — importálj böngészőkönyvjelzőket, Obsidian-mappát, Zotero/BibTeX-et, Pocket/Raindrop CSV-t vagy Evernote-exportot, és kövess RSS/Atom-csatornákat (OPML be- és kimenet): kereshető jegyzetekké válnak. Az e-mailek, naptárak, feliratok és notebookok is bekerülnek az indexbe.
 
+## Újdonságok a 0.2.0-alpha.4-ben
+
+- **Szűrők közvetlenül a keresőmezőben** — Írd a szavaid mellé: `ext:pdf`, `path:szerzodesek` vagy `size:>1mb`, és a találatok szűkülnek. Működnek a weboldalon, a parancssorban és az API-n keresztül.
+- **Okos keresés** — Jelöld be az „Okos keresés” négyzetet, és a helyi MI hozzáad néhány szinonimát és rokon szót (egyszerű OR-ként, így a pontos találatok maradnak elöl). A hozzáadott szavak a mező alatt látszanak. Futó motor nélkül a szokásos keresést kapod.
+- **Egykérdéses csevegés** — Jelöld be a „Minden kérdés külön” négyzetet, és a csevegés elfelejti a korábbi kérdéseket: minden válasz csak a dokumentumaidból származik, forrásokkal.
+- **MCP-szerver más MI-alkalmazásoknak** — A `cartacolibri mcp` lehetővé teszi, hogy más MI-alkalmazások a Model Context Protocolon át keressenek a könyvtáradban, elolvassanak egy dokumentumot és kérdezzenek róla. Csak olvasható, a gépeden fut, és csak a keresés által visszaadott dokumentumokat éri el.
+
 ## Újdonságok a 0.2.0-alpha.2-ben
 
 - **A motor címe magától működik** — A `http://127.0.0.1:8000` és a `http://127.0.0.1:8000/v1` is jó. A CartaColibri a `/v1/models` címről olvassa a modellek listáját, magától kiválasztja a betöltött modellt, és nincs szüksége `/health` oldalra. Ez megoldja az „AI engine not running (404)” üzenetet.

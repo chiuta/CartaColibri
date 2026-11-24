@@ -40,6 +40,13 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Condividi e proteggi** — esporta un gruppo, un’etichetta o una ricerca in Markdown, CSV, JSON o zip, con citazioni; una vista Statistiche con grafici e cronologia; un backup in un solo file con checksum; Controlla/Ripara per l’indice.
 - **Porta dentro le cose** — importa i segnalibri del browser, una cartella Obsidian, Zotero/BibTeX, CSV di Pocket/Raindrop o esportazioni di Evernote, e segui i feed RSS/Atom (OPML in entrata e in uscita): diventano note ricercabili. Anche email, calendari, sottotitoli e notebook vengono indicizzati.
 
+## Novità della 0.2.0-alpha.4
+
+- **Filtri direttamente nella casella di ricerca** — Scrivi `ext:pdf`, `path:contratti` o `size:>1mb` accanto alle tue parole e i risultati si restringono. Funzionano nella pagina web, da riga di comando e tramite API.
+- **Ricerca intelligente** — Spunta «Ricerca intelligente» e la tua IA locale aggiunge qualche sinonimo e parola affine (come semplice OR: le corrispondenze esatte restano in testa). Le parole aggiunte compaiono sotto la casella. Senza motore attivo ottieni la normale ricerca.
+- **Chat a domanda singola** — Spunta «Ogni domanda a sé» e la chat dimentica le domande precedenti: ogni risposta viene solo dai tuoi documenti, con le sue fonti.
+- **Un server MCP per altre app di IA** — `cartacolibri mcp` permette ad altre applicazioni di IA di cercare nella tua biblioteca, leggere un documento e fargli domande tramite il Model Context Protocol. È di sola lettura, gira sul tuo computer e raggiunge solo i documenti restituiti dalla ricerca.
+
 ## Novità della 0.2.0-alpha.2
 
 - **L’indirizzo del motore funziona da solo** — `http://127.0.0.1:8000` e `http://127.0.0.1:8000/v1` vanno entrambi bene. CartaColibri legge l’elenco dei modelli da `/v1/models`, sceglie da solo il modello caricato e non ha più bisogno di una pagina `/health`. Questo risolve il messaggio «AI engine not running (404)».

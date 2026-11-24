@@ -708,8 +708,20 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 };
                 json!({"query": qs, "hits": hits, "corrected": null, "suggestions": sg})
             } else {
-                let fr = lib.search_friendly(qs, &f).map_err(bad)?;
-                json!({"query": qs, "hits": fr.hits, "corrected": fr.corrected, "suggestions": fr.suggestions})
+                // smart search: the engine adds synonyms (a plain OR, so exact matches still rank first)
+                let smart = r.query.get("smart").is_some_and(|v| v == "1");
+                let extra = if smart {
+                    carta::expand_query(&carta::Backend::gateway(r.backend_url, None), qs)
+                } else {
+                    vec![]
+                };
+                let wide = if extra.is_empty() {
+                    qs.to_string()
+                } else {
+                    format!("{qs} OR {}", extra.join(" OR "))
+                };
+                let fr = lib.search_friendly(&wide, &f).map_err(bad)?;
+                json!({"query": qs, "hits": fr.hits, "corrected": fr.corrected, "suggestions": fr.suggestions, "expanded": extra})
             }
         }
         ("GET", "duplicates") => {
@@ -1031,7 +1043,13 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 carta::Backend::gateway(r.backend_url, None)
             };
             let key = format!("{}\0{sid}", lib.home.display());
-            let taken = lock(chats()).remove(&key);
+            // "query" mode (AnythingLLM-style): every question stands alone, nothing is remembered
+            let single = j["mode"].as_str() == Some("query");
+            let taken = if single {
+                None
+            } else {
+                lock(chats()).remove(&key)
+            };
             let mut cs = taken
                 .map(|x| x.0)
                 .unwrap_or_else(|| carta::ChatSession::new(be.clone()));
@@ -1043,7 +1061,7 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 .filter(|x| !x.is_empty() && x.chars().count() <= 40)
                 .map(String::from);
             let reply = cs.ask(&lib, &q);
-            {
+            if !single {
                 let mut g = lock(chats());
                 g.insert(key, (cs, TICK.fetch_add(1, Ordering::SeqCst)));
                 while g.len() > MAX_CHATS {

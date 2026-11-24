@@ -72,6 +72,14 @@ struct TaskArgs {
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// MCP server over stdio: lets other AI apps search, read and ask about your library (read-only)
+    Mcp {
+        #[arg(long, default_value = "http://127.0.0.1:8000", env = "COLI_URL")]
+        url: String,
+        /// answer `ask` offline with the deterministic mock instead of the engine
+        #[arg(long)]
+        mock: bool,
+    },
     /// guided start: pick a folder, index it, open the web UI
     Start {
         /// folder with your documents (asked interactively when omitted in a terminal)
@@ -535,6 +543,14 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
     let mut lib = Library::open(home, c.ocr)?;
     match cmd {
         Cmd::Start { .. } | Cmd::Doctor { .. } | Cmd::Completions { .. } => unreachable!(),
+        Cmd::Mcp { url, mock } => {
+            let be = if mock {
+                carta::Backend::mock()
+            } else {
+                carta::Backend::gateway(&url, None)
+            };
+            cartacolibri::mcp::serve_stdio(&lib, &be).map_err(|e| e.to_string())?;
+        }
         Cmd::More(m) => cli_more::run(&mut lib, m)?,
         Cmd::History { action } => match action.as_str() {
             "on" => {
