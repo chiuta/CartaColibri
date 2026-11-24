@@ -96,6 +96,12 @@ enum Cmd {
         /// on the first run, report everything that already matches
         #[arg(long)]
         all: bool,
+        /// also save each report as an e-mail file in the library's outbox folder
+        #[arg(long)]
+        mail_to: Option<String>,
+        /// hand that e-mail to this computer's own `sendmail` (nothing else leaves the machine)
+        #[arg(long, requires = "mail_to")]
+        sendmail: bool,
         #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
         url: String,
         #[arg(long)]
@@ -724,6 +730,8 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             summarize,
             every,
             all,
+            mail_to,
+            sendmail,
             url,
             mock,
         } => {
@@ -737,19 +745,25 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                     let _ = lib.update(None, &mut |_| {});
                 }
                 match cartacolibri::digest::run_once(&lib, &name, summarize.then_some(&be), all)? {
-                    Some(md) => match &out {
-                        Some(f) => {
-                            use std::io::Write;
-                            let mut fh = std::fs::OpenOptions::new()
-                                .create(true)
-                                .append(true)
-                                .open(f)
-                                .map_err(|e| e.to_string())?;
-                            writeln!(fh, "{md}").map_err(|e| e.to_string())?;
-                            println!("{name}: new documents appended to {f}");
+                    Some(md) => {
+                        if let Some(to) = &mail_to {
+                            let f = cartacolibri::digest::deliver(&lib, &name, to, &md, sendmail)?;
+                            println!("{name}: e-mail saved as {}", f.display());
                         }
-                        None => println!("{md}"),
-                    },
+                        match &out {
+                            Some(f) => {
+                                use std::io::Write;
+                                let mut fh = std::fs::OpenOptions::new()
+                                    .create(true)
+                                    .append(true)
+                                    .open(f)
+                                    .map_err(|e| e.to_string())?;
+                                writeln!(fh, "{md}").map_err(|e| e.to_string())?;
+                                println!("{name}: new documents appended to {f}");
+                            }
+                            None => println!("{md}"),
+                        }
+                    }
                     None => println!("{name}: nothing new"),
                 }
                 match every {

@@ -71,3 +71,95 @@ pub fn run_once(
     }
     Ok(Some(out))
 }
+
+/// A plain-text e-mail (RFC 5322 headers, UTF-8 body) as bytes. The address is checked so it can
+/// never smuggle extra headers.
+pub fn eml(to: &str, subject: &str, body: &str) -> Res<String> {
+    let ok = to.contains('@')
+        && to.len() <= 200
+        && !to
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || "<>,;\"".contains(c));
+    if !ok {
+        return Err(format!("'{to}' is not a plain e-mail address"));
+    }
+    let subj: String = subject
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(120)
+        .collect();
+    let date = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    Ok(format!(
+        "From: CartaColibri <cartacolibri@localhost>\r\nTo: {to}\r\nSubject: =?UTF-8?B?{}?=\r\nX-CartaColibri-Time: {date}\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n{}\r\n",
+        b64(subj.as_bytes()),
+        body.replace("\r\n", "\n").replace('\n', "\r\n")
+    ))
+}
+
+fn b64(d: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut o = String::new();
+    for c in d.chunks(3) {
+        let n = (c[0] as u32) << 16
+            | (*c.get(1).unwrap_or(&0) as u32) << 8
+            | *c.get(2).unwrap_or(&0) as u32;
+        o.push(T[(n >> 18) as usize & 63] as char);
+        o.push(T[(n >> 12) as usize & 63] as char);
+        o.push(if c.len() > 1 {
+            T[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        o.push(if c.len() > 2 {
+            T[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    o
+}
+
+/// Saves the e-mail in `<library>/outbox/` and, only when `send` is true, hands it to the
+/// computer's own `sendmail`. Returns the saved file.
+pub fn deliver(lib: &Library, name: &str, to: &str, body: &str, send: bool) -> Res<PathBuf> {
+    let msg = eml(to, &format!("CartaColibri: {name}"), body)?;
+    let dir = lib.home.join("outbox");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let safe: String = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let f = dir.join(format!("{safe}-{stamp}.eml"));
+    std::fs::write(&f, &msg).map_err(|e| e.to_string())?;
+    if send {
+        use std::io::Write;
+        let mut ch = std::process::Command::new("sendmail")
+            .arg("-t")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                format!(
+                    "no local sendmail to hand it to ({e}); the e-mail is saved in {}",
+                    f.display()
+                )
+            })?;
+        ch.stdin
+            .take()
+            .ok_or("sendmail has no input")?
+            .write_all(msg.as_bytes())
+            .map_err(|e| e.to_string())?;
+        ch.wait().map_err(|e| e.to_string())?;
+    }
+    Ok(f)
+}

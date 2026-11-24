@@ -1151,6 +1151,8 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 .unwrap_or_else(|| carta::ChatSession::new(be.clone()));
             cs.be = be;
             cs.group = group;
+            cs.after = j["after"].as_str().and_then(crate::library::parse_date);
+            cs.before = j["before"].as_str().and_then(crate::library::parse_date);
             cs.answer_lang = j["lang"]
                 .as_str()
                 .map(str::trim)

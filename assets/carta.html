@@ -249,7 +249,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
     </div>
     <div id="chatPane" hidden>
       <div class="row"><label for="chatGroup" data-i="chat_scope" style="flex:none"></label><select id="chatGroup" style="flex:1"></select><button class="btn sm" id="chatNew" data-i="chat_new"></button></div>
-      <div class="row"><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="chatOne"><span data-i="ch_one"></span></label></div>
+      <div class="row"><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="chatOne"><span data-i="ch_one"></span></label><label class="muted" style="display:flex;gap:6px;align-items:center"><span data-i="rg_from"></span><input type="date" id="chAfter"></label><label class="muted" style="display:flex;gap:6px;align-items:center"><span data-i="rg_to"></span><input type="date" id="chBefore"></label></div>
       <p class="muted" id="chatEmpty" data-i="chat_empty"></p>
       <div id="chatLog" role="log" aria-live="polite" data-al="tab_chat"></div>
     </div>
@@ -464,6 +464,8 @@ ds_btn:{en:'Dossier',ro:'Dosar',fr:'Dossier',it:'Dossier',es:'Dosier',pt:'Dossi�
 ds_need:{en:'Type a word or name in the search box first.',ro:'Scrie întâi un cuvânt sau un nume în căsuța de căutare.',fr:'Écris d’abord un mot ou un nom dans la zone de recherche.',it:'Scrivi prima una parola o un nome nella casella di ricerca.',es:'Escribe primero una palabra o un nombre en la casilla de búsqueda.',pt:'Escreve primeiro uma palavra ou um nome na caixa de pesquisa.',de:'Tippe zuerst ein Wort oder einen Namen ins Suchfeld.',hu:'Előbb írj egy szót vagy nevet a keresőmezőbe.'},
 ds_dates:{en:'Dates',ro:'Date',fr:'Dates',it:'Date',es:'Fechas',pt:'Datas',de:'Daten',hu:'Dátumok'},
 ds_money:{en:'Amounts',ro:'Sume',fr:'Montants',it:'Importi',es:'Importes',pt:'Valores',de:'Beträge',hu:'Összegek'},
+rg_from:{en:'Documents from',ro:'Documente din',fr:'Documents depuis',it:'Documenti dal',es:'Documentos desde',pt:'Documentos desde',de:'Dokumente ab',hu:'Dokumentumok innen'},
+rg_to:{en:'to',ro:'până în',fr:'jusqu’à',it:'fino al',es:'hasta',pt:'até',de:'bis',hu:'eddig'},
 gw_none:{en:'No engine found on this computer. Start Colibri Companion or `coli serve`, then try again.',ro:'Nu am găsit niciun motor pe acest calculator. Pornește Colibri Companion sau `coli serve` și încearcă din nou.',fr:'Aucun moteur trouvé sur cet ordinateur. Lance Colibri Companion ou `coli serve`, puis réessaie.',it:'Nessun motore trovato su questo computer. Avvia Colibri Companion o `coli serve` e riprova.',es:'No se encontró ningún motor en este ordenador. Inicia Colibri Companion o `coli serve` y vuelve a intentarlo.',pt:'Não encontrei nenhum motor neste computador. Inicia o Colibri Companion ou `coli serve` e tenta de novo.',de:'Keine Engine auf diesem Rechner gefunden. Starte Colibri Companion oder `coli serve` und versuche es erneut.',hu:'Nem találtam motort ezen a gépen. Indítsd el a Colibri Companiont vagy a `coli serve`-et, majd próbáld újra.'},
 gw_use:{en:'Use',ro:'Folosește',fr:'Utiliser',it:'Usa',es:'Usar',pt:'Usar',de:'Nutzen',hu:'Használd'},
 gw_auto:{en:'found automatically',ro:'găsit automat',fr:'trouvé automatiquement',it:'trovato automaticamente',es:'encontrado automáticamente',pt:'encontrado automaticamente',de:'automatisch gefunden',hu:'automatikusan megtalálva'},
@@ -1005,7 +1007,7 @@ function renderBot(w,j){const mb=w.querySelector('.mb');
   mb.innerHTML=h;showUsage(mb,j.usage);w.scrollIntoView({block:'end'})}
 async function chatSend(){const q=$('#chatIn').value.trim();if(!q)return;$('#chatIn').value='';addMsg('u',q);const w=addMsg('b',null,true);$('#chatSend').disabled=true;
   const again=()=>{w.remove();$('#chatIn').value=q;chatSend()};
-  try{renderBot(w,await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value,mode:$('#chatOne').checked?'query':'chat'}))}
+  try{renderBot(w,await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value,mode:$('#chatOne').checked?'query':'chat',after:$('#chAfter').value,before:$('#chBefore').value}))}
   catch(e){errBox(w.querySelector('.mb'),e,again,()=>{$('#mock').checked=true;pref('mock','1');again()})}
   $('#chatSend').disabled=false;$('#chatIn').focus()}
 $('#chatSend').onclick=chatSend;$('#chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();chatSend()}});
@@ -1194,7 +1196,11 @@ async function entLoad(){const k=$('#insKind').value;try{const r=await api('enti
 $('#entBtn').onclick=()=>{const sel=$('#insKind');sel.innerHTML=['','email','url','money','date','phone'].map(k=>`<option value="${k}">${k||T('ent_all')}</option>`).join('');insOpen(T('ent_btn'),'');sel.hidden=false;sel.onchange=entLoad;entLoad()};
 const li2=a=>a.length?'<ul>'+a.map(x=>'<li>'+x+'</li>').join('')+'</ul>':'';
 $('#cfBtn').onclick=async()=>{try{const r=await api('conflicts');insOpen(T('cf_btn'),r.conflicts.length?r.conflicts.map(c=>`<div class="snip"><b>${esc(base(c.a_path))}</b> (${esc(c.a_only.join(', '))}): ${esc(c.a_sentence)}<br><b>${esc(base(c.b_path))}</b> (${esc(c.b_only.join(', '))}): ${esc(c.b_sentence)}</div>`).join(''):`<p class="muted">${esc(T('cf_none'))}</p>`)}catch(e){fail(e)}};
-$('#tpBtn').onclick=async()=>{try{const r=await api('topics');insOpen(T('tp_btn'),r.topics.length?r.topics.map(t=>`<h3>${esc(t.terms.join(' · '))} <span class="muted">(${t.docs.length})</span></h3>${li2(t.docs.map(d=>esc(base(d))))}`).join(''):`<p class="muted">${esc(T('tp_none'))}</p>`)}catch(e){fail(e)}};
+$('#tpBtn').onclick=async()=>{try{const r=await api('topics');if(!r.topics.length){insOpen(T('tp_btn'),`<p class="muted">${esc(T('tp_none'))}</p>`);return}
+  const mx=Math.max(...r.topics.map(t=>t.docs.length));
+  insOpen(T('tp_btn'),`<div class="tmap" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center">${r.topics.map((t,i)=>{const d=Math.round(84+76*Math.sqrt(t.docs.length/mx));
+    return `<button type="button" class="tbub" data-t="${i}" aria-expanded="false" style="width:${d}px;height:${d}px;border-radius:50%;border:2px solid var(--accent,#2b6cb0);background:transparent;color:inherit;cursor:pointer;padding:8px;font-size:.8em;line-height:1.2"><b>${esc(t.terms.slice(0,3).join(' · '))}</b><br><span class="muted">${t.docs.length}</span></button>`}).join('')}</div><div id="tpDocs" role="region" aria-live="polite"></div>`);
+  $('#insBody').querySelectorAll('.tbub').forEach(b=>b.onclick=()=>{const t=r.topics[+b.dataset.t];$('#insBody').querySelectorAll('.tbub').forEach(x=>x.setAttribute('aria-expanded',x===b));$('#tpDocs').innerHTML=`<h3>${esc(t.terms.join(' · '))}</h3>${li2(t.docs.map(d=>esc(base(d))))}`})}catch(e){fail(e)}};
 $('#chBtn').onclick=()=>{insOpen(T('ch_btn'),`<label>${esc(T('ch_since'))} <input type="date" id="chDate"></label> <button class="btn sm" id="chGo" type="button">${esc(T('fc_go'))}</button><div id="chOut"></div>`);
   const d=new Date(Date.now()-30*864e5);$('#chDate').value=d.toISOString().slice(0,10);
   $('#chGo').onclick=async()=>{try{const r=await api('changes?since='+$('#chDate').value);$('#chOut').innerHTML=r.changes.length?li2(r.changes.map(x=>esc(x.path)+' <span class="muted">'+esc(new Date(x.mtime*1000).toISOString().slice(0,10))+'</span>')):`<p class="muted">${esc(T('ch_none'))}</p>`}catch(e){fail(e)}};$('#chGo').click()};

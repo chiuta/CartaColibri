@@ -140,6 +140,27 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.fill("#q", TYPO[lang]); pg.press("#q", "Enter")
             pg.wait_for_function("()=>{const d=document.querySelector('#dym');return d&&!d.hidden&&d.textContent.trim().length>0}", timeout=10000)
             pg.screenshot(path=f"{shots}/{lang}-dym.png")
+        # ---- insight dialogs (conflicts, topics, what's new, fact-check, dossier, compare, entities) ----
+        with rep.check(L, "insight dialogs open with real content", pg):
+            pg.click('.rb[data-view=library]'); pg.wait_for_selector("#libRows tr", timeout=15000)
+            for b in ("#cfBtn", "#tpBtn", "#entBtn", "#chBtn"):
+                pg.click(b); pg.wait_for_selector("#insDlg.on", timeout=8000); pg.wait_for_timeout(400)
+                assert pg.inner_text("#insTitle").strip(), f"empty title for {b}"
+                bad = raw_keys(pg); assert not bad, f"raw keys in {b}: {bad}"
+                pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+            pg.click("#fcBtn"); pg.wait_for_selector("#fcText"); pg.fill("#fcText", "The payment terms are thirty days after the invoice date.")
+            pg.click("#fcGo"); pg.wait_for_selector("#fcOut .snip", timeout=10000)
+            pg.click("#insX")
+            pg.click('.rb[data-view=fetch]'); pg.fill("#q", QUERY[lang]); pg.click('.rb[data-view=library]'); pg.wait_for_selector("#libRows tr")
+            pg.click("#dsBtn"); pg.wait_for_selector("#insDlg.on", timeout=8000); pg.wait_for_timeout(400)
+            assert pg.inner_text("#insBody").strip(), "empty dossier"
+            pg.click("#insX")
+            pg.locator("#libRows input[type=checkbox]").nth(0).check(); pg.locator("#libRows input[type=checkbox]").nth(1).check()
+            pg.click("#cmpBtn"); pg.wait_for_selector("#insDlg.on", timeout=8000); pg.wait_for_timeout(400)
+            assert pg.inner_text("#insTitle").strip(), "empty compare title"
+            pg.screenshot(path=f"{shots}/{lang}-compare.png"); pg.click("#insX")
+            pg.locator("#libRows input[type=checkbox]:checked").first.uncheck(); pg.locator("#libRows input[type=checkbox]:checked").first.uncheck()
+            pg.click('.rb[data-view=fetch]')
         # ---- document drawer ----
         pg.fill("#q", "payment OR plată OR pay*"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr")
         pg.locator("#resRows tr").first.dblclick(position={"x": 60, "y": 10})

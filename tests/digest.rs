@@ -29,3 +29,19 @@ fn digest_reports_only_what_is_new() {
     assert!(run_once(&lib, "money", None, false).unwrap().is_none());
     assert!(run_once(&lib, "nope", None, false).is_err());
 }
+
+#[test]
+fn eml_is_safe_and_saved_in_the_outbox() {
+    use cartacolibri::digest::{deliver, eml};
+    assert!(eml("a@b.ro\r\nBcc: x@y.z", "s", "b").is_err());
+    assert!(eml("not-an-address", "s", "b").is_err());
+    let m = eml("ana@example.ro", "Rezumat ăîșț", "line1\nline2").unwrap();
+    assert!(m.starts_with("From: ") && m.contains("To: ana@example.ro\r\n"));
+    assert!(m.contains("Subject: =?UTF-8?B?") && m.contains("line1\r\nline2"));
+    let home = tempfile::tempdir().unwrap();
+    let lib =
+        cartacolibri::library::Library::open(Some(home.path().to_str().unwrap()), false).unwrap();
+    let f = deliver(&lib, "my search!", "ana@example.ro", "body", false).unwrap();
+    assert!(f.starts_with(home.path().join("outbox")) && f.extension().unwrap() == "eml");
+    assert!(std::fs::read_to_string(f).unwrap().contains("body"));
+}

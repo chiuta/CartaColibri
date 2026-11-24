@@ -81,3 +81,5 @@ Web-grab refuses loopback / private addresses unless `CARTACOLIBRI_GRAB_LOCAL=1`
 - **Fact-check:** `POST /carta/factcheck {"text"}`, CLI `factcheck FILE|-` — each sentence of your text is searched in the library and judged `supported` / `numbers differ` / `partial` / `not found` against the best evidence sentence.
 - **Dossier:** `GET /carta/dossier?q=TERM`, CLI `dossier TERM` — passages per document, plus dates and amounts found in them.
 - **MCP:** new tools `factcheck`, `dossier`, `conflicts` (all read-only).
+- **Time range in chat:** `POST /carta/chat` accepts `"after"` and `"before"` (YYYY, YYYY-MM or YYYY-MM-DD); CLI `chat --since DATE --until DATE`. Only documents whose modification time falls in the range are retrieved.
+- **E-mail digests:** `digest NAME --mail-to ADDR [--sendmail]` writes `outbox/NAME-<time>.eml` in the library folder; with `--sendmail` it also pipes the message to the local `sendmail -t` (no SMTP login is ever stored). The address must be a plain `user@host`.

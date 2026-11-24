@@ -78,6 +78,12 @@ pub enum More {
         model: Model,
         #[arg(long)]
         lang: Option<String>,
+        /// only documents modified since this date (YYYY, YYYY-MM, YYYY-MM-DD)
+        #[arg(long)]
+        since: Option<String>,
+        /// only documents modified before this date
+        #[arg(long)]
+        until: Option<String>,
     },
     /// tags on documents
     #[command(subcommand)]
@@ -358,8 +364,23 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
                 );
             }
         }
-        More::Chat { group, model, lang } => {
+        More::Chat {
+            group,
+            model,
+            lang,
+            since,
+            until,
+        } => {
+            let date = |d: Option<String>, n: &str| -> Result<Option<i64>, String> {
+                d.map(|x| {
+                    cartacolibri::library::parse_date(&x)
+                        .ok_or(format!("--{n} must be YYYY, YYYY-MM or YYYY-MM-DD"))
+                })
+                .transpose()
+            };
             let mut s = ChatSession::new(model.backend());
+            s.after = date(since, "since")?;
+            s.before = date(until, "until")?;
             s.group = group;
             s.answer_lang = lang;
             eprintln!(

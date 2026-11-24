@@ -756,3 +756,18 @@ fn conflicts_topics_dossier_changes_factcheck_routes() {
         400
     );
 }
+
+#[test]
+fn chat_can_be_limited_to_a_time_range() {
+    let (s, _ids) = indexed();
+    let ask = |extra: Value| {
+        let mut b = json!({"sid": "t-1", "q": "What are the payment terms?", "mock": true, "mode": "query"});
+        b.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        post(&s, "/carta/chat", b)
+    };
+    assert_eq!(ask(json!({"after": "2000"})).json()["found"], true);
+    assert_eq!(ask(json!({"before": "2000"})).json()["found"], false);
+    assert_eq!(ask(json!({"after": "2999"})).json()["found"], false);
+}

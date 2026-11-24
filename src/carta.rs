@@ -2123,6 +2123,9 @@ pub struct ChatSession {
     pub max_turns: usize,
     /// Answer language: None/"auto" follows the question.
     pub answer_lang: Option<String>,
+    /// Only documents modified at or after / before these Unix-second times.
+    pub after: Option<i64>,
+    pub before: Option<i64>,
     /// (question, answer) pairs, oldest first.
     pub history: Vec<(String, String)>,
 }
@@ -2135,6 +2138,8 @@ impl ChatSession {
             top_k: 5,
             max_turns: 6,
             answer_lang: None,
+            after: None,
+            before: None,
             history: vec![],
         }
     }
@@ -2173,6 +2178,8 @@ impl ChatSession {
         let filter = crate::library::Filter {
             group: self.group.clone(),
             limit: Some(self.top_k.max(1).saturating_mul(4)),
+            after: self.after,
+            before: self.before,
             ..Default::default()
         };
         let any = words.iter().cloned().collect::<Vec<_>>().join(" OR ");
