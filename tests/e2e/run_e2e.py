@@ -181,7 +181,11 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
         # ---- group + task ----
         pg.fill("#q", "payment OR plată OR pay* OR hummingbirds OR colibrii"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr")
         pg.check("#resAll")   # select every result (the table re-renders on each tick, so use the header box)
-        pg.fill("#gName", GROUP[lang]); pg.click("#gFromSel"); pg.wait_for_selector("#groupList .row", timeout=8000)
+        pg.fill("#gName", GROUP[lang]); pg.click("#gFromSel")
+        try:
+            pg.wait_for_selector('#groupList input[name=grp]:not([value=""])', timeout=15000)
+        except Exception:
+            print("DEBUG group not created:", pg.evaluate("()=>({toast:(document.querySelector('#toast')||{}).textContent,sel:S.selRes.size,name:document.querySelector('#gName').value,groups:Object.keys(S.lib.groups)})")); raise
         with rep.check(L, "task glossary (mock) cites [S1]", pg):
             pg.click("#cartaBtn"); pg.wait_for_selector("#drawer.on")
             pg.wait_for_selector("#taskSel option[value=glossary]", state="attached", timeout=15000)
