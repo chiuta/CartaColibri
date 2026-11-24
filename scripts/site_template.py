@@ -88,10 +88,10 @@ NEW = {
            "de": "Sieh, was in deiner Bibliothek steckt: Typen, Größen und Entwicklung über die Zeit.",
            "hu": "Nézd meg, mi van a könyvtáradban: típusok, méretek és változás az időben."},
     "h_video": {"en": "Watch it work", "ro": "Vezi-l la lucru", "fr": "Regarde-le en action", "it": "Guardalo in azione", "es": "Míralo en acción", "pt": "Vê-o em ação", "de": "Sieh es in Aktion", "hu": "Nézd meg működés közben"},
-    "video_sub": {"en": "Half a minute, the real interface, narrated by captions in your language.", "ro": "Jumătate de minut, interfața reală, explicată prin subtitrări în limba ta.",
-                  "fr": "Une demi-minute, la vraie interface, commentée par des sous-titres dans ta langue.", "it": "Mezzo minuto, l’interfaccia reale, spiegata da didascalie nella tua lingua.",
-                  "es": "Medio minuto, la interfaz real, explicada con subtítulos en tu idioma.", "pt": "Meio minuto, a interface real, explicada por legendas na tua língua.",
-                  "de": "Eine halbe Minute, die echte Oberfläche, erklärt durch Untertitel in deiner Sprache.", "hu": "Fél perc, a valódi felület, feliratokkal a te nyelveden."},
+    "video_sub": {"en": "Under a minute, the real interface, narrated by captions in your language.", "ro": "Sub un minut, interfața reală, explicată prin subtitrări în limba ta.",
+                  "fr": "Moins d’une minute, la vraie interface, commentée par des sous-titres dans ta langue.", "it": "Meno di un minuto, l’interfaccia reale, spiegata da didascalie nella tua lingua.",
+                  "es": "Menos de un minuto, la interfaz real, explicada con subtítulos en tu idioma.", "pt": "Menos de um minuto, a interface real, explicada por legendas na tua língua.",
+                  "de": "Unter einer Minute, die echte Oberfläche, erklärt durch Untertitel in deiner Sprache.", "hu": "Egy percnél rövidebben, a valódi felület, feliratokkal a te nyelveden."},
     "h_devices": {"en": "Desktop, tablet, phone", "ro": "Desktop, tabletă, telefon", "fr": "Ordinateur, tablette, téléphone", "it": "Desktop, tablet, telefono",
                   "es": "Ordenador, tableta, móvil", "pt": "Computador, tablet, telemóvel", "de": "Desktop, Tablet, Smartphone", "hu": "Asztali gép, tablet, telefon"},
     "dev_sub": {"en": "The interface adapts to every screen — and so does this page.", "ro": "Interfața se adaptează la orice ecran — la fel și această pagină.",
@@ -303,12 +303,12 @@ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).
 c.textContent=D.copy[L]})}
 /* tour */
 let cur=0,timer=null,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,userStopped=false;const DUR=6500;
-function buildTabs(){$('tabs').innerHTML=[1,2,3,4,5,6,7].map((n,i)=>'<button type="button" role="tab" id="tab'+n+'" aria-selected="'+(i===cur)+'" aria-controls="tour_img" tabindex="'+(i===cur?0:-1)+'"><em>'+n+'</em>'+X['t'+n][L]+'<span class="pg"></span></button>').join('');
-document.querySelectorAll('#tabs button').forEach((b,i)=>{b.onclick=()=>{userStopped=true;show(i)};b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();userStopped=true;show((cur+(e.key==='ArrowRight'?1:6))%7);$('tab'+(cur+1)).focus()}}})}
+function buildTabs(){$('tabs').innerHTML=[1,2,3,4,5,6,7,8,9].map((n,i)=>'<button type="button" role="tab" id="tab'+n+'" aria-selected="'+(i===cur)+'" aria-controls="tour_img" tabindex="'+(i===cur?0:-1)+'"><em>'+n+'</em>'+X['t'+n][L]+'<span class="pg"></span></button>').join('');
+document.querySelectorAll('#tabs button').forEach((b,i)=>{b.onclick=()=>{userStopped=true;show(i)};b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();userStopped=true;show((cur+(e.key==='ArrowRight'?1:8))%9);$('tab'+(cur+1)).focus()}}})}
 function show(i,auto){cur=i;const n=i+1;const im=$('tour_img');im.style.opacity=.15;im.onload=()=>{im.style.opacity=1};im.src='img/'+L+'-'+n+'.webp';im.alt=X['c'+n][L];$('tour_cap').textContent=X['c'+n][L];
 document.querySelectorAll('#tabs button').forEach((b,j)=>{b.setAttribute('aria-selected',j===i);b.tabIndex=j===i?0:-1;b.classList.remove('run');void b.offsetWidth});
 const b=$('tab'+n);if(b&&b.scrollIntoView&&!auto)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
-clearTimeout(timer);if(playing&&!userStopped&&inView){b.style.setProperty('--dur',DUR+'ms');b.classList.add('run');timer=setTimeout(()=>show((cur+1)%7,true),DUR)}}
+clearTimeout(timer);if(playing&&!userStopped&&inView){b.style.setProperty('--dur',DUR+'ms');b.classList.add('run');timer=setTimeout(()=>show((cur+1)%9,true),DUR)}}
 let inView=false;
 $('play').onclick=()=>{playing=!playing;userStopped=false;show(cur,true)};
 /* language */

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Captures the CartaColibri screens in all 8 languages (playwright + a system Chrome), driving the real UI of the Rust
 server against a generated sample library and the offline `mock` mode.
-Output: docs/cartacolibri/img/<lang>-<n>.png   n = 1 library, 2 search, 3 group, 4 task, 5 document drawer, 6 chat, 7 stats
+Output: docs/cartacolibri/img/<lang>-<n>.png   n = 1 library, 2 search, 3 group, 4 task, 5 document drawer, 6 chat, 7 stats, 8 engine dialog, 9 import dialog (web-grab)
 Usage: python3 scripts/capture_carta_demo.py [--lib DIR] [--bin PATH] [--only en,ro]   (without --lib a sample library is generated)"""
 import argparse, os, shutil, socket, subprocess, sys, tempfile, time
 from playwright.sync_api import sync_playwright
@@ -26,6 +26,30 @@ SAMPLE = {
 }
 
 
+def fake_engine(tmp):
+    """A tiny OpenAI-style engine (only GET /v1/models) published through a discovery file, so the engine dialog has something to find.
+    Returns the environment for the server process."""
+    import http.server, json, threading
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            ok = self.path.rstrip("/") == "/v1/models"
+            body = json.dumps({"data": [{"id": "qwen3-8b"}]} if ok else {}).encode()
+            self.send_response(200 if ok else 404); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+        def log_message(self, *a): pass
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    f = os.path.join(tmp, "endpoint.json"); open(f, "w").write(json.dumps({"url": f"http://127.0.0.1:{srv.server_address[1]}/v1", "model": "qwen3-8b"}))
+    empty = os.path.join(tmp, "no-companion"); os.makedirs(empty, exist_ok=True)
+    return dict(os.environ, COLIBRI_ENDPOINT_FILE=f, COLIBRI_COMPANION_HOME=empty)
+
+
+def engine_dialog(pg, pause=500):
+    pg.click("#gwCfg"); pg.wait_for_selector("#gwDlg", state="visible"); pg.click("#gwDetect"); pg.wait_for_selector("#gwFound [data-use]"); pg.wait_for_timeout(pause)
+
+
+def import_dialog(pg, pause=500):
+    pg.click(".rb[data-view=library]"); pg.wait_for_timeout(300); pg.click("#bringBtn"); pg.wait_for_selector("#wgUrl", state="visible"); pg.fill("#wgUrl", "https://example.org/article"); pg.wait_for_timeout(pause)
+
+
 def free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
 
@@ -41,7 +65,7 @@ def main():
         for rel, txt in SAMPLE.items():
             os.makedirs(os.path.dirname(os.path.join(lib, rel)), exist_ok=True); open(os.path.join(lib, rel), "w", encoding="utf-8").write(txt)
     port = a.port or free_port()
-    srv = subprocess.Popen([a.bin, "--home", home, "serve", "--port", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    srv = subprocess.Popen([a.bin, "--home", home, "serve", "--port", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=fake_engine(home))
     for _ in range(100):
         try: socket.create_connection(("127.0.0.1", port), 0.2).close(); break
         except OSError: time.sleep(0.1)
@@ -86,6 +110,9 @@ def main():
                 # stats
                 pg.click('.rb[data-view=stats]'); pg.wait_for_selector("#statsOut svg.bars rect.bb"); pg.mouse.move(700, 600); pg.wait_for_timeout(500)
                 pg.screenshot(path=f"{out}/{lang}-7.png")
+                # engine dialog (found automatically) and import dialog (web-grab)
+                engine_dialog(pg); pg.screenshot(path=f"{out}/{lang}-8.png"); pg.click("#gwX"); pg.wait_for_selector("#gwDlg", state="hidden")
+                import_dialog(pg); pg.screenshot(path=f"{out}/{lang}-9.png"); pg.click("#brClose"); pg.wait_for_selector("#bring", state="hidden")
                 # clean up so the next language starts alike
                 pg.evaluate("async n=>{const h={'X-Colibri-UI':'1','Content-Type':'application/json'};await fetch('/carta/groups',{method:'DELETE',headers:h,body:JSON.stringify({name:n})})}", GROUP[lang])
                 print(lang, "ok", "JS errors:" + str(errs) if errs else "")

@@ -12,6 +12,7 @@ from playwright.sync_api import sync_playwright
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import capture_carta_demo as D
 ROOT = D.ROOT; LANGS = D.LANGS
+import carta_docs_alpha2 as A2
 # 7 short captions per language (informal 'tu'): library, search, group, synthesis, chat, document, stats
 CAP = {
  "en": ["Your whole library, searchable in one place.", "Search with a typo? You still find what you meant.", "Turn the results into a group: your own search scope.",
@@ -73,7 +74,7 @@ def load(ctx, base, lib, first):
 
 
 def demo(b, base, lib, lang, vdir, crf, first):
-    G, C = D.GROUP[lang], CAP[lang]
+    G, C = D.GROUP[lang], CAP[lang] + [A2.STEPS[8]["cap"][lang], A2.STEPS[9]["cap"][lang]]
     ctx = b.new_context(viewport={"width": 1280, "height": 720}, record_video_dir=vdir, record_video_size={"width": 1280, "height": 720})
     ctx.add_init_script(INIT % lang); t0 = time.time()
     pg, errs = load(ctx, base, lib, first); T0[0] = time.time(); pg.mouse.move(640, 400); start = time.time() - t0 - 0.3
@@ -98,6 +99,10 @@ def demo(b, base, lib, lang, vdir, crf, first):
     click(pg, "#vStar", 300); typ(pg, "#vNote", D.NOTE[lang], 30); pg.wait_for_timeout(1900)
     click(pg, "#vClose", 400); pg.wait_for_selector("#viewer", state="hidden")
     cap(pg, C[6]); click(pg, '.rb[data-view=stats]', 300); pg.wait_for_selector("#statsOut svg.bars rect.bb"); pg.mouse.move(900, 300, steps=20); pg.wait_for_timeout(2600)
+    cap(pg, C[7]); click(pg, "#gwCfg", 500); pg.wait_for_selector("#gwDlg", state="visible"); click(pg, "#gwDetect", 400); pg.wait_for_selector("#gwFound [data-use]"); pg.wait_for_timeout(2600)
+    click(pg, "#gwX", 400); pg.wait_for_selector("#gwDlg", state="hidden")
+    cap(pg, C[8]); click(pg, '.rb[data-view=library]', 400); click(pg, "#bringBtn", 500); pg.wait_for_selector("#wgUrl", state="visible"); typ(pg, "#wgUrl", "https://example.org/article", 45); pg.wait_for_timeout(2400)
+    click(pg, "#brClose", 400); pg.wait_for_selector("#bring", state="hidden")
     cap(pg, ""); pg.wait_for_timeout(400)
     dur = time.time() - t0 - start
     # undo the demo tag/star/note (not recorded: the video is cut at `dur`) so the next language starts alike
@@ -163,7 +168,7 @@ def main():
         for rel, txt in D.SAMPLE.items():
             os.makedirs(os.path.dirname(os.path.join(lib, rel)), exist_ok=True); open(os.path.join(lib, rel), "w", encoding="utf-8").write(txt)
     port = free_port(); issues = set()
-    srv = subprocess.Popen([a.bin, "--home", home, "serve", "--port", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    srv = subprocess.Popen([a.bin, "--home", home, "serve", "--port", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=D.fake_engine(home))
     for _ in range(100):
         try: socket.create_connection(("127.0.0.1", port), 0.2).close(); break
         except OSError: time.sleep(0.1)

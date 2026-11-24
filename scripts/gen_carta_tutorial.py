@@ -6,6 +6,7 @@ Usage: python3 scripts/gen_carta_tutorial.py"""
 import os, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_carta_docs import X, LANGS, NAMES, ROOT
+import carta_docs_alpha2 as A2
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -61,6 +62,8 @@ S = [
           "de": "Klicke oben rechts auf RAG-CARTA. Wähle eine Aufgabe — zusammenfassen, extrahieren oder synthetisieren —, dann deine ausgewählten Dateien oder eine Gruppe, tippe deine Frage ins Feld „Message Colibri“ und klicke auf Starten. Antworten behalten die Zitate [S1], [S2] und enden mit der Liste der Quelldateien; mit „Ergebnis speichern“ landen sie in outputs/. Starte die Engine mit coli web für echte Antworten; der „Offline-Modus“ ist nur ein schneller extraktiver Notbehelf.",
           "hu": "Nyomd meg a RAG-CARTA gombot (jobb felül). Válassz feladatot — összefoglalás, kinyerés vagy szintézis —, majd a kijelölt fájlokat vagy egy csoportot, írd be a kérdést a „Message Colibri” mezőbe, és indítsd el. A válaszok megtartják az [S1], [S2] hivatkozásokat, és a forrásfájlok listájával végződnek; az „Eredmény mentése” bejelölésével az outputs/ mappába kerülnek. Valódi válaszokhoz indítsd a motort a coli web paranccsal; az „Offline mód” csak gyors, kivonatoló tartalék."}},
 ]
+for _n in (8, 9):
+    S.append({"img": _n, "title": {_l: _t.replace(f"{_n} ·", f"{_n - 3} ·", 1) for _l, _t in A2.STEPS[_n]["title"].items()}, "cap": A2.STEPS[_n]["cap"], "text": A2.STEPS[_n]["text"]})
 END = {  # closing card: command line + portable
  "title": {"en": "5 · Command line and portable", "ro": "5 · Linia de comandă și versiunea portabilă", "fr": "5 · Ligne de commande et version portable", "it": "5 · Riga di comando e versione portatile", "es": "5 · Línea de comandos y versión portátil", "pt": "5 · Linha de comandos e versão portátil", "de": "5 · Kommandozeile und portable Version", "hu": "5 · Parancssor és hordozható változat"},
  "cap": {"en": "Everything also works from the command line — and as a portable app.", "ro": "Totul merge și din linia de comandă — și ca aplicație portabilă.", "fr": "Tout fonctionne aussi en ligne de commande — et en version portable.", "it": "Tutto funziona anche da riga di comando — e come app portatile.", "es": "Todo funciona también desde la línea de comandos — y como app portátil.", "pt": "Tudo funciona também na linha de comandos — e como app portátil.", "de": "Alles funktioniert auch per Kommandozeile — und als portable App.", "hu": "Minden működik parancssorból is — és hordozható alkalmazásként."},
@@ -72,6 +75,7 @@ END = {  # closing card: command line + portable
           "pt": "As mesmas funções estão disponíveis como comandos cartacolibri (abaixo). O zip portátil guarda o teu índice, os grupos e os resultados na sua própria pasta Data: descomprime, executa e já está.",
           "de": "Dieselben Funktionen gibt es als cartacolibri-Befehle (siehe unten). Das portable Zip speichert Index, Gruppen und Ergebnisse im eigenen Ordner Data: entpacken, Starter ausführen, fertig.",
           "hu": "Ugyanezek a funkciók cartacolibri parancsokként is elérhetők (lásd alább). A hordozható zip az indexet, a csoportokat és az eredményeket a saját Data mappájában tartja: kicsomagolod, elindítod, kész."}}
+END["title"] = {_l: _t.replace("5 ·", "7 ·", 1) for _l, _t in END["title"].items()}
 CMD = ["cartacolibri add ~/Documents", 'cartacolibri search "payment OR pay*" --ext txt,md', "cartacolibri group set Contracts ~/Documents/contracts",
        'cartacolibri synthesize "payment terms" --group Contracts --save', "cartacolibri watch --interval 30      # keep the index current",
        "cartacolibri grab https://example.org/article      # web-grab", "cartacolibri bookmarklet               # one-click save from any browser"]
@@ -109,7 +113,7 @@ def pdf(lang):
         c.drawImage(ImageReader(img), M, H - 32 * mm - h, w, h)
         c.setStrokeColorRGB(.3, .3, .3); c.rect(M, H - 32 * mm - h, w, h)
         y = H - 32 * mm - h - 9 * mm; c.setFont("DJ", 10.5)
-        for ln in wrap(c, st["text"][lang], "DJ", 10.5, W - 2 * M): c.drawString(M, y, ln); y -= 5.4 * mm
+        for ln in wrap(c, st["text"][lang].replace("`", ""), "DJ", 10.5, W - 2 * M): c.drawString(M, y, ln); y -= 5.4 * mm
         c.setFont("DJ", 8); c.setFillGray(.5); c.drawRightString(W - M, 12 * mm, "CartaColibri · Chiuță & Dumbrava · github.com/chiuta/CartaColibri"); c.setFillGray(0)
         c.showPage()
     c.setFont("DJB", 18); c.drawString(M, H - 25 * mm, END["title"][lang]); y = H - 38 * mm; c.setFont("DJ", 10.5)

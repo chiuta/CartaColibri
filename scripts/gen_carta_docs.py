@@ -291,6 +291,8 @@ def site():
     ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
            'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     import site_template as T
+    for _n, _st in A2.STEPS.items():
+        T.NEW[f"t{_n}"] = dict(_st["tab"]); T.NEW[f"c{_n}"] = dict(_st["cap"])
     miss = [(k, l) for k in T.NEW for l in LANGS if not T.NEW[k].get(l)]
     if miss: sys.exit(f"missing site translations: {miss}")
     new = json.dumps(T.NEW, ensure_ascii=False).replace("</", "<\\/")
@@ -331,7 +333,7 @@ def main():
         from PIL import Image
     except ImportError:
         Image = None
-    names = [str(n) for n in range(1, 8)] + ["m1", "m2", "m3", "t1"]
+    names = [str(n) for n in range(1, 10)] + ["m1", "m2", "m3", "t1"]
     for l in LANGS:
         for n in names:
             src, dst = f"{ROOT}/docs/cartacolibri/img/{l}-{n}.png", f"{ROOT}/site-carta/img/{l}-{n}.webp"
