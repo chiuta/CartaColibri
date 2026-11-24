@@ -124,8 +124,8 @@ pub fn html_to_text(s: &str) -> String {
     out
 }
 
-fn local(name: &[u8]) -> &[u8] {
-    match name.iter().rposition(|&c| c == b':') {
+fn local(name: &str) -> &str {
+    match name.rfind(':') {
         Some(p) => &name[p + 1..],
         None => name,
     }
@@ -140,39 +140,33 @@ pub fn xml_text(data: &[u8], text_in: &[&str], para: &[&str]) -> Res<String> {
     loop {
         match rd.read_event().map_err(|e| format!("xml: {e}"))? {
             Event::Start(e) => {
-                if text_in
-                    .iter()
-                    .any(|t| t.as_bytes() == local(e.name().as_ref()))
-                {
+                if text_in.iter().any(|t| *t == local(e.name().as_ref())) {
                     depth_in += 1;
                 }
             }
             Event::Empty(e) => {
-                if para
-                    .iter()
-                    .any(|t| t.as_bytes() == local(e.name().as_ref()))
-                {
+                if para.iter().any(|t| *t == local(e.name().as_ref())) {
                     out.push('\n');
                 }
             }
             Event::End(e) => {
                 let n = e.name();
                 let n = local(n.as_ref());
-                if text_in.iter().any(|t| t.as_bytes() == n) {
+                if text_in.contains(&n) {
                     depth_in = depth_in.saturating_sub(1);
                 }
-                if para.iter().any(|t| t.as_bytes() == n) {
+                if para.contains(&n) {
                     out.push('\n');
                 }
             }
             Event::Text(t) => {
                 if text_in.is_empty() || depth_in > 0 {
-                    out.push_str(&t.decode().map_err(|e| format!("xml: {e}"))?);
+                    out.push_str(&t.xml10_content());
                 }
             }
             Event::GeneralRef(r) => {
                 if (text_in.is_empty() || depth_in > 0)
-                    && let Ok(name) = std::str::from_utf8(&r)
+                    && let Some(name) = Some(&*r)
                     && let Some(e) = entity(name)
                 {
                     out.push_str(&e);
@@ -225,7 +219,11 @@ fn numbered(names: Vec<String>, prefix: &str, suffix: &str) -> Vec<(u64, String)
 }
 
 fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
-    let names: Vec<String> = z.file_names().map(String::from).collect();
+    let names: Vec<String> = z
+        .file_names()
+        .filter_map(|n| n.ok())
+        .map(|n| n.into_owned())
+        .collect();
     let mut shared: Vec<String> = Vec::new();
     if names.iter().any(|n| n == "xl/sharedStrings.xml") {
         let data = zip_read(z, "xl/sharedStrings.xml")?;
@@ -234,24 +232,22 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
         loop {
             match rd.read_event().map_err(|e| e.to_string())? {
                 Event::Start(e) => match local(e.name().as_ref()) {
-                    b"si" => {
+                    "si" => {
                         in_si = true;
                         cur.clear()
                     }
-                    b"t" => in_t = true,
+                    "t" => in_t = true,
                     _ => {}
                 },
                 Event::End(e) => match local(e.name().as_ref()) {
-                    b"si" => {
+                    "si" => {
                         in_si = false;
                         shared.push(std::mem::take(&mut cur))
                     }
-                    b"t" => in_t = false,
+                    "t" => in_t = false,
                     _ => {}
                 },
-                Event::Text(t) if in_si && in_t => {
-                    cur.push_str(&t.decode().map_err(|e| e.to_string())?)
-                }
+                Event::Text(t) if in_si && in_t => cur.push_str(&t.xml10_content()),
                 Event::Eof => break,
                 _ => {}
             }
@@ -270,22 +266,22 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
         loop {
             match rd.read_event().map_err(|e| e.to_string())? {
                 Event::Start(e) => match local(e.name().as_ref()) {
-                    b"c" => {
+                    "c" => {
                         in_c = true;
                         val.clear();
                         ctype = e
                             .attributes()
                             .flatten()
-                            .find(|a| a.key.as_ref() == b"t")
-                            .map(|a| String::from_utf8_lossy(&a.value).into_owned())
+                            .find(|a| a.key.as_ref() == "t")
+                            .map(|a| a.value.clone().into_owned())
                             .unwrap_or_default();
                     }
-                    b"v" => in_v = true,
-                    b"t" => in_t = true,
+                    "v" => in_v = true,
+                    "t" => in_t = true,
                     _ => {}
                 },
                 Event::End(e) => match local(e.name().as_ref()) {
-                    b"c" => {
+                    "c" => {
                         in_c = false;
                         let v = if ctype == "s" {
                             val.trim()
@@ -300,9 +296,9 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
                             cells.push(v)
                         }
                     }
-                    b"v" => in_v = false,
-                    b"t" => in_t = false,
-                    b"row" => {
+                    "v" => in_v = false,
+                    "t" => in_t = false,
+                    "row" => {
                         if !cells.is_empty() {
                             rows.push(cells.join(" | "))
                         }
@@ -310,9 +306,7 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
                     }
                     _ => {}
                 },
-                Event::Text(t) if in_c && (in_v || in_t) => {
-                    val.push_str(&t.decode().map_err(|e| e.to_string())?)
-                }
+                Event::Text(t) if in_c && (in_v || in_t) => val.push_str(&t.xml10_content()),
                 Event::Eof => break,
                 _ => {}
             }
@@ -544,11 +538,12 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
             let mut z = open_zip(path)?;
             let mut names: Vec<String> = z
                 .file_names()
+                .filter_map(|n| n.ok())
                 .filter(|n| {
                     let l = n.to_lowercase();
                     l.ends_with(".xhtml") || l.ends_with(".html") || l.ends_with(".htm")
                 })
-                .map(String::from)
+                .map(|n| n.into_owned())
                 .collect();
             names.sort();
             let mut parts = Vec::new();
@@ -586,7 +581,11 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
         }
         ".pptx" => {
             let mut z = open_zip(path)?;
-            let names: Vec<String> = z.file_names().map(String::from).collect();
+            let names: Vec<String> = z
+                .file_names()
+                .filter_map(|n| n.ok())
+                .map(|n| n.into_owned())
+                .collect();
             let mut out = Vec::new();
             for (i, (_, n)) in numbered(names, "ppt/slides/slide", ".xml")
                 .into_iter()
@@ -1380,7 +1379,9 @@ fn zip_walk<R: Read + std::io::Seek>(
         if f.is_dir() {
             continue;
         }
-        let name = f.name().to_string();
+        let Ok(name) = f.name().map(|n| n.into_owned()) else {
+            continue;
+        };
         listing.push_str(&format!("{prefix}{name} ({} bytes)\n", f.size()));
         todo.push((i, name, f.size()));
     }

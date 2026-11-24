@@ -542,8 +542,8 @@ pub fn enex(xml: &[u8], dest: &Path) -> Res<ImportStats> {
     loop {
         let ev = r.read_event_into(&mut buf);
         let (text, is_text) = match &ev {
-            Ok(Event::Text(t)) => (t.decode().map(|c| c.into_owned()).unwrap_or_default(), true),
-            Ok(Event::CData(t)) => (decode(t.as_ref()), true),
+            Ok(Event::Text(t)) => (t.xml10_content().into_owned(), true),
+            Ok(Event::CData(t)) => (t.as_ref().to_string(), true),
             Ok(Event::GeneralRef(t)) => (crate::feeds::gref(t), true),
             _ => (String::new(), false),
         };
@@ -562,7 +562,7 @@ pub fn enex(xml: &[u8], dest: &Path) -> Res<ImportStats> {
         }
         match ev {
             Ok(Event::Start(e)) => {
-                let n = String::from_utf8_lossy(e.name().as_ref()).to_lowercase();
+                let n = e.name().as_ref().to_lowercase();
                 if n == "note" {
                     title.clear();
                     content.clear();
@@ -574,7 +574,7 @@ pub fn enex(xml: &[u8], dest: &Path) -> Res<ImportStats> {
                 }
             }
             Ok(Event::End(e)) => {
-                let n = String::from_utf8_lossy(e.name().as_ref()).to_lowercase();
+                let n = e.name().as_ref().to_lowercase();
                 if n == "note" {
                     let t = if title.trim().is_empty() {
                         "Untitled"

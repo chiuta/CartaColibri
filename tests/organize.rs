@@ -149,7 +149,7 @@ fn export_formats_and_import() {
     let zp = d.path().join("out.zip");
     assert_eq!(export_zip(&items, &zp).unwrap(), 3);
     let z = zip::ZipArchive::new(fs::File::open(&zp).unwrap()).unwrap();
-    let names: Vec<_> = z.file_names().map(String::from).collect();
+    let names: Vec<_> = z.file_names().map(|n| n.unwrap().into_owned()).collect();
     assert!(
         names.iter().any(|n| n == "citations.md")
             && names.iter().any(|n| n.starts_with("sources/a"))
@@ -220,10 +220,11 @@ fn backup_restore_verified() {
             let mut f = src.by_index(i).unwrap();
             let mut buf = vec![];
             f.read_to_end(&mut buf).unwrap();
-            if f.name() == "state/organize.json" {
+            let name = f.name().unwrap().into_owned();
+            if name == "state/organize.json" {
                 buf.extend_from_slice(b" tampered");
             }
-            w.start_file(f.name().to_string(), o).unwrap();
+            w.start_file(name, o).unwrap();
             w.write_all(&buf).unwrap();
         }
         w.finish().unwrap();

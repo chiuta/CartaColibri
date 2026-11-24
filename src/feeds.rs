@@ -50,8 +50,8 @@ fn lname(e: &BytesStart) -> String {
     lbytes(e.name().as_ref())
 }
 
-fn lbytes(b: &[u8]) -> String {
-    let n = String::from_utf8_lossy(b).to_lowercase();
+fn lbytes(b: &str) -> String {
+    let n = b.to_lowercase();
     n.rsplit(':').next().unwrap_or("").to_string()
 }
 
@@ -60,7 +60,7 @@ pub(crate) fn gref(r: &quick_xml::events::BytesRef) -> String {
     if let Ok(Some(c)) = r.resolve_char_ref() {
         return c.to_string();
     }
-    let name = r.decode().map(|c| c.into_owned()).unwrap_or_default();
+    let name = r.as_ref().to_string();
     match name.as_str() {
         "amp" => "&".into(),
         "lt" => "<".into(),
@@ -101,12 +101,12 @@ pub fn parse(xml: &str) -> Vec<Item> {
                         let (mut href, mut rel) = (String::new(), String::new());
                         for a in e.attributes().flatten() {
                             let v = a
-                                .unescape_value()
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|v| v.into_owned())
                                 .unwrap_or_default();
                             match a.key.as_ref() {
-                                b"href" => href = v,
-                                b"rel" => rel = v,
+                                "href" => href = v,
+                                "rel" => rel = v,
                                 _ => {}
                             }
                         }
@@ -123,7 +123,7 @@ pub fn parse(xml: &str) -> Vec<Item> {
                 }
             }
             Ok(Event::Text(ref t)) => {
-                let s = t.decode().map(|c| c.into_owned()).unwrap_or_default();
+                let s = t.xml10_content().into_owned();
                 field(&mut cur, &path, &s, &mut content);
             }
             Ok(Event::GeneralRef(ref t)) => {
@@ -131,7 +131,7 @@ pub fn parse(xml: &str) -> Vec<Item> {
                 field(&mut cur, &path, &s, &mut content);
             }
             Ok(Event::CData(ref t)) => {
-                let s = decode(t.as_ref());
+                let s = t.as_ref().to_string();
                 field(&mut cur, &path, &s, &mut content);
             }
             Ok(Event::End(ref e)) => {
@@ -365,13 +365,13 @@ pub fn opml_parse(xml: &str) -> Vec<Subscription> {
                 let (mut url, mut title) = (String::new(), String::new());
                 for a in e.attributes().flatten() {
                     let v = a
-                        .unescape_value()
+                        .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                         .map(|v| v.into_owned())
                         .unwrap_or_default();
-                    match a.key.as_ref().to_ascii_lowercase().as_slice() {
-                        b"xmlurl" => url = v,
-                        b"title" => title = v,
-                        b"text" if title.is_empty() => title = v,
+                    match a.key.as_ref().to_ascii_lowercase().as_str() {
+                        "xmlurl" => url = v,
+                        "title" => title = v,
+                        "text" if title.is_empty() => title = v,
                         _ => {}
                     }
                 }
