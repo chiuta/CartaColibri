@@ -40,9 +40,41 @@ fn make_zip(entries: &[(&str, Vec<u8>)], deflate: bool) -> Vec<u8> {
 
 const W_DOC: &str = r#"<?xml version="1.0"?><w:document xmlns:w="w"><w:body><w:p><w:r><w:t>Hello docx</w:t></w:r></w:p><w:p><w:r><w:t>Second</w:t></w:r></w:p></w:body></w:document>"#;
 
+/// A small but fully valid PDF (correct xref offsets), so the pure-Rust reader
+/// accepts it even where poppler is not installed.
+fn minimal_pdf(text: &str) -> Vec<u8> {
+    let stream = format!("BT /F1 12 Tf 20 100 Td ({text}) Tj ET");
+    let objs = [
+        "<</Type/Catalog/Pages 2 0 R>>".to_string(),
+        "<</Type/Pages/Kids[3 0 R]/Count 1>>".to_string(),
+        "<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>".to_string(),
+        format!("<</Length {}>>\nstream\n{stream}\nendstream", stream.len()),
+        "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>".to_string(),
+    ];
+    let mut out = b"%PDF-1.4\n".to_vec();
+    let mut offs = vec![];
+    for (i, o) in objs.iter().enumerate() {
+        offs.push(out.len());
+        out.extend(format!("{} 0 obj\n{o}\nendobj\n", i + 1).bytes());
+    }
+    let x = out.len();
+    out.extend(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).bytes());
+    for o in offs {
+        out.extend(format!("{o:010} 00000 n \n").bytes());
+    }
+    out.extend(
+        format!(
+            "trailer\n<</Root 1 0 R/Size {}>>\nstartxref\n{x}\n%%EOF\n",
+            objs.len() + 1
+        )
+        .bytes(),
+    );
+    out
+}
+
 fn samples() -> Vec<(&'static str, Vec<u8>)> {
     let t = |s: &str| s.as_bytes().to_vec();
-    let pdf = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 20 100 Td (Hello PDF) Tj ET\nendstream\nendobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R/Size 6>>\n%%EOF\n".to_vec();
+    let pdf = minimal_pdf("Hello PDF");
     vec![
         (".txt", t("plain text \u{103}\u{219} here\nline two")),
         (".md", t("# Title\n\nSome *markdown* text.\n")),
@@ -525,6 +557,7 @@ fn indexer_continues_past_a_hung_file_and_reports_it() {
 
 // ---------------------------------------------------------------- library walker
 
+#[cfg_attr(not(unix), allow(dead_code))]
 fn run_with_deadline<T: Send + 'static>(secs: u64, f: impl FnOnce() -> T + Send + 'static) -> T {
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {

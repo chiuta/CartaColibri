@@ -184,7 +184,8 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
         pg.fill("#gName", GROUP[lang]); pg.click("#gFromSel"); pg.wait_for_selector("#groupList .row", timeout=8000)
         with rep.check(L, "task glossary (mock) cites [S1]", pg):
             pg.click("#cartaBtn"); pg.wait_for_selector("#drawer.on")
-            pg.select_option("#taskSel", "glossary"); pg.check("#mock")
+            pg.wait_for_selector("#taskSel option[value=glossary]", state="attached", timeout=15000)
+            pg.select_option("#taskSel", "glossary", timeout=15000); pg.check("#mock")
             assert pg.locator('#taskSeg button[data-t=synthesize]').count() == 1 and pg.locator('#taskSel option').count() == 14, 'expected 14 tasks'
             pg.check('input[name=scope][value=group]'); pg.select_option("#scopeGroup", GROUP[lang])
             pg.fill("#req", QUERY[lang]); pg.click("#run")
