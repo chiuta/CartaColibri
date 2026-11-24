@@ -96,7 +96,28 @@ pub fn token(home: &std::path::Path) -> String {
             format!("{:?}{}", std::time::SystemTime::now(), std::process::id()).as_bytes(),
         ))
     };
-    write_private(&p, &t);
+    // Publish atomically: write a private temp file, then hard-link it into place.
+    // The link fails if another caller got there first, so every caller ends up
+    // returning the same, winning token.
+    let tmp = home.join(format!("clip.token.{}.{:x}", std::process::id(), {
+        let mut n = [0u8; 4];
+        let _ = getrandom::fill(&mut n);
+        u32::from_le_bytes(n)
+    }));
+    write_private(&tmp, &t);
+    let linked = std::fs::hard_link(&tmp, &p).is_ok();
+    let _ = std::fs::remove_file(&tmp);
+    if !linked {
+        for _ in 0..50 {
+            if let Ok(w) = std::fs::read_to_string(&p)
+                && w.trim().len() >= 16
+            {
+                return w.trim().to_string();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        write_private(&p, &t);
+    }
     t
 }
 

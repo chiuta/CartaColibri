@@ -457,3 +457,17 @@ fn token_file_is_private() {
         .mode();
     assert_eq!(mode & 0o077, 0, "mode {mode:o}");
 }
+
+#[test]
+fn clip_token_creation_is_race_free() {
+    let d = tempfile::tempdir().unwrap();
+    let home = d.path().to_path_buf();
+    let hs: Vec<_> = (0..16)
+        .map(|_| {
+            let h = home.clone();
+            std::thread::spawn(move || server::token(&h))
+        })
+        .collect();
+    let toks: Vec<String> = hs.into_iter().map(|h| h.join().unwrap()).collect();
+    assert!(toks.iter().all(|t| t == &toks[0]), "{toks:?}");
+}
