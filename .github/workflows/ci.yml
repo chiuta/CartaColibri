@@ -41,6 +41,7 @@ jobs:
         run: node scripts/check_carta_ui.js
       - name: Generated READMEs and site are up to date
         run: |
+          pip install pillow
           python scripts/gen_carta_docs.py
           git diff --exit-code -- README.md docs/cartacolibri/README.*.md site-carta/index.html
 
