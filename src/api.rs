@@ -377,6 +377,47 @@ pub fn download(home: Option<&str>, r: &Req) -> Result<Download, (u16, String)> 
     }
 }
 
+/// The AI-engine address saved from the web UI (`<home>/settings.json`), if any.
+pub fn saved_gateway(home: Option<&str>) -> Option<String> {
+    let h = crate::library::state_dir(home).ok()?;
+    let j: Value = serde_json::from_slice(&std::fs::read(h.join("settings.json")).ok()?).ok()?;
+    let u = j["gateway_url"].as_str()?.trim();
+    (!u.is_empty() && valid_gateway(u).is_ok()).then(|| u.to_string())
+}
+
+/// The address to use: the one saved in the UI wins over the command line / `COLI_URL` default.
+pub fn effective_gateway(home: Option<&str>, default: &str) -> String {
+    saved_gateway(home).unwrap_or_else(|| default.to_string())
+}
+
+/// http(s) only, a host, no credentials, no control characters. Loopback and LAN are allowed on purpose:
+/// the AI engine is a program the person runs themselves.
+pub fn valid_gateway(u: &str) -> Result<(), String> {
+    if u.len() > 200
+        || u.chars()
+            .any(|c| c.is_control() || c.is_whitespace() || c == '\\')
+    {
+        return Err("not a valid address".into());
+    }
+    let uri: ureq::http::Uri = u.parse().map_err(|_| "not a valid address".to_string())?;
+    let ok_scheme = matches!(uri.scheme_str(), Some("http" | "https"));
+    let auth = uri.authority().map(|a| a.as_str()).unwrap_or("");
+    if !ok_scheme || auth.is_empty() || auth.contains('@') {
+        return Err("use an address like http://127.0.0.1:8000".into());
+    }
+    Ok(())
+}
+
+fn write_settings(home: &Path, url: &str) -> Result<(), String> {
+    let tmp = home.join(format!("settings.json.{}.tmp", std::process::id()));
+    std::fs::write(
+        &tmp,
+        serde_json::to_vec_pretty(&json!({"gateway_url": url})).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, home.join("settings.json")).map_err(|e| e.to_string())
+}
+
 pub struct Req<'a> {
     pub method: &'a str,
     pub route: &'a str,
@@ -746,6 +787,19 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 .take(n)
                 .collect();
             json!({"recent": recent, "most": most})
+        }
+        ("GET", "settings") => json!({
+            "gateway_url": saved_gateway(Some(&lib.home.to_string_lossy())).unwrap_or_default(),
+            "effective": r.backend_url,
+        }),
+        ("POST", "settings") => {
+            let j = jbody(r.body).map_err(bad)?;
+            let u = j["gateway_url"].as_str().unwrap_or("").trim().to_string();
+            if !u.is_empty() {
+                valid_gateway(&u).map_err(bad)?;
+            }
+            write_settings(&lib.home, &u).map_err(|e| (500, e))?;
+            json!({"ok": true, "gateway_url": u})
         }
         ("GET", "saved") => json!({"saved": organize::saved_list(&lib)}),
         ("POST", "saved") => {

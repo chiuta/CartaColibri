@@ -188,6 +188,8 @@ fn json(r: Request, code: u16, v: serde_json::Value, extra: &[Header]) {
 }
 
 fn handle(mut r: Request, home: Option<String>, backend: String) {
+    // an address saved from the web UI overrides the command-line default
+    let backend = crate::api::effective_gateway(home.as_deref(), &backend);
     let host = get(&r, "Host").unwrap_or("").to_string();
     if !host_ok(&host) {
         return json(

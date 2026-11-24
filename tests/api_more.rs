@@ -633,3 +633,31 @@ fn json_body_limit_still_applies_to_new_routes() {
     let r = ui(&s, "POST", "/carta/chat", &big);
     assert_eq!(r.code, 413);
 }
+
+#[test]
+fn engine_address_is_saved_validated_and_reset() {
+    let (s, _ids) = indexed();
+    let val = |r: Resp| -> Value { serde_json::from_slice(&r.body).unwrap_or(Value::Null) };
+    assert_eq!(val(get(&s, "/carta/settings"))["gateway_url"], "");
+    for bad in [
+        "ftp://x",
+        "javascript:alert(1)",
+        "http://u:p@127.0.0.1:8000",
+        "http://a b",
+        "not a url",
+    ] {
+        let r = post(&s, "/carta/settings", json!({"gateway_url": bad}));
+        assert_eq!(r.code, 400, "{bad}");
+    }
+    let r = post(
+        &s,
+        "/carta/settings",
+        json!({"gateway_url": "http://127.0.0.1:9"}),
+    );
+    assert_eq!(r.code, 200);
+    let r = val(get(&s, "/carta/settings"));
+    assert_eq!(r["gateway_url"], "http://127.0.0.1:9");
+    assert_eq!(r["effective"], "http://127.0.0.1:9");
+    post(&s, "/carta/settings", json!({"gateway_url": ""}));
+    assert_eq!(val(get(&s, "/carta/settings"))["gateway_url"], "");
+}

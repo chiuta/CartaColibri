@@ -152,7 +152,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   <header class="top">
     <h1>CartaColibri<small data-i="subtitle"></small></h1>
     <span class="sp" style="flex:1"></span>
-    <span class="status" id="gw" role="status"><i></i><span id="gwTxt"></span></span>
+    <span class="status" id="gw" role="status"><i></i><span id="gwTxt"></span></span><button class="btn sm" id="gwCfg" type="button" data-al="gw_cfg" aria-haspopup="dialog">⚙</button>
     <select id="lang" data-al="lang_label"></select>
     <button class="btn amber" id="cartaBtn" aria-haspopup="dialog"><span data-i="rag_carta"></span></button>
   </header>
@@ -267,6 +267,12 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   </aside></div></div>
 
 <!-- first-run welcome wizard -->
+<div class="modal" id="gwDlg"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="gwTitle">
+  <h2 id="gwTitle" data-i="gw_cfg"></h2><p class="muted" data-i="gw_hint"></p>
+  <input id="gwUrl" type="url" inputmode="url" maxlength="200" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:8000" data-al="gw_cfg" style="width:100%">
+  <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="gwSave" type="button" data-i="gw_save"></button><button class="btn" id="gwReset" type="button" data-i="gw_reset"></button><button class="btn" id="gwX" type="button" data-i="close"></button></div>
+  <p id="gwMsg" role="status" class="muted"></p>
+</div></div>
 <div class="modal" id="wiz"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="wTitle">
   <ol class="dots" id="wDots" aria-hidden="true"></ol>
   <div class="muted" id="wStepTxt" style="font-size:.85em"></div>
@@ -402,6 +408,13 @@ mock:{en:'Offline mode (no model)',ro:'Mod offline (fără model)',fr:'Mode hors
 running:{en:'Working…',ro:'Lucrez…',fr:'En cours…',it:'In corso…',es:'Trabajando…',pt:'A trabalhar…',de:'Arbeite …',hu:'Dolgozom…'},
 saved:{en:'Saved',ro:'Salvat',fr:'Enregistré',it:'Salvato',es:'Guardado',pt:'Guardado',de:'Gespeichert',hu:'Mentve'},
 close:{en:'Close',ro:'Închide',fr:'Fermer',it:'Chiudi',es:'Cerrar',pt:'Fechar',de:'Schließen',hu:'Bezárás'},
+gw_cfg:{en:'AI engine address',ro:'Adresa motorului AI',fr:'Adresse du moteur IA',it:'Indirizzo del motore IA',es:'Dirección del motor de IA',pt:'Endereço do motor de IA',de:'Adresse der KI-Engine',hu:'Az MI-motor címe'},
+gw_hint:{en:'Where the Colibrì engine listens. Leave empty to use the default (http://127.0.0.1:8000 or COLI_URL).',ro:'Unde ascultă motorul Colibrì. Lasă gol pentru valoarea implicită (http://127.0.0.1:8000 sau COLI_URL).',fr:'Où le moteur Colibrì écoute. Laisse vide pour la valeur par défaut (http://127.0.0.1:8000 ou COLI_URL).',it:'Dove ascolta il motore Colibrì. Lascia vuoto per il valore predefinito (http://127.0.0.1:8000 o COLI_URL).',es:'Dónde escucha el motor Colibrì. Déjalo vacío para usar el valor por defecto (http://127.0.0.1:8000 o COLI_URL).',pt:'Onde o motor Colibrì escuta. Deixa vazio para usar o valor por defeito (http://127.0.0.1:8000 ou COLI_URL).',de:'Wo die Colibrì-Engine lauscht. Leer lassen für den Standard (http://127.0.0.1:8000 oder COLI_URL).',hu:'Hol figyel a Colibrì motor. Hagyd üresen az alapértelmezéshez (http://127.0.0.1:8000 vagy COLI_URL).'},
+gw_save:{en:'Save and test',ro:'Salvează și testează',fr:'Enregistrer et tester',it:'Salva e prova',es:'Guardar y probar',pt:'Guardar e testar',de:'Speichern und testen',hu:'Mentés és próba'},
+gw_reset:{en:'Use the default',ro:'Folosește valoarea implicită',fr:'Utiliser la valeur par défaut',it:'Usa il predefinito',es:'Usar el valor por defecto',pt:'Usar o valor por defeito',de:'Standard verwenden',hu:'Alapértelmezett használata'},
+gw_saved_ok:{en:'Saved. The engine answers.',ro:'Salvat. Motorul răspunde.',fr:'Enregistré. Le moteur répond.',it:'Salvato. Il motore risponde.',es:'Guardado. El motor responde.',pt:'Guardado. O motor responde.',de:'Gespeichert. Die Engine antwortet.',hu:'Mentve. A motor válaszol.'},
+gw_saved_off:{en:'Saved, but nothing answers at that address yet. Start the engine, then try again.',ro:'Salvat, dar nimic nu răspunde la adresa aceea încă. Pornește motorul și încearcă din nou.',fr:'Enregistré, mais rien ne répond à cette adresse pour l’instant. Démarre le moteur puis réessaie.',it:'Salvato, ma a quell’indirizzo non risponde ancora nulla. Avvia il motore e riprova.',es:'Guardado, pero aún no responde nada en esa dirección. Inicia el motor y vuelve a intentarlo.',pt:'Guardado, mas ainda nada responde nesse endereço. Inicia o motor e tenta de novo.',de:'Gespeichert, aber unter dieser Adresse antwortet noch nichts. Starte die Engine und versuche es erneut.',hu:'Mentve, de ezen a címen még semmi sem válaszol. Indítsd el a motort, majd próbáld újra.'},
+gw_bad:{en:'Use an address like http://127.0.0.1:8000',ro:'Folosește o adresă de forma http://127.0.0.1:8000',fr:'Utilise une adresse comme http://127.0.0.1:8000',it:'Usa un indirizzo come http://127.0.0.1:8000',es:'Usa una dirección como http://127.0.0.1:8000',pt:'Usa um endereço como http://127.0.0.1:8000',de:'Nutze eine Adresse wie http://127.0.0.1:8000',hu:'Használj ilyen címet: http://127.0.0.1:8000'},
 gw_ok:{en:'Colibrì engine running',ro:'Motorul Colibrì rulează',fr:'Moteur Colibrì actif',it:'Motore Colibrì attivo',es:'Motor Colibrì activo',pt:'Motor Colibrì ativo',de:'Colibrì-Engine läuft',hu:'A Colibrì motor fut'},
 need_selection:{en:'Select files or pick a group first.',ro:'Selectează fișiere sau alege un grup mai întâi.',fr:'Sélectionne d’abord des fichiers ou un groupe.',it:'Seleziona prima dei file o un gruppo.',es:'Primero selecciona archivos o elige un grupo.',pt:'Seleciona primeiro ficheiros ou escolhe um grupo.',de:'Wähle zuerst Dateien oder eine Gruppe aus.',hu:'Előbb jelölj ki fájlokat vagy válassz csoportot.'},
 confirm_remove:{en:'Remove this folder from the library? Your files are not touched.',ro:'Scoți acest folder din bibliotecă? Fișierele tale nu sunt atinse.',fr:'Retirer ce dossier de la bibliothèque ? Tes fichiers ne sont pas touchés.',it:'Rimuovere questa cartella dalla biblioteca? I tuoi file non vengono toccati.',es:'¿Quitar esta carpeta de la biblioteca? Tus archivos no se tocan.',pt:'Remover esta pasta da biblioteca? Os teus ficheiros não são tocados.',de:'Diesen Ordner aus der Bibliothek entfernen? Deine Dateien bleiben unberührt.',hu:'Eltávolítod ezt a mappát a könyvtárból? A fájljaid érintetlenek maradnak.'},
@@ -1102,6 +1115,13 @@ addEventListener('keydown',e=>{
   else if(k==='a'){e.preventDefault();show('library');$('#v-library').classList.add('side-on');$('#newRoot').focus()}
   else if(k==='t')cycleTheme();else if(k==='+'||k==='=')toggleBig();
   else if(k==='?'){e.preventDefault();top&&top.el.id==='kb'?closeM($('#kb')):openM($('#kb'),'#kbClose')}});
+/* AI engine address: saved on the server, wins over COLI_URL */
+$('#gwCfg').onclick=async()=>{try{const j=await api('settings');$('#gwUrl').value=j.gateway_url||''}catch(e){$('#gwUrl').value=''}$('#gwMsg').textContent='';openM($('#gwDlg'),'#gwUrl')};
+$('#gwX').onclick=()=>closeM($('#gwDlg'));
+async function gwApply(u){const m=$('#gwMsg');try{await api('settings','POST',{gateway_url:u})}catch(e){m.textContent=T('gw_bad');return}await health();m.textContent=T(S.gw?'gw_saved_ok':'gw_saved_off')}
+$('#gwSave').onclick=()=>gwApply($('#gwUrl').value.trim());
+$('#gwReset').onclick=()=>{$('#gwUrl').value='';gwApply('')};
+$('#gwUrl').onkeydown=e=>{if(e.key==='Enter')gwApply($('#gwUrl').value.trim())};
 async function health(){try{const r=await fetch('/health',{cache:'no-store'});S.gw=r.ok}catch(e){S.gw=false}$('#gw').dataset.ok=S.gw;$('#gwTxt').textContent=T(S.gw?'gw_ok':'gw_off')}
 (async()=>{applyLang();const h=(location.hash||'').slice(1);let v=/^(fetch|library|stats)$/.test(h)?h:pref('view');
   try{S.ocr=(await api('status')).ocr}catch(e){}
