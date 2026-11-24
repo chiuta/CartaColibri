@@ -129,7 +129,7 @@ fn indexed() -> (Srv, std::collections::BTreeMap<String, i64>) {
         .map(|d| {
             let p = d["path"].as_str().unwrap();
             (
-                p.rsplit('/').next().unwrap().to_string(),
+                p.rsplit(['/', '\\']).next().unwrap().to_string(),
                 d["id"].as_i64().unwrap(),
             )
         })

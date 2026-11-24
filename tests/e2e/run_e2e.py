@@ -187,7 +187,12 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.wait_for_selector("#taskSel option[value=glossary]", state="attached", timeout=15000)
             pg.select_option("#taskSel", "glossary", timeout=15000); pg.check("#mock")
             assert pg.locator('#taskSeg button[data-t=synthesize]').count() == 1 and pg.locator('#taskSel option').count() == 14, 'expected 14 tasks'
-            pg.check('input[name=scope][value=group]'); pg.select_option("#scopeGroup", GROUP[lang])
+            pg.check('input[name=scope][value=group]'); self_dbg = lambda: pg.evaluate("()=>({opts:[...document.querySelectorAll('#scopeGroup option')].map(o=>o.textContent),groups:Object.keys(S.lib.groups),rows:document.querySelectorAll('#groupList .row').length})")
+            try:
+                pg.wait_for_function("(n)=>[...document.querySelectorAll('#scopeGroup option')].some(o=>o.value===n||o.textContent===n)", arg=GROUP[lang], timeout=15000)
+            except Exception:
+                print("DEBUG scopeGroup:", GROUP[lang], self_dbg()); raise
+            pg.select_option("#scopeGroup", GROUP[lang])
             pg.fill("#req", QUERY[lang]); pg.click("#run")
             pg.wait_for_function("()=>document.querySelector('#out').textContent.includes('[S1]')", timeout=20000)
             pg.screenshot(path=f"{shots}/{lang}-task.png")
