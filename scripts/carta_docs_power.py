@@ -295,12 +295,12 @@ TROUBLE = {
 }
 
 STATUS_EXTRA = {
- "en": "The pre-release **v0.2.0-alpha.2** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.",
- "ro": "Pre-lansarea **v0.2.0-alpha.2** de pe GitHub este încă o **ciornă**, deci descărcările portabile nu sunt încă publice; până atunci, compilează din sursă.",
- "fr": "La préversion **v0.2.0-alpha.2** sur GitHub est encore un **brouillon** : les téléchargements portables ne sont donc pas encore publics ; d’ici là, compile depuis les sources.",
- "it": "La pre-release **v0.2.0-alpha.2** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.",
- "es": "La versión preliminar **v0.2.0-alpha.2** en GitHub sigue siendo un **borrador**, así que las descargas portátiles aún no son públicas; mientras tanto, compila desde el código fuente.",
- "pt": "A pré-versão **v0.2.0-alpha.2** no GitHub ainda é um **rascunho**, por isso as transferências portáteis ainda não são públicas; até lá, compila a partir do código-fonte.",
- "de": "Das Pre-Release **v0.2.0-alpha.2** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.",
- "hu": "A GitHubon a **v0.2.0-alpha.2** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.",
+ "en": "Portable downloads for Linux, Windows and macOS are on the GitHub **Releases** page (marked pre-release).",
+ "ro": "Descărcările portabile pentru Linux, Windows și macOS sunt pe pagina **Releases** de pe GitHub (marcate pre-lansare).",
+ "fr": "Les téléchargements portables pour Linux, Windows et macOS sont sur la page **Releases** de GitHub (marqués préversion).",
+ "it": "I download portatili per Linux, Windows e macOS sono nella pagina **Releases** di GitHub (contrassegnati come pre-release).",
+ "es": "Las descargas portátiles para Linux, Windows y macOS están en la página **Releases** de GitHub (marcadas como versión preliminar).",
+ "pt": "As transferências portáteis para Linux, Windows e macOS estão na página **Releases** do GitHub (marcadas como pré-versão).",
+ "de": "Die portablen Downloads für Linux, Windows und macOS findest du auf der GitHub-Seite **Releases** (als Pre-Release markiert).",
+ "hu": "A hordozható letöltések Linuxra, Windowsra és macOS-re a GitHub **Releases** oldalán vannak (előzetes kiadásként jelölve).",
 }

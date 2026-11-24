@@ -184,7 +184,7 @@ Experimenta primeiro `cartacolibri doctor`: verifica a tua instalação e diz-te
 
 ## Estado real
 
-O CartaColibri é software **alfa** (versão 0.2.0-alpha): funciona, mas conta com algumas arestas por limar e guarda cópias de segurança do que é importante. O Linux é a plataforma mais testada: lá o navegador web-grab é autotestado em CI. No **Windows e no macOS** o navegador é compilado em CI, mas **nunca foi executado à mão**. As verificações automáticas no GitHub (CI) passam no Linux, no Windows e no macOS. Os teus documentos estão seguros de qualquer forma, porque são apenas lidos. A pré-versão **v0.2.0-alpha.2** no GitHub ainda é um **rascunho**, por isso as transferências portáteis ainda não são públicas; até lá, compila a partir do código-fonte.
+O CartaColibri é software **alfa** (versão 0.2.0-alpha): funciona, mas conta com algumas arestas por limar e guarda cópias de segurança do que é importante. O Linux é a plataforma mais testada: lá o navegador web-grab é autotestado em CI. No **Windows e no macOS** o navegador é compilado em CI, mas **nunca foi executado à mão**. As verificações automáticas no GitHub (CI) passam no Linux, no Windows e no macOS. Os teus documentos estão seguros de qualquer forma, porque são apenas lidos. As transferências portáteis para Linux, Windows e macOS estão na página **Releases** do GitHub (marcadas como pré-versão).
 
 ## Segurança
 

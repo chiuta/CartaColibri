@@ -184,7 +184,7 @@ Essaie d’abord `cartacolibri doctor` : il vérifie ton installation et t’ind
 
 ## État des lieux, sans fard
 
-CartaColibri est un logiciel **alpha** (version 0.2.0-alpha) : il fonctionne, mais attends-toi à des aspérités et garde des sauvegardes de ce qui compte. Linux est la plateforme la mieux testée : le navigateur web-grab y est autotesté en CI. Sous **Windows et macOS**, le navigateur est compilé en CI mais n’a **jamais été lancé à la main**. Les vérifications automatiques sur GitHub (CI) passent sous Linux, Windows et macOS. Tes documents ne risquent rien dans tous les cas, puisqu’ils sont seulement lus. La préversion **v0.2.0-alpha.2** sur GitHub est encore un **brouillon** : les téléchargements portables ne sont donc pas encore publics ; d’ici là, compile depuis les sources.
+CartaColibri est un logiciel **alpha** (version 0.2.0-alpha) : il fonctionne, mais attends-toi à des aspérités et garde des sauvegardes de ce qui compte. Linux est la plateforme la mieux testée : le navigateur web-grab y est autotesté en CI. Sous **Windows et macOS**, le navigateur est compilé en CI mais n’a **jamais été lancé à la main**. Les vérifications automatiques sur GitHub (CI) passent sous Linux, Windows et macOS. Tes documents ne risquent rien dans tous les cas, puisqu’ils sont seulement lus. Les téléchargements portables pour Linux, Windows et macOS sont sur la page **Releases** de GitHub (marqués préversion).
 
 ## Sécurité
 

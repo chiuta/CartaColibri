@@ -184,7 +184,7 @@ Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir,
 
 ## Ehrlicher Stand
 
-CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) laufen unter Linux, Windows und macOS durch. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden. Das Pre-Release **v0.2.0-alpha.2** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.
+CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) laufen unter Linux, Windows und macOS durch. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden. Die portablen Downloads für Linux, Windows und macOS findest du auf der GitHub-Seite **Releases** (als Pre-Release markiert).
 
 ## Sicherheit
 

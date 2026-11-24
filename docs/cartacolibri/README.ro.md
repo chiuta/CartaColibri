@@ -184,7 +184,7 @@ web-grab aduce doar pagini publice. Adresele de pe propriul calculator sau din r
 
 ## Starea reală
 
-CartaColibri este un software **alfa** (versiunea 0.2.0-alpha): funcționează, dar așteaptă-te la asperități și păstrează copii de rezervă pentru ce e important. Linux e platforma cel mai bine testată: browserul web-grab e autotestat acolo în CI. Pe **Windows și macOS** browserul este compilat în CI, dar **n-a fost niciodată rulat manual**. Verificările automate de pe GitHub (CI) trec pe Linux, Windows și macOS. Documentele tale sunt în siguranță oricum, fiindcă sunt doar citite. Pre-lansarea **v0.2.0-alpha.2** de pe GitHub este încă o **ciornă**, deci descărcările portabile nu sunt încă publice; până atunci, compilează din sursă.
+CartaColibri este un software **alfa** (versiunea 0.2.0-alpha): funcționează, dar așteaptă-te la asperități și păstrează copii de rezervă pentru ce e important. Linux e platforma cel mai bine testată: browserul web-grab e autotestat acolo în CI. Pe **Windows și macOS** browserul este compilat în CI, dar **n-a fost niciodată rulat manual**. Verificările automate de pe GitHub (CI) trec pe Linux, Windows și macOS. Documentele tale sunt în siguranță oricum, fiindcă sunt doar citite. Descărcările portabile pentru Linux, Windows și macOS sunt pe pagina **Releases** de pe GitHub (marcate pre-lansare).
 
 ## Securitate
 
