@@ -33,12 +33,14 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Funzioni avanzate
 
-- **Trova** — una barra di avanzamento durante l’indicizzazione; «Intendevi…?» per i refusi, con suggerimenti quando nulla corrisponde; i duplicati elencati e un motivo chiaro per ogni file saltato.
+- **Trova** — una barra di avanzamento durante l’indicizzazione; «Intendevi…?» per i refusi, con suggerimenti quando nulla corrisponde; i duplicati elencati e un motivo chiaro per ogni file saltato. Scrivi i filtri direttamente nella casella (`ext:pdf`, `path:`, `size:>1mb`, date `after:`/`before:`, espressioni regolari `re:`), spunta **Ricerca intelligente** per aggiungere parole affini e vedi quanti risultati ha ogni tipo di file.
 - **Organizza** — etichette, una stella e una nota privata su ogni documento; sopravvivono alla reindicizzazione. Vedi i documenti correlati, ciò che hai aperto di recente e più spesso, e salva le ricerche come raccolte intelligenti.
 - **14 compiti** — confronta, cronologia, glossario, scaletta, azioni, FAQ, flashcard, quiz, traduci, spiega, contraddizioni, più riassumi, estrai e sintetizza. Spunta **verifica le citazioni** per segnalare le frasi che le fonti non sostengono e scegli la lingua della risposta.
-- **Chat** — fai domande una dopo l’altra su tutta la biblioteca o su un gruppo. Le risposte citano le fonti, oppure dicono onestamente «non trovato nei tuoi documenti» invece di tirare a indovinare.
+- **Chat** — fai domande una dopo l’altra su tutta la biblioteca o su un gruppo. Le risposte citano le fonti, oppure dicono onestamente «non trovato nei tuoi documenti» invece di tirare a indovinare. Ogni risposta mostra un punteggio di **Aderenza alle fonti** e segnala le frasi o i numeri che le fonti non sostengono. Spunta «Ogni domanda a sé» per non ricordare nulla, oppure limita i documenti a un intervallo di tempo.
 - **Condividi e proteggi** — esporta un gruppo, un’etichetta o una ricerca in Markdown, CSV, JSON o zip, con citazioni; una vista Statistiche con grafici e cronologia; un backup in un solo file con checksum; Controlla/Ripara per l’indice.
 - **Porta dentro le cose** — importa i segnalibri del browser, una cartella Obsidian, Zotero/BibTeX, CSV di Pocket/Raindrop o esportazioni di Evernote, e segui i feed RSS/Atom (OPML in entrata e in uscita): diventano note ricercabili. Anche email, calendari, sottotitoli e notebook vengono indicizzati.
+- **Analisi** — “Contraddizioni” (stessa frase, numero o data diversi), “Mappa dei temi” (bolle), “Novità” da una data, “Confronta 2” documenti, “Nomi e numeri” (e-mail, link, importi, date, telefoni), “Dossier” su un nome e “Verifica il mio testo” rispetto alla biblioteca.
+- **Automatizza e collega** — `digest` rilancia una ricerca salvata e segnala solo le novità (ripete, accoda a un file, riassume o salva un file e-mail); `mcp` permette ad altre app di IA di cercare, leggere, interrogare, verificare e chiedere dossier nella tua biblioteca, in sola lettura.
 
 ## Novità della 0.2.0-alpha.4
 
@@ -89,8 +91,18 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Comando | Cosa fa |
 |---|---|
+| `start [--folder F] [--port N] [--no-open]` | Avvio guidato: scegli una cartella, viene indicizzata e si apre la pagina web. |
+| `doctor` | Controlla motore, OCR, strumenti PDF, disco e porta e indica la correzione esatta per ogni problema. |
+| `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Registra o dimentica una cartella (i file non vengono mai toccati), elenca le cartelle, reindicizza ed elenca i file illeggibili. |
+| `watch [--interval S]` | Mantiene l’indice aggiornato: riscansiona le cartelle ogni S secondi. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Cerca nella biblioteca. Parole, «frasi», prefisso*, AND/OR/NOT e filtri nella query: `ext:pdf` `path:contratti` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FATT-\d+`. |
+| `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Elenca i documenti; i gruppi sono insiemi di documenti con nome in cui cercare o su cui fare domande. |
+| `summarize`, `extract`, `synthesize` (same options as `task`) | Scorciatoie per le tre attività principali: riassumere ogni documento, estrarre campi o combinarne più di uno in una risposta. |
+| `grab URL`, `bookmarklet` | Salva una pagina web nella biblioteca (HTML, MHTML o PDF); il bookmarklet lo fa da qualsiasi browser. |
+| `serve [--port N] [--url ENGINE]` | Avvia la pagina web su questo computer (http://127.0.0.1:PORT). |
+| `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Stampa uno script di completamento con Tab per la tua shell; reimporta tag, stelle, note e gruppi esportati in JSON. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | i 14 compiti (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` segnala le frasi il cui `[S#]` non è sostenuto dal testo |
-| `chat [--group G]` | domande in sequenza sulla biblioteca; risposte citate, oppure «non trovato nei tuoi documenti» |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | domande in sequenza sulla biblioteca; risposte citate, oppure «non trovato nei tuoi documenti» |
 | `tag add/rm/list/show`, `star`, `note` | la tua organizzazione personale, conservata dopo la reindicizzazione |
 | `saved add/list/run/rm` | ricerche salvate / raccolte intelligenti |
 | `recent`, `related PATH` | ciò che hai aperto di recente; documenti simili |
@@ -101,6 +113,15 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `import PATH` | segnalibri `.html`, cartella Obsidian, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
 | `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | iscrizioni RSS/Atom salvate come note |
 | `webwatch`, `history` | pagine web monitorate con differenze; cronologia di navigazione opzionale |
+| `digest NAME [--every MIN] [--out FILE.md] [--summarize] [--all] [--mail-to ADDR [--sendmail]]` | Rilancia una ricerca salvata e segnala solo i documenti nuovi dall’ultima volta; può ripetersi, accodare a un file, riassumere con la tua IA locale o salvare un file e-mail nella cartella outbox. |
+| `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Tutte le e-mail, i link, gli importi, le date e i telefoni dei tuoi documenti, con i documenti in cui compaiono. |
+| `compare A B [--json]` | Confronta due documenti frase per frase: quanto sono simili e cosa c’è solo in uno (A e B sono percorsi o le loro terminazioni). |
+| `conflicts [--group G] [--json]` | Coppie di frasi di documenti diversi uguali tranne un numero o una data (500 contro 550): candidati da verificare, non verdetti. |
+| `topics [--json]` | Raggruppa i documenti per argomento (le loro parole più caratteristiche). |
+| `dossier TERM [--json]` | Tutto ciò che la biblioteca dice di un nome o termine: passaggi per documento, più date e importi trovati. |
+| `changes --since DATE [--json]` | Documenti modificati da una data (YYYY, YYYY-MM o YYYY-MM-DD), i più recenti prima. |
+| `factcheck FILE\|- [--json]` | Verifica un tuo testo rispetto alla biblioteca: ogni frase è segnata come confermata, in parte, numeri diversi o non trovata, con la migliore prova. |
+| `mcp [--url ENGINE] [--mock]` | Server MCP via stdio perché altre app di IA cerchino, leggano, interroghino, verifichino e chiedano dossier nella tua biblioteca (sola lettura). |
 
 ## Come si incastra
 

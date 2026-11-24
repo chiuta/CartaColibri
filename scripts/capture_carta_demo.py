@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Captures the CartaColibri screens in all 8 languages (playwright + a system Chrome), driving the real UI of the Rust
 server against a generated sample library and the offline `mock` mode.
-Output: docs/cartacolibri/img/<lang>-<n>.png   n = 1 library, 2 search, 3 group, 4 task, 5 document drawer, 6 chat, 7 stats, 8 engine dialog, 9 import dialog (web-grab)
+Output: docs/cartacolibri/img/<lang>-<n>.png   n = 1 library, 10 filters+facets, 11 topic map, 12 conflicts, 13 fact-check, 14 compare, 2 search, 3 group, 4 task, 5 document drawer, 6 chat, 7 stats, 8 engine dialog, 9 import dialog (web-grab)
 Usage: python3 scripts/capture_carta_demo.py [--lib DIR] [--bin PATH] [--only en,ro]   (without --lib a sample library is generated)"""
 import argparse, os, shutil, socket, subprocess, sys, tempfile, time
 from playwright.sync_api import sync_playwright
@@ -17,10 +17,13 @@ NOTE = {"en": "Check the late-payment penalty with legal.", "ro": "Verifică pen
 CHAT = {"en": "Which contract has the longest payment period?", "ro": "Care contract are cel mai lung termen de plată?", "fr": "Quel contrat a le délai de paiement le plus long ?",
         "it": "Quale contratto ha il termine di pagamento più lungo?", "es": "¿Qué contrato tiene el plazo de pago más largo?", "pt": "Qual contrato tem o prazo de pagamento mais longo?",
         "de": "Welcher Vertrag hat die längste Zahlungsfrist?", "hu": "Melyik szerződésnek van a leghosszabb fizetési határideje?"}
+FACT = {"en": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "ro": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "fr": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "it": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "es": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "pt": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "de": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day.", "hu": "The monthly rent for the warehouse is 3,900 EUR payable by the fifth day."}
 SAMPLE = {
     "contracts/supply-contract.md": "# Supply contract\n\nSupplier: Gamma Foods. Buyer: Beta Logistics SA. Total value: 18,500 EUR. Payment terms: invoices are payable within 45 days. Delivery every second Monday. Penalty for delay: 0.1 % per day.\n",
     "contracts/service-agreement.txt": "Service agreement between Alfa Consulting SRL and Beta Logistics SA.\nThe total value is 42,000 EUR. Payment is due 30 days from receipt of invoice. The agreement runs for 12 months and renews automatically unless cancelled.\n",
     "contracts/lease.txt": "Lease of the warehouse in Ploiesti. Monthly rent 3,200 EUR, payable by the 5th. Term: 36 months. Notice period: 90 days. Payment by bank transfer only.\n",
+    "contracts/lease-draft-v1.txt": "Draft lease of the warehouse in Ploiesti.\nThe monthly rent for the warehouse is 3,200 EUR payable by the fifth day.\nThe notice period is ninety days.\n",
+    "contracts/lease-draft-v2.txt": "Draft lease of the warehouse in Ploiesti.\nThe monthly rent for the warehouse is 3,500 EUR payable by the fifth day.\nThe notice period is ninety days.\n",
     "notes/project-notes.md": "# Project notes\n\nKick-off on Monday. Review the contracts: the payment terms differ between the supply contract and the service agreement. Ask legal about the penalty.\n",
     "articles/hummingbirds.md": "# Hummingbirds\n\nHummingbirds hover in front of flowers and drink nectar. Their wings beat dozens of times per second.\n",
 }
@@ -113,6 +116,21 @@ def main():
                 # engine dialog (found automatically) and import dialog (web-grab)
                 engine_dialog(pg); pg.screenshot(path=f"{out}/{lang}-8.png"); pg.click("#gwX"); pg.wait_for_selector("#gwDlg", state="hidden")
                 import_dialog(pg); pg.screenshot(path=f"{out}/{lang}-9.png"); pg.click("#brClose"); pg.wait_for_selector("#bring", state="hidden")
+                # insight screens: filters + facets, topic map, conflicts, fact-check, compare
+                pg.click('.rb[data-view=fetch]'); pg.fill("#q", "payment after:2020"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr"); pg.wait_for_timeout(500); pg.mouse.move(700, 790)
+                pg.screenshot(path=f"{out}/{lang}-10.png")
+                pg.click('.rb[data-view=library]'); pg.wait_for_selector("#libRows tr")
+                pg.click("#tpBtn"); pg.wait_for_selector("#insDlg.on"); pg.wait_for_timeout(500)
+                if pg.locator(".tbub").count(): pg.locator(".tbub").first.click(); pg.wait_for_timeout(200)
+                pg.screenshot(path=f"{out}/{lang}-11.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                pg.click("#cfBtn"); pg.wait_for_selector("#insDlg.on"); pg.wait_for_selector("#insBody .snip, #insBody p"); pg.wait_for_timeout(400)
+                pg.screenshot(path=f"{out}/{lang}-12.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                pg.click("#fcBtn"); pg.fill("#fcText", FACT[lang]); pg.click("#fcGo"); pg.wait_for_selector("#fcOut .snip"); pg.wait_for_timeout(300)
+                pg.screenshot(path=f"{out}/{lang}-13.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').check()
+                pg.click("#cmpBtn"); pg.wait_for_selector("#insDlg.on"); pg.wait_for_selector("#insBody li"); pg.wait_for_timeout(300)
+                pg.screenshot(path=f"{out}/{lang}-14.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').uncheck()
                 # clean up so the next language starts alike
                 pg.evaluate("async n=>{const h={'X-Colibri-UI':'1','Content-Type':'application/json'};await fetch('/carta/groups',{method:'DELETE',headers:h,body:JSON.stringify({name:n})})}", GROUP[lang])
                 print(lang, "ok", "JS errors:" + str(errs) if errs else "")

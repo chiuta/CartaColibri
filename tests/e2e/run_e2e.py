@@ -163,7 +163,8 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.click('.rb[data-view=fetch]')
         # ---- document drawer ----
         pg.fill("#q", "payment OR plată OR pay*"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr")
-        pg.locator("#resRows tr").first.dblclick(position={"x": 60, "y": 10})
+        pg.wait_for_selector('#resRows tr:has-text("contract_en.txt")')
+        pg.locator('#resRows tr:has-text("contract_en.txt")').first.dblclick(position={"x": 60, "y": 10})
         with rep.check(L, "document drawer opens", pg):
             pg.wait_for_selector("#viewer.on", timeout=10000); pg.wait_for_function("()=>document.querySelector('#vText').textContent.length>10")
             pg.wait_for_function("()=>document.querySelector('#vTags').textContent.trim().length>0")
@@ -175,7 +176,8 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.click("#vClose") if pg.locator("#vClose").is_visible() else pg.keyboard.press("Escape")
             reload_ready(pg)
             pg.click('.rb[data-view=fetch]'); pg.fill("#q", "payment OR plată OR pay*"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr")
-            pg.locator("#resRows tr").first.dblclick(position={"x": 60, "y": 10})
+            pg.wait_for_selector('#resRows tr:has-text("contract_en.txt")')
+            pg.locator('#resRows tr:has-text("contract_en.txt")').first.dblclick(position={"x": 60, "y": 10})
             pg.wait_for_selector("#vTags .tagc", timeout=8000)
             assert "e2etag" in pg.inner_text("#vTags"), "tag lost after reload"
         with rep.check(L, "star toggles", pg):

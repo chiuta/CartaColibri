@@ -249,7 +249,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
     </div>
     <div id="chatPane" hidden>
       <div class="row"><label for="chatGroup" data-i="chat_scope" style="flex:none"></label><select id="chatGroup" style="flex:1"></select><button class="btn sm" id="chatNew" data-i="chat_new"></button></div>
-      <div class="row"><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="chatOne"><span data-i="ch_one"></span></label><label class="muted" style="display:flex;gap:6px;align-items:center"><span data-i="rg_from"></span><input type="date" id="chAfter"></label><label class="muted" style="display:flex;gap:6px;align-items:center"><span data-i="rg_to"></span><input type="date" id="chBefore"></label></div>
+      <div class="row" style="flex-wrap:wrap;max-width:100%"><label class="muted" style="display:flex;gap:6px;align-items:center;flex:1 1 100%;min-width:0;max-width:100%"><input type="checkbox" id="chatOne"><span data-i="ch_one" style="min-width:0;overflow-wrap:anywhere;white-space:normal"></span></label><label class="muted" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span data-i="rg_from"></span><input type="date" id="chAfter" style="min-width:0;max-width:150px"></label><label class="muted" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span data-i="rg_to"></span><input type="date" id="chBefore" style="min-width:0;max-width:150px"></label></div>
       <p class="muted" id="chatEmpty" data-i="chat_empty"></p>
       <div id="chatLog" role="log" aria-live="polite" data-al="tab_chat"></div>
     </div>

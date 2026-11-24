@@ -251,7 +251,7 @@ footer{border-top:1px solid var(--line);padding:30px 5vw 50px;text-align:center;
 <section class="sec" id="features"><div class="rv"><h2 id="h_what"></h2></div>
 <div class="grid rv" id="fgrid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div><div class="card" id="f5"></div></div>
 <div class="rv"><h2 id="h_power" style="margin-top:1.6em"></h2></div>
-<div class="grid rv" id="pgrid"><div class="card p" id="p1"></div><div class="card p" id="p2"></div><div class="card p" id="p3"></div><div class="card p" id="p4"></div><div class="card p" id="p5"></div><div class="card p" id="p6"></div></div>
+<div class="grid rv" id="pgrid"><div class="card p" id="p1"></div><div class="card p" id="p2"></div><div class="card p" id="p3"></div><div class="card p" id="p4"></div><div class="card p" id="p5"></div><div class="card p" id="p6"></div><div class="card p" id="p7"></div><div class="card p" id="p8"></div></div>
 <div class="rv"><h2 id="h_layers" style="margin-top:1.6em"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" class="center sub"></p></div></section>
 
 <section class="sec" id="new4"><div class="rv"><h2 id="h_new4"></h2></div>
@@ -306,12 +306,12 @@ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).
 c.textContent=D.copy[L]})}
 /* tour */
 let cur=0,timer=null,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,userStopped=false;const DUR=6500;
-function buildTabs(){$('tabs').innerHTML=[1,2,3,4,5,6,7,8,9].map((n,i)=>'<button type="button" role="tab" id="tab'+n+'" aria-selected="'+(i===cur)+'" aria-controls="tour_img" tabindex="'+(i===cur?0:-1)+'"><em>'+n+'</em>'+X['t'+n][L]+'<span class="pg"></span></button>').join('');
-document.querySelectorAll('#tabs button').forEach((b,i)=>{b.onclick=()=>{userStopped=true;show(i)};b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();userStopped=true;show((cur+(e.key==='ArrowRight'?1:8))%9);$('tab'+(cur+1)).focus()}}})}
+function buildTabs(){$('tabs').innerHTML=[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map((n,i)=>'<button type="button" role="tab" id="tab'+n+'" aria-selected="'+(i===cur)+'" aria-controls="tour_img" tabindex="'+(i===cur?0:-1)+'"><em>'+n+'</em>'+X['t'+n][L]+'<span class="pg"></span></button>').join('');
+document.querySelectorAll('#tabs button').forEach((b,i)=>{b.onclick=()=>{userStopped=true;show(i)};b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();userStopped=true;show((cur+(e.key==='ArrowRight'?1:13))%14);$('tab'+(cur+1)).focus()}}})}
 function show(i,auto){cur=i;const n=i+1;const im=$('tour_img');im.style.opacity=.15;im.onload=()=>{im.style.opacity=1};im.src='img/'+L+'-'+n+'.webp';im.alt=X['c'+n][L];$('tour_cap').textContent=X['c'+n][L];
 document.querySelectorAll('#tabs button').forEach((b,j)=>{b.setAttribute('aria-selected',j===i);b.tabIndex=j===i?0:-1;b.classList.remove('run');void b.offsetWidth});
 const b=$('tab'+n);if(b&&b.scrollIntoView&&!auto)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
-clearTimeout(timer);if(playing&&!userStopped&&inView){b.style.setProperty('--dur',DUR+'ms');b.classList.add('run');timer=setTimeout(()=>show((cur+1)%9,true),DUR)}}
+clearTimeout(timer);if(playing&&!userStopped&&inView){b.style.setProperty('--dur',DUR+'ms');b.classList.add('run');timer=setTimeout(()=>show((cur+1)%14,true),DUR)}}
 let inView=false;
 $('play').onclick=()=>{playing=!playing;userStopped=false;show(cur,true)};
 /* language */

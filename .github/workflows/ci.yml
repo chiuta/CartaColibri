@@ -27,6 +27,9 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
+      - name: Documentation covers every command (8 languages)
+        if: matrix.os == 'ubuntu-latest'
+        run: python3 scripts/check_docs_complete.py target/debug/cartacolibri
 
   frontend-and-docs:
     runs-on: ubuntu-latest

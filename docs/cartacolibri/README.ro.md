@@ -33,12 +33,14 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Funcții avansate
 
-- **Găsește** — bară de progres în timpul indexării; „Ai vrut să spui…?” pentru greșeli de scriere, cu sugestii când nu se potrivește nimic; duplicatele listate și un motiv clar pentru fiecare fișier sărit.
+- **Găsește** — bară de progres în timpul indexării; „Ai vrut să spui…?” pentru greșeli de scriere, cu sugestii când nu se potrivește nimic; duplicatele listate și un motiv clar pentru fiecare fișier sărit. Scrie filtre direct în căsuță (`ext:pdf`, `path:`, `size:>1mb`, date `after:`/`before:`, expresii regulate `re:`), bifează **Căutare inteligentă** ca să adaugi cuvinte înrudite și vezi câte potriviri are fiecare tip de fișier.
 - **Organizează** — etichete, o stea și o notă privată pe fiecare document; rămân și după reindexare. Vezi documente înrudite, ce ai deschis recent și cel mai des, și salvează căutări ca colecții inteligente.
 - **14 taskuri** — compară, cronologie, glosar, schiță, acțiuni, FAQ, fișe de studiu, test, tradu, explică, contradicții, plus rezumă, extrage și sintetizează. Bifează **verifică citările** ca să fie marcate frazele pe care sursele nu le susțin și alege limba răspunsului.
-- **Chat** — pune întrebări succesive peste toată biblioteca sau peste un grup. Răspunsurile își citează sursele sau spun sincer „nu am găsit în documentele tale”, în loc să ghicească.
+- **Chat** — pune întrebări succesive peste toată biblioteca sau peste un grup. Răspunsurile își citează sursele sau spun sincer „nu am găsit în documentele tale”, în loc să ghicească. Fiecare răspuns arată un scor de **Susținere în surse** și marchează propozițiile sau numerele pe care sursele nu le susțin. Bifează „Fiecare întrebare separat” ca să nu rețină nimic sau limitează documentele la un interval de timp.
 - **Partajează și protejează** — exportă un grup, o etichetă sau o căutare ca Markdown, CSV, JSON sau zip, cu citări; o vedere Statistici cu grafice și cronologie; o copie de rezervă într-un singur fișier, cu sume de control; Verifică/Repară pentru index.
 - **Adu lucruri înăuntru** — importă marcaje de browser, un folder Obsidian, Zotero/BibTeX, CSV Pocket/Raindrop sau exporturi Evernote și urmărește fluxuri RSS/Atom (OPML import și export): devin notițe căutabile. Sunt indexate și e-mailurile, calendarele, subtitrările și caietele.
+- **Perspicacitate** — “Contradicții” (aceeași propoziție, alt număr sau altă dată), “Harta subiectelor” (bule), “Ce e nou” de la o dată, “Compară 2” documente, “Nume și numere” (emailuri, linkuri, sume, date, telefoane), “Dosar” despre un nume și “Verifică textul meu” față de bibliotecă.
+- **Automatizezi și conectezi** — `digest` reia o căutare salvată și raportează doar ce e nou (repetă, adaugă într-un fișier, rezumă sau salvează un fișier email); `mcp` lasă alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta, doar în citire.
 
 ## Noutăți în 0.2.0-alpha.4
 
@@ -89,8 +91,18 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Comandă | Ce face |
 |---|---|
+| `start [--folder F] [--port N] [--no-open]` | Pornire ghidată: alegi un folder, îl indexează și deschide pagina web. |
+| `doctor` | Verifică motorul, OCR-ul, uneltele PDF, discul și portul și îți spune exact cum repari fiecare problemă. |
+| `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Adaugi sau uiți un folder (fișierele nu sunt atinse niciodată), listezi folderele, reindexezi și vezi fișierele care n-au putut fi citite. |
+| `watch [--interval S]` | Ține indexul la zi: rescanează folderele la fiecare S secunde. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Caută în bibliotecă. Cuvinte, „fraze”, prefix*, AND/OR/NOT și filtre direct în interogare: `ext:pdf` `path:contracte` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FACT-\d+`. |
+| `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Listează documentele; grupurile sunt seturi de documente cu nume, în care poți căuta sau despre care poți întreba. |
+| `summarize`, `extract`, `synthesize` (same options as `task`) | Scurtături pentru cele trei sarcini principale: rezumi fiecare document, extragi câmpuri sau combini mai multe într-un singur răspuns. |
+| `grab URL`, `bookmarklet` | Salvează o pagină web în bibliotecă (HTML, MHTML sau PDF); bookmarklet-ul face asta din orice browser. |
+| `serve [--port N] [--url ENGINE]` | Pornește pagina web pe acest calculator (http://127.0.0.1:PORT). |
+| `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Tipărește un script de completare cu Tab pentru shell-ul tău; reimportă etichete, stele, notițe și grupuri exportate ca JSON. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | cele 14 taskuri (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` marchează frazele al căror `[S#]` nu e susținut de text |
-| `chat [--group G]` | întrebări succesive peste bibliotecă; răspunsurile sunt citate sau spun „nu am găsit în documentele tale” |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | întrebări succesive peste bibliotecă; răspunsurile sunt citate sau spun „nu am găsit în documentele tale” |
 | `tag add/rm/list/show`, `star`, `note` | organizarea ta, păstrată și după reindexare |
 | `saved add/list/run/rm` | căutări salvate / colecții inteligente |
 | `recent`, `related PATH` | ce ai deschis recent; documente similare |
@@ -101,6 +113,15 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `import PATH` | marcaje `.html`, folder Obsidian, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
 | `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | abonamente RSS/Atom salvate ca notițe |
 | `webwatch`, `history` | pagini web urmărite, cu diferențe; istoric de navigare opțional |
+| `digest NAME [--every MIN] [--out FILE.md] [--summarize] [--all] [--mail-to ADDR [--sendmail]]` | Reia o căutare salvată și raportează doar documentele noi de la ultima rulare; poate repeta, adăuga într-un fișier, rezuma cu AI-ul tău local sau salva un fișier email în folderul outbox. |
+| `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Toate emailurile, linkurile, sumele, datele și telefoanele din documente, cu documentele în care apar. |
+| `compare A B [--json]` | Compară două documente propoziție cu propoziție: cât de asemănătoare sunt și ce e doar într-unul dintre ele (A și B sunt căi sau terminațiile lor). |
+| `conflicts [--group G] [--json]` | Perechi de propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550): candidate de verificat, nu verdicte. |
+| `topics [--json]` | Grupează documentele după ce tratează (cele mai caracteristice cuvinte ale lor). |
+| `dossier TERM [--json]` | Tot ce spune biblioteca despre un nume sau termen: pasaje pe documente, plus datele și sumele găsite în ele. |
+| `changes --since DATE [--json]` | Documentele modificate de la o dată (YYYY, YYYY-MM sau YYYY-MM-DD), cele mai noi întâi. |
+| `factcheck FILE\|- [--json]` | Verifică un text al tău față de bibliotecă: fiecare propoziție e marcată susținută, parțial, numerele diferă sau negăsită, cu cea mai bună dovadă. |
+| `mcp [--url ENGINE] [--mock]` | Server MCP prin stdio, ca alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta (doar citire). |
 
 ## Cum se leagă
 

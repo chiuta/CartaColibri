@@ -33,12 +33,14 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Power features
 
-- **Find** — a live progress bar while indexing; “did you mean…?” for typos, with suggestion chips when nothing matches; duplicates listed, and a plain reason for every skipped file.
+- **Find** — a live progress bar while indexing; “did you mean…?” for typos, with suggestion chips when nothing matches; duplicates listed, and a plain reason for every skipped file. Type filters right in the box (`ext:pdf`, `path:`, `size:>1mb`, `after:`/`before:` dates, `re:` regular expressions), tick **Smart search** to add related words, and see how many hits each file type has.
 - **Organize** — tags, a star and a private note on every document; they survive re-indexing. See related documents, what you opened recently and most often, and save searches as smart collections.
 - **14 tasks** — compare, timeline, glossary, outline, actions, FAQ, flashcards, quiz, translate, explain, contradictions, plus summarize, extract and synthesize. Tick **verify citations** to flag sentences the sources do not back, and pick the answer language.
-- **Chat** — ask follow-up questions across your whole library or one group. Answers cite their sources, or honestly say “not found in your documents” instead of guessing.
+- **Chat** — ask follow-up questions across your whole library or one group. Answers cite their sources, or honestly say “not found in your documents” instead of guessing. Each answer shows a **Grounding** score and flags sentences or numbers the sources do not back. Tick “Each question on its own” for no memory, or limit the documents to a time range.
 - **Share and safeguard** — export a group, tag or search as Markdown, CSV, JSON or zip, with citations; a Stats view with charts and a timeline; a one-file Backup with checksums; Check/Repair for the index.
 - **Bring things in** — import browser bookmarks, an Obsidian folder, Zotero/BibTeX, Pocket/Raindrop CSV or Evernote exports, and follow RSS/Atom feeds (OPML in and out): they become searchable notes. Email, calendar, subtitles and notebooks are indexed too.
+- **Insight** — “Conflicts” (same sentence, different number or date), “Topic map” (bubbles), “What's new” since a date, “Compare 2” documents, “Names & numbers” (emails, links, amounts, dates, phones), “Dossier” on a name, and “Fact-check my text” against your library.
+- **Automate and connect** — `digest` re-runs a saved search and reports only what is new (repeat, append to a file, summarize, or save an e-mail file); `mcp` lets other AI apps search, read, ask, fact-check and look up dossiers in your library, read-only.
 
 ## New in 0.2.0-alpha.4
 
@@ -89,8 +91,18 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Command | What it does |
 |---|---|
+| `start [--folder F] [--port N] [--no-open]` | Guided start: pick a folder, index it, open the web page. |
+| `doctor` | Checks the engine, OCR, PDF tools, disk and port, and prints the exact fix for each problem. |
+| `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Register or forget a folder (files are never touched), list folders, re-index, and list files that could not be read. |
+| `watch [--interval S]` | Keeps the index current: re-scans the folders every S seconds. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Searches the library. Words, "phrases", prefix*, AND/OR/NOT, and filters right in the query: `ext:pdf` `path:contracts` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:INV-\d+`. |
+| `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Lists documents; groups are named sets of documents you can search or ask about. |
+| `summarize`, `extract`, `synthesize` (same options as `task`) | Shortcuts for the three main tasks: summarize each document, extract fields, or combine several into one answer. |
+| `grab URL`, `bookmarklet` | Saves a web page into the library (HTML, MHTML or PDF); the bookmarklet does it from any browser. |
+| `serve [--port N] [--url ENGINE]` | Starts the web page on this computer (http://127.0.0.1:PORT). |
+| `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Prints a tab-completion script for your shell; re-imports tags, stars, notes and groups exported as JSON. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | the 14 tasks (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` marks sentences whose `[S#]` the text does not back |
-| `chat [--group G]` | multi-turn questions over your library; answers are cited, or say “not found in your documents” |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | multi-turn questions over your library; answers are cited, or say “not found in your documents” |
 | `tag add/rm/list/show`, `star`, `note` | your own organization, kept across re-indexing |
 | `saved add/list/run/rm` | saved searches / smart collections |
 | `recent`, `related PATH` | what you opened lately; similar documents |
@@ -101,6 +113,15 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `import PATH` | bookmarks `.html`, Obsidian folder, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
 | `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | RSS/Atom subscriptions saved as notes |
 | `webwatch`, `history` | watched web pages with a diff; opt-in browsing history |
+| `digest NAME [--every MIN] [--out FILE.md] [--summarize] [--all] [--mail-to ADDR [--sendmail]]` | Re-runs a saved search and reports only the documents that are new since last time; repeats, appends to a file, summarizes with your local AI, or saves an e-mail file in the outbox folder. |
+| `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Every e-mail, link, money amount, date and phone number your documents mention, with the documents they appear in. |
+| `compare A B [--json]` | Compares two documents sentence by sentence: how alike they are and what is only in one of them (A and B are paths or their endings). |
+| `conflicts [--group G] [--json]` | Pairs of sentences in different documents that agree except for a number or a date (500 vs 550): candidates to check, not verdicts. |
+| `topics [--json]` | Groups the documents by what they are about (their most characteristic words). |
+| `dossier TERM [--json]` | Everything the library says about a name or term: passages per document, plus the dates and amounts found in them. |
+| `changes --since DATE [--json]` | Documents modified since a date (YYYY, YYYY-MM or YYYY-MM-DD), newest first. |
+| `factcheck FILE\|- [--json]` | Checks a text of yours against the library: every sentence is marked supported, partial, numbers differ or not found, with the best evidence. |
+| `mcp [--url ENGINE] [--mock]` | MCP server over stdio so other AI apps can search, read, ask, fact-check and look up dossiers in your library (read-only). |
 
 ## How it fits together
 

@@ -33,12 +33,14 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Haladó funkciók
 
-- **Keresés** — folyamatjelző az indexelés közben; „Erre gondoltál…?” elgépeléseknél, javaslatokkal, ha semmi sem egyezik; a duplikátumok listázva, és minden kihagyott fájlhoz érthető ok.
+- **Keresés** — folyamatjelző az indexelés közben; „Erre gondoltál…?” elgépeléseknél, javaslatokkal, ha semmi sem egyezik; a duplikátumok listázva, és minden kihagyott fájlhoz érthető ok. Írj szűrőket közvetlenül a mezőbe (`ext:pdf`, `path:`, `size:>1mb`, `after:`/`before:` dátumok, `re:` reguláris kifejezések), jelöld be az **Okos keresés** négyzetet rokon szavakhoz, és nézd, hány találat van az egyes fájltípusokból.
 - **Rendszerezés** — címkék, csillag és privát jegyzet minden dokumentumon; túlélik az újraindexelést. Nézd a kapcsolódó dokumentumokat, a nemrég és a leggyakrabban megnyitottakat, és mentsd el a kereséseket okos gyűjteményként.
 - **14 feladat** — összehasonlítás, idővonal, szószedet, vázlat, teendők, GYIK, kártyák, kvíz, fordítás, magyarázat, ellentmondások, plusz összefoglalás, kinyerés és szintézis. Jelöld be az **idézetek ellenőrzését**, hogy megjelölje a forrásokkal alá nem támasztott mondatokat, és válaszd ki a válasz nyelvét.
-- **Chat** — tegyél fel egymásra épülő kérdéseket az egész könyvtáradról vagy egy csoportról. A válaszok megadják a forrásaikat, vagy őszintén kimondják: „nem található a dokumentumaidban”, találgatás helyett.
+- **Chat** — tegyél fel egymásra épülő kérdéseket az egész könyvtáradról vagy egy csoportról. A válaszok megadják a forrásaikat, vagy őszintén kimondják: „nem található a dokumentumaidban”, találgatás helyett. Minden válasz **Forrásokkal alátámasztva** pontszámot mutat, és megjelöli azokat a mondatokat vagy számokat, amelyeket a források nem támasztanak alá. A „Minden kérdés külön” bejelölésével nem emlékezik semmire, vagy időszakra korlátozhatod a dokumentumokat.
 - **Megosztás és mentés** — exportálj egy csoportot, címkét vagy keresést Markdown, CSV, JSON vagy zip formátumban, hivatkozásokkal; Statisztika nézet diagramokkal és idővonallal; egyfájlos, ellenőrzőösszeges biztonsági mentés; Ellenőrzés/Javítás az indexhez.
 - **Behozatal** — importálj böngészőkönyvjelzőket, Obsidian-mappát, Zotero/BibTeX-et, Pocket/Raindrop CSV-t vagy Evernote-exportot, és kövess RSS/Atom-csatornákat (OPML be- és kimenet): kereshető jegyzetekké válnak. Az e-mailek, naptárak, feliratok és notebookok is bekerülnek az indexbe.
+- **Betekintés** — “Ellentmondások” (ugyanaz a mondat, más szám vagy dátum), “Tématérkép” (buborékok), “Mi az új” egy dátum óta, “2 összehasonlítása”, “Nevek és számok” (e-mailek, linkek, összegek, dátumok, telefonszámok), “Dosszié” egy névről és “Szövegem ellenőrzése” a könyvtár alapján.
+- **Automatizálj és kapcsolódj** — a `digest` újra lefuttat egy mentett keresést, és csak az újdonságokat jelzi (ismétel, fájlhoz fűz, összefoglal vagy e-mail fájlt ment); az `mcp` lehetővé teszi, hogy más MI-alkalmazások keressenek, olvassanak, kérdezzenek, ellenőrizzenek és dossziét kérjenek a könyvtáradból, csak olvasásra.
 
 ## Újdonságok a 0.2.0-alpha.4-ben
 
@@ -89,8 +91,18 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Parancs | Mit csinál |
 |---|---|
+| `start [--folder F] [--port N] [--no-open]` | Vezetett indítás: kiválasztasz egy mappát, indexeli, és megnyílik a weboldal. |
+| `doctor` | Ellenőrzi a motort, az OCR-t, a PDF-eszközöket, a lemezt és a portot, és minden hibához megadja a pontos megoldást. |
+| `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Mappa felvétele vagy elfelejtése (a fájlokhoz soha nem nyúl), mappák listázása, újraindexelés és az olvashatatlan fájlok listája. |
+| `watch [--interval S]` | Naprakészen tartja az indexet: S másodpercenként újraolvassa a mappákat. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Keres a könyvtárban. Szavak, „kifejezések”, előtag*, AND/OR/NOT és szűrők közvetlenül a lekérdezésben: `ext:pdf` `path:szerzodesek` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:SZ-\d+`. |
+| `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Listázza a dokumentumokat; a csoportok elnevezett dokumentumhalmazok, amelyekben kereshetsz vagy kérdezhetsz. |
+| `summarize`, `extract`, `synthesize` (same options as `task`) | Gyorsparancsok a három fő feladathoz: minden dokumentum összefoglalása, mezők kinyerése, vagy több dokumentum egy válaszba vonása. |
+| `grab URL`, `bookmarklet` | Weboldalt ment a könyvtárba (HTML, MHTML vagy PDF); a bookmarklet bármely böngészőből megteszi. |
+| `serve [--port N] [--url ENGINE]` | Elindítja a weboldalt ezen a gépen (http://127.0.0.1:PORT). |
+| `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Tab-kiegészítő szkriptet ír ki a shelledhez; újraimportálja a JSON-ként exportált címkéket, csillagokat, jegyzeteket és csoportokat. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | a 14 feladat (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); a `--verify` megjelöli azokat a mondatokat, amelyek `[S#]` hivatkozását a szöveg nem támasztja alá |
-| `chat [--group G]` | egymásra épülő kérdések a könyvtáradról; a válaszok hivatkoznak, vagy „nem található a dokumentumaidban” |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | egymásra épülő kérdések a könyvtáradról; a válaszok hivatkoznak, vagy „nem található a dokumentumaidban” |
 | `tag add/rm/list/show`, `star`, `note` | a saját rendszerezésed, amely az újraindexelés után is megmarad |
 | `saved add/list/run/rm` | mentett keresések / okos gyűjtemények |
 | `recent`, `related PATH` | amit nemrég megnyitottál; hasonló dokumentumok |
@@ -101,6 +113,15 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `import PATH` | könyvjelzők `.html`, Obsidian-mappa, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
 | `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | RSS/Atom-feliratkozások, jegyzetként mentve |
 | `webwatch`, `history` | figyelt weboldalak különbségekkel; opcionális böngészési előzmények |
+| `digest NAME [--every MIN] [--out FILE.md] [--summarize] [--all] [--mail-to ADDR [--sendmail]]` | Újra lefuttat egy mentett keresést, és csak az utolsó futás óta újakat jelzi; ismételhető, fájlhoz fűzhető, a helyi MI összefoglalhatja, vagy e-mail fájlként menthető az outbox mappába. |
+| `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | A dokumentumaid összes e-mailje, linkje, összege, dátuma és telefonszáma, azokkal a dokumentumokkal, ahol szerepelnek. |
+| `compare A B [--json]` | Mondatonként összehasonlít két dokumentumot: mennyire hasonlók, és mi van csak az egyikben (A és B útvonal vagy annak vége). |
+| `conflicts [--group G] [--json]` | Különböző dokumentumok olyan mondatpárjai, amelyek egy számban vagy dátumban térnek el (500 és 550): ellenőrizendő jelöltek, nem ítéletek. |
+| `topics [--json]` | Téma szerint csoportosítja a dokumentumokat (legjellemzőbb szavaik alapján). |
+| `dossier TERM [--json]` | Mindaz, amit a könyvtár egy névről vagy fogalomról mond: szövegrészek dokumentumonként, a bennük talált dátumokkal és összegekkel. |
+| `changes --since DATE [--json]` | Egy dátum óta módosult dokumentumok (YYYY, YYYY-MM vagy YYYY-MM-DD), a legfrissebbek elöl. |
+| `factcheck FILE\|- [--json]` | Ellenőrzi a saját szövegedet a könyvtár alapján: minden mondat alátámasztott, részben, a számok eltérnek vagy nincs meg, a legjobb bizonyítékkal. |
+| `mcp [--url ENGINE] [--mock]` | MCP-szerver stdio-n, hogy más MI-alkalmazások keressenek, olvassanak, kérdezzenek, ellenőrizzenek és dossziét kérjenek a könyvtáradból (csak olvasás). |
 
 ## Hogyan áll össze
 

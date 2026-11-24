@@ -7,6 +7,7 @@ import os, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_carta_docs import X, LANGS, NAMES, ROOT
 import carta_docs_alpha2 as A2
+import carta_docs_alpha4 as ALPHA4
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -64,6 +65,8 @@ S = [
 ]
 for _n in (8, 9):
     S.append({"img": _n, "title": {_l: _t.replace(f"{_n} ·", f"{_n - 3} ·", 1) for _l, _t in A2.STEPS[_n]["title"].items()}, "cap": A2.STEPS[_n]["cap"], "text": A2.STEPS[_n]["text"]})
+for _n in (10, 11, 12, 13, 14):
+    S.append({"img": _n, "title": {_l: _t.replace(f"{_n} ·", f"{_n - 3} ·", 1) for _l, _t in ALPHA4.STEPS[_n]["title"].items()}, "cap": ALPHA4.STEPS[_n]["cap"], "text": ALPHA4.STEPS[_n]["text"]})
 END = {  # closing card: command line + portable
  "title": {"en": "5 · Command line and portable", "ro": "5 · Linia de comandă și versiunea portabilă", "fr": "5 · Ligne de commande et version portable", "it": "5 · Riga di comando e versione portatile", "es": "5 · Línea de comandos y versión portátil", "pt": "5 · Linha de comandos e versão portátil", "de": "5 · Kommandozeile und portable Version", "hu": "5 · Parancssor és hordozható változat"},
  "cap": {"en": "Everything also works from the command line — and as a portable app.", "ro": "Totul merge și din linia de comandă — și ca aplicație portabilă.", "fr": "Tout fonctionne aussi en ligne de commande — et en version portable.", "it": "Tutto funziona anche da riga di comando — e come app portatile.", "es": "Todo funciona también desde la línea de comandos — y como app portátil.", "pt": "Tudo funciona também na linha de comandos — e como app portátil.", "de": "Alles funktioniert auch per Kommandozeile — und als portable App.", "hu": "Minden működik parancssorból is — és hordozható alkalmazásként."},
@@ -75,10 +78,12 @@ END = {  # closing card: command line + portable
           "pt": "As mesmas funções estão disponíveis como comandos cartacolibri (abaixo). O zip portátil guarda o teu índice, os grupos e os resultados na sua própria pasta Data: descomprime, executa e já está.",
           "de": "Dieselben Funktionen gibt es als cartacolibri-Befehle (siehe unten). Das portable Zip speichert Index, Gruppen und Ergebnisse im eigenen Ordner Data: entpacken, Starter ausführen, fertig.",
           "hu": "Ugyanezek a funkciók cartacolibri parancsokként is elérhetők (lásd alább). A hordozható zip az indexet, a csoportokat és az eredményeket a saját Data mappájában tartja: kicsomagolod, elindítod, kész."}}
-END["title"] = {_l: _t.replace("5 ·", "7 ·", 1) for _l, _t in END["title"].items()}
+END["title"] = {_l: _t.replace("5 ·", "12 ·", 1) for _l, _t in END["title"].items()}
 CMD = ["cartacolibri add ~/Documents", 'cartacolibri search "payment OR pay*" --ext txt,md', "cartacolibri group set Contracts ~/Documents/contracts",
        'cartacolibri synthesize "payment terms" --group Contracts --save', "cartacolibri watch --interval 30      # keep the index current",
-       "cartacolibri grab https://example.org/article      # web-grab", "cartacolibri bookmarklet               # one-click save from any browser"]
+       "cartacolibri grab https://example.org/article      # web-grab", "cartacolibri bookmarklet               # one-click save from any browser",
+       'cartacolibri search "rent after:2025-01 ext:txt"', "cartacolibri conflicts   |   topics   |   entities", "cartacolibri compare lease-v1.txt lease-v2.txt",
+       "cartacolibri factcheck draft.txt", 'cartacolibri dossier "Gamma Foods"', "cartacolibri digest NAME --every 60 --out news.md", "cartacolibri mcp      # for other AI apps"]
 TITLE_CARD = {"en": "Tutorial", "ro": "Tutorial", "fr": "Tutoriel", "it": "Tutorial", "es": "Tutorial", "pt": "Tutorial", "de": "Anleitung", "hu": "Útmutató"}
 PDFSEARCH = None
 

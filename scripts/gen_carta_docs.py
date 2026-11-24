@@ -8,6 +8,7 @@ import carta_docs_beginner as B
 import carta_docs_power as P
 import carta_docs_alpha2 as A2
 import carta_docs_alpha4 as A4
+import carta_docs_cli2 as C2
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["en", "ro", "fr", "it", "es", "pt", "de", "hu"]
 NAMES = {"en": "English", "ro": "Română", "fr": "Français", "it": "Italiano", "es": "Español", "pt": "Português", "de": "Deutsch", "hu": "Magyar"}
@@ -174,6 +175,12 @@ for _i, _n in enumerate(A2.NEWS, 1):
     X[f"nw{_i}"] = {_l: f"**{_n[_l][0]}** — {_n[_l][1]}" for _l in LANGS}
 
 
+P.POWER = list(P.POWER)
+P.POWER[0] = {l: P.POWER[0][l] + ' ' + A4.FIND_EXTRA[l] for l in P.POWER[0]}
+P.POWER[3] = {l: P.POWER[3][l] + ' ' + A4.CHAT_EXTRA[l] for l in P.POWER[3]}
+import re as _re
+P.POWER += [{l: _re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'“\1”', t) for l, t in c.items()} for c in A4.POWER_ADD]
+P.CLI = C2.FIRST + [(C2.CHAT_NEW if c == C2.CHAT_OLD else c, d) for c, d in P.CLI] + C2.NEW
 X["h_new4"] = dict(A4.H_NEW)
 for _i, _n in enumerate(A4.NEWS, 1):
     X[f"n4w{_i}"] = {_l: f"**{_n[_l][0]}** — {_n[_l][1]}" for _l in LANGS}
@@ -299,10 +306,10 @@ def site():
     data = json.dumps(blocks, ensure_ascii=False).replace("</", "<\\/")
     names = json.dumps(NAMES, ensure_ascii=False)
     first_code = html.escape(B.FIRST_CODE.strip("`").removeprefix("bash\n").strip("\n"), quote=False)
-    ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
+    ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
            'h_new4', 'n4w1', 'n4w2', 'n4w3', 'n4w4', 'n4w5', 'n4w6', 'n4w7', 'n4w8', 'n4w9', 'n4w10', 'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     import site_template as T
-    for _n, _st in A2.STEPS.items():
+    for _n, _st in {**A2.STEPS, **A4.STEPS}.items():
         T.NEW[f"t{_n}"] = dict(_st["tab"]); T.NEW[f"c{_n}"] = dict(_st["cap"])
     miss = [(k, l) for k in T.NEW for l in LANGS if not T.NEW[k].get(l)]
     if miss: sys.exit(f"missing site translations: {miss}")
@@ -344,7 +351,7 @@ def main():
         from PIL import Image
     except ImportError:
         Image = None
-    names = [str(n) for n in range(1, 10)] + ["m1", "m2", "m3", "t1"]
+    names = [str(n) for n in range(1, 15)] + ["m1", "m2", "m3", "t1"]
     for l in LANGS:
         for n in names:
             src, dst = f"{ROOT}/docs/cartacolibri/img/{l}-{n}.png", f"{ROOT}/site-carta/img/{l}-{n}.webp"

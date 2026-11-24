@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import capture_carta_demo as D
 ROOT = D.ROOT; LANGS = D.LANGS
 import carta_docs_alpha2 as A2
+import carta_docs_alpha4 as A4
 # 7 short captions per language (informal 'tu'): library, search, group, synthesis, chat, document, stats
 CAP = {
  "en": ["Your whole library, searchable in one place.", "Search with a typo? You still find what you meant.", "Turn the results into a group: your own search scope.",
@@ -74,7 +75,7 @@ def load(ctx, base, lib, first):
 
 
 def demo(b, base, lib, lang, vdir, crf, first):
-    G, C = D.GROUP[lang], CAP[lang] + [A2.STEPS[8]["cap"][lang], A2.STEPS[9]["cap"][lang]]
+    G, C = D.GROUP[lang], CAP[lang] + [A2.STEPS[8]["cap"][lang], A2.STEPS[9]["cap"][lang]] + [A4.STEPS[n]["cap"][lang] for n in (10, 11, 12, 13, 14)]
     ctx = b.new_context(viewport={"width": 1280, "height": 720}, record_video_dir=vdir, record_video_size={"width": 1280, "height": 720})
     ctx.add_init_script(INIT % lang); t0 = time.time()
     pg, errs = load(ctx, base, lib, first); T0[0] = time.time(); pg.mouse.move(640, 400); start = time.time() - t0 - 0.3
@@ -103,6 +104,17 @@ def demo(b, base, lib, lang, vdir, crf, first):
     click(pg, "#gwX", 400); pg.wait_for_selector("#gwDlg", state="hidden")
     cap(pg, C[8]); click(pg, '.rb[data-view=library]', 400); click(pg, "#bringBtn", 500); pg.wait_for_selector("#wgUrl", state="visible"); typ(pg, "#wgUrl", "https://example.org/article", 45); pg.wait_for_timeout(2400)
     click(pg, "#brClose", 400); pg.wait_for_selector("#bring", state="hidden")
+    def closeins(): click(pg, "#insX", 400); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+    cap(pg, C[9]); click(pg, '.rb[data-view=fetch]', 400); typ(pg, "#q", "payment after:2020"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr"); pg.wait_for_timeout(2600)
+    cap(pg, C[10]); click(pg, '.rb[data-view=library]', 400); click(pg, "#tpBtn", 500); pg.wait_for_selector(".tbub, #insBody p"); pg.wait_for_timeout(900)
+    if pg.locator(".tbub").count(): click(pg, ".tbub", 300)
+    pg.wait_for_timeout(2000); closeins()
+    cap(pg, C[11]); click(pg, "#cfBtn", 500); pg.wait_for_selector("#insBody .snip, #insBody p"); pg.wait_for_timeout(2600); closeins()
+    cap(pg, C[12]); click(pg, "#fcBtn", 500); typ(pg, "#fcText", D.FACT[lang], 35); click(pg, "#fcGo", 300); pg.wait_for_selector("#fcOut .snip"); pg.wait_for_timeout(2600); closeins()
+    cap(pg, C[13])
+    for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').check(); pg.wait_for_timeout(300)
+    click(pg, "#cmpBtn", 400); pg.wait_for_selector("#insBody li"); pg.wait_for_timeout(2600); closeins()
+    for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').uncheck()
     cap(pg, ""); pg.wait_for_timeout(400)
     dur = time.time() - t0 - start
     # undo the demo tag/star/note (not recorded: the video is cut at `dur`) so the next language starts alike
