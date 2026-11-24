@@ -31,3 +31,12 @@ Looked up, in order: `$COLIBRI_ENDPOINT_FILE`, `%APPDATA%\colibri-companion\endp
 The status chip shows the model in use; each answer shows tokens in/out, seconds and tokens per second,
 and a hint to try a smaller model or Offline mode when the engine is slow (under 3 tokens/s).
 Requests to the engine are sent one at a time, because a local model answers parallel requests no faster.
+
+## Colibri Companion
+
+CartaColibri reads Colibri Companion's own `settings.json` (its data folder: `~/.local/share/colibri-companion/` on Linux, `%LOCALAPPDATA%\ColibriCompanion\` on Windows, `~/Library/Application Support/ColibriCompanion/` on macOS, or `COLIBRI_COMPANION_HOME`). From it:
+
+- `server_url` is offered as a candidate engine address (loopback only);
+- `api_key` is sent as a bearer key to a loopback engine when `COLI_API_KEY` is not set. It is never sent to another address and never logged.
+
+The ⚙ dialog has a **Start Colibri Companion** button. It starts only the program named `colibri-companion` (from `PATH`, `~/.cargo/bin`, `~/.local/bin` or `%LOCALAPPDATA%\ColibriCompanion`), with no arguments and nothing chosen by the page.

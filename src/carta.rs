@@ -143,7 +143,8 @@ impl Backend {
             max_tokens: 1200,
             api_key: std::env::var("COLI_API_KEY")
                 .ok()
-                .filter(|k| !k.trim().is_empty()),
+                .filter(|k| !k.trim().is_empty())
+                .or_else(|| companion_key(url)),
         }
     }
     pub fn mock() -> Backend {
@@ -343,6 +344,47 @@ pub struct Found {
     pub models: Vec<String>,
 }
 
+/// Colibri Companion keeps its own settings (`server_url`, `api_key`) in its data folder.
+pub fn companion_settings_files() -> Vec<std::path::PathBuf> {
+    let mut v = vec![];
+    if let Some(p) = std::env::var_os("COLIBRI_COMPANION_HOME") {
+        v.push(std::path::PathBuf::from(p).join("settings.json"));
+    }
+    if let Some(d) = std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from) {
+        v.push(d.join("ColibriCompanion").join("settings.json"));
+    }
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(std::path::PathBuf::from);
+    if let Some(h) = home {
+        let data = std::env::var_os("XDG_DATA_HOME")
+            .map(std::path::PathBuf::from)
+            .filter(|p| p.is_absolute())
+            .unwrap_or_else(|| h.join(".local").join("share"));
+        v.push(data.join("colibri-companion").join("settings.json"));
+        v.push(h.join("Library/Application Support/ColibriCompanion/settings.json"));
+    }
+    v
+}
+
+/// The key Colibri Companion has set for its server, used only for a loopback engine.
+fn companion_key(url: &str) -> Option<String> {
+    if !is_loopback_http(url) {
+        return None;
+    }
+    for f in companion_settings_files() {
+        if let Ok(b) = std::fs::read(&f)
+            && b.len() < 1 << 20
+            && let Ok(j) = serde_json::from_slice::<Value>(&b)
+            && let Some(k) = j["api_key"].as_str()
+            && !k.trim().is_empty()
+        {
+            return Some(k.trim().to_string());
+        }
+    }
+    None
+}
+
 /// Where Colibri Companion (or any launcher) may publish the running engine: `{"url": "...", "model": "..."}`.
 pub fn discovery_files() -> Vec<std::path::PathBuf> {
     let mut v = vec![];
@@ -381,6 +423,16 @@ pub fn detect() -> Vec<Found> {
             cands.push(normalize_base(u));
         }
     }
+    for f in companion_settings_files() {
+        if let Ok(b) = std::fs::read(&f)
+            && b.len() < 1 << 20
+            && let Ok(j) = serde_json::from_slice::<Value>(&b)
+            && let Some(u) = j["server_url"].as_str()
+            && is_loopback_http(u)
+        {
+            cands.push(normalize_base(u));
+        }
+    }
     for port in [8000, 8080, 11434, 1234, 8001, 5000] {
         cands.push(format!("http://127.0.0.1:{port}"));
     }
@@ -407,6 +459,42 @@ pub fn detect() -> Vec<Found> {
     hs.into_iter()
         .filter_map(|h| h.join().ok().flatten())
         .collect()
+}
+
+/// Where an installed Colibri Companion program may be: on PATH, or in the usual per-user folders.
+fn companion_program() -> Option<std::path::PathBuf> {
+    let name = if cfg!(windows) {
+        "colibri-companion.exe"
+    } else {
+        "colibri-companion"
+    };
+    let mut dirs: Vec<std::path::PathBuf> = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect())
+        .unwrap_or_default();
+    if let Some(h) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
+        let h = std::path::PathBuf::from(h);
+        dirs.push(h.join(".cargo").join("bin"));
+        dirs.push(h.join(".local").join("bin"));
+    }
+    if let Some(d) = std::env::var_os("LOCALAPPDATA") {
+        dirs.push(std::path::PathBuf::from(d).join("ColibriCompanion"));
+    }
+    dirs.into_iter().map(|d| d.join(name)).find(|p| p.is_file())
+}
+
+/// Starts Colibri Companion (only that program, no arguments, nothing the page can choose).
+pub fn start_companion() -> Result<String, String> {
+    let exe = companion_program().ok_or("Colibri Companion was not found on this computer")?;
+    std::process::Command::new(&exe)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("could not start Colibri Companion: {e}"))?;
+    Ok(exe
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default())
 }
 
 fn is_loopback_http(u: &str) -> bool {

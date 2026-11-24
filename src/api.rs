@@ -844,6 +844,14 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 .collect();
             json!({"found": found, "effective": carta::redact_url(r.backend_url)})
         }
+        ("POST", "engine/start") => {
+            if carta::detect().is_empty() {
+                let n = carta::start_companion().map_err(|e| (404, e))?;
+                json!({"started": n})
+            } else {
+                json!({"started": null, "already": true})
+            }
+        }
         ("GET", "settings") => json!({
             "gateway_url": saved_gateway(Some(&lib.home.to_string_lossy())).unwrap_or_default(),
             "effective": r.backend_url,

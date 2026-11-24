@@ -85,5 +85,26 @@ fn engine_with_v1_models_usage_and_discovery() {
             .iter()
             .all(|x| !x.url.contains("203.0.113.9"))
     );
+    // Colibri Companion's own settings.json (server_url + api_key)
+    unsafe { std::env::remove_var("COLIBRI_ENDPOINT_FILE") };
+    let c = tempfile::tempdir().unwrap();
+    std::fs::write(
+        c.path().join("settings.json"),
+        format!(r#"{{"server_url":"{base}/v1/","api_key":"sk-local"}}"#),
+    )
+    .unwrap();
+    unsafe { std::env::set_var("COLIBRI_COMPANION_HOME", c.path()) };
+    assert!(carta::detect().iter().any(|x| x.url == base));
+    unsafe { std::env::remove_var("COLI_API_KEY") };
+    assert_eq!(
+        Backend::gateway(&base, None).api_key.as_deref(),
+        Some("sk-local")
+    );
+    // never handed to a non-loopback address
+    assert!(
+        Backend::gateway("http://203.0.113.9:8000", None)
+            .api_key
+            .is_none()
+    );
     stop.store(true, Ordering::Relaxed);
 }

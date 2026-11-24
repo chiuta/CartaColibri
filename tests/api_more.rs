@@ -661,3 +661,16 @@ fn engine_address_is_saved_validated_and_reset() {
     post(&s, "/carta/settings", json!({"gateway_url": ""}));
     assert_eq!(val(get(&s, "/carta/settings"))["gateway_url"], "");
 }
+
+#[test]
+fn start_companion_never_runs_anything_the_page_chose() {
+    let (s, _ids) = indexed();
+    // the page sends no program and no arguments; with none installed it is a clean 404
+    let r = post(
+        &s,
+        "/carta/engine/start",
+        json!({"cmd": "touch /tmp/pwned"}),
+    );
+    assert!(matches!(r.code, 200 | 404), "{}", r.code);
+    assert!(!std::path::Path::new("/tmp/pwned").exists());
+}
