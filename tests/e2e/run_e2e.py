@@ -180,7 +180,13 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             assert pg.input_value("#q") == QUERY[lang]
         # ---- group + task ----
         pg.fill("#q", "payment OR plată OR pay* OR hummingbirds OR colibrii"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr")
-        pg.check("#resAll")   # select every result (the table re-renders on each tick, so use the header box)
+        # select every result; a debounced/auto search may still land and reset the selection, so retry until it sticks
+        for _ in range(12):
+            pg.wait_for_selector("#resRows tr")
+            pg.evaluate("()=>{const b=document.querySelector('#resAll');b.checked=true;b.dispatchEvent(new Event('change',{bubbles:true}))}")
+            pg.wait_for_timeout(500)
+            if pg.evaluate("()=>S.selRes.size") > 0:
+                break
         pg.fill("#gName", GROUP[lang]); pg.click("#gFromSel")
         try:
             pg.wait_for_selector('#groupList input[name=grp]:not([value=""])', timeout=15000)
