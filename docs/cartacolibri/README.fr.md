@@ -184,6 +184,8 @@ Tu as trouvé une faille ? Signale-la en privé, comme décrit dans [SECURITY.md
 
 CartaColibri est publié sous **licence MIT**. C’est une implémentation Rust clean-room : elle ne parle au moteur [Colibrì](https://github.com/JustVugg/colibri) (JustVugg, Apache-2.0) que via sa passerelle HTTP publique et n’en contient aucun code. La couche d’index et de recherche suit le comportement décrit dans le manuel public de DocFetcher ; aucun code DocFetcher n’est utilisé. Le navigateur web-grab s’appuie sur la webview du système et ne contient aucun code de Falkon.
 
+**Alexandru-Ionuț Chiuță** · **Alexandru Dumbrava** (co-auteur)
+
 ## Plus d’infos
 
 [Documentation complète](../cartacolibri.md) · [README du moteur Colibrì](https://github.com/JustVugg/colibri) · [Contribuer](../../CONTRIBUTING.md) · [📄 Tutoriel PDF illustré](CartaColibri-Tutorial.fr.pdf)

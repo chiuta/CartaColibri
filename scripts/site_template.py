@@ -98,6 +98,7 @@ NEW = {
                 "fr": "L’interface s’adapte à tous les écrans — cette page aussi.", "it": "L’interfaccia si adatta a ogni schermo — e anche questa pagina.",
                 "es": "La interfaz se adapta a cualquier pantalla, y esta página también.", "pt": "A interface adapta-se a qualquer ecrã — e esta página também.",
                 "de": "Die Oberfläche passt sich jedem Bildschirm an — diese Seite auch.", "hu": "A felület minden képernyőhöz alkalmazkodik — ez az oldal is."},
+    "coauthor": {"en": "co-author", "ro": "coautor", "fr": "co-auteur", "it": "coautore", "es": "coautor", "pt": "coautor", "de": "Mitautor", "hu": "társszerző"},
     "theme": {"en": "Theme", "ro": "Temă", "fr": "Thème", "it": "Tema", "es": "Tema", "pt": "Tema", "de": "Design", "hu": "Téma"},
     "skip": {"en": "Skip to content", "ro": "Sari la conținut", "fr": "Aller au contenu", "it": "Vai al contenuto", "es": "Saltar al contenido", "pt": "Saltar para o conteúdo", "de": "Zum Inhalt springen", "hu": "Ugrás a tartalomhoz"},
     "play": {"en": "Play / pause the tour", "ro": "Pornește / oprește turul", "fr": "Lancer / mettre en pause la visite", "it": "Avvia / ferma il tour", "es": "Iniciar / pausar el recorrido",
@@ -114,7 +115,7 @@ NEW = {
 }
 
 TEMPLATE = r"""<!doctype html>
-<html lang="en" data-theme="dark"><head><meta charset="utf-8">
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="author" content="Alexandru-Ionuț Chiuță, Alexandru Dumbrava">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark light"><meta name="theme-color" content="#0b0e14">
 <title>CartaColibri — Local AI Library</title>
@@ -275,7 +276,7 @@ cartacolibri-browser https://example.org</pre></div>
 <section class="sec rv center" id="download"><h2 id="h_dl"></h2><p><a class="btn a" href="__REPO__/releases" id="dl2"></a><a class="btn g" href="__REPO__">GitHub</a></p><p id="dl_sub2" style="color:var(--mute)"></p>
 <div style="text-align:left"><h2 id="h_status" style="margin-top:1.4em"></h2><p class="note" id="status"></p><h2 id="h_lic" style="margin-top:1.4em"></h2><p id="lic"></p></div></section>
 </main>
-<footer>© CartaColibri · MIT · <a href="__REPO__">__REPOHOST__</a></footer>
+<footer>© 2026 Alexandru-Ionuț Chiuță &amp; Alexandru Dumbrava (<span id="coauth"></span>) · CartaColibri · MIT · <a href="__REPO__">__REPOHOST__</a></footer>
 <script>
 const D=__DATA__,N=__NAMES__,X=__NEW__,IDS=__IDS__;
 const $=id=>document.getElementById(id),sel=$('l'),root=document.documentElement;
@@ -309,7 +310,7 @@ let inView=false;
 $('play').onclick=()=>{playing=!playing;userStopped=false;show(cur,true)};
 /* language */
 function go(){root.lang=L;sel.value=L;for(const k of IDS){const e=$(k);if(e)e.innerHTML=D[k][L]}
-document.querySelectorAll('[data-n]').forEach(e=>e.textContent=X[e.dataset.n][L]);document.querySelectorAll('[data-nlabel]').forEach(e=>e.setAttribute('aria-label',X[e.dataset.nlabel][L]));
+document.querySelectorAll('[data-n]').forEach(e=>e.textContent=X[e.dataset.n][L]);$('coauth').textContent=X.coauthor[L];document.querySelectorAll('[data-nlabel]').forEach(e=>e.setAttribute('aria-label',X[e.dataset.nlabel][L]));
 for(const k of ['n_start','n_features','n_faq','n_privacy','n_download'])$(k).textContent=D[k][L];$('n_tour').textContent=X.n_tour[L];
 $('h_first_btn').textContent=X.tour_btn[L];$('h_dl').textContent=D.dl[L];$('dl').textContent=D.dl[L];$('dl2').textContent=D.dl[L];
 $('steps').innerHTML=[1,2,3].map(i=>'<li>'+D['first'+i][L]+'</li>').join('');

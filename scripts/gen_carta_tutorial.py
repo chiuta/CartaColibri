@@ -93,7 +93,7 @@ def pdf(lang):
     pdfmetrics.registerFont(TTFont("DJ", dj + "DejaVuSans.ttf")); pdfmetrics.registerFont(TTFont("DJB", dj + "DejaVuSans-Bold.ttf")); pdfmetrics.registerFont(TTFont("DJM", dj + "DejaVuSansMono.ttf"))
     out = f"{ROOT}/docs/cartacolibri/CartaColibri-Tutorial.{lang}.pdf"
     c = canvas.Canvas(out, pagesize=A4); W, H = A4; M = 20 * mm
-    c.setTitle(f"CartaColibri — {TITLE_CARD[lang]} ({NAMES[lang]})"); c.setAuthor("Alexio · CartaColibri")
+    c.setTitle(f"CartaColibri — {TITLE_CARD[lang]} ({NAMES[lang]})"); c.setAuthor("Alexandru-Ionuț Chiuță, Alexandru Dumbrava · CartaColibri")
     logo = ImageReader(f"{ROOT}/assets/cartacolibri-logo.png")
     c.drawImage(logo, W / 2 - 55 * mm, H - 120 * mm, 110 * mm, 110 * mm * 1.0, preserveAspectRatio=True, mask="auto")
     c.setFont("DJB", 26); c.drawCentredString(W / 2, H - 135 * mm, f"CartaColibri — {TITLE_CARD[lang]}")
@@ -110,7 +110,7 @@ def pdf(lang):
         c.setStrokeColorRGB(.3, .3, .3); c.rect(M, H - 32 * mm - h, w, h)
         y = H - 32 * mm - h - 9 * mm; c.setFont("DJ", 10.5)
         for ln in wrap(c, st["text"][lang], "DJ", 10.5, W - 2 * M): c.drawString(M, y, ln); y -= 5.4 * mm
-        c.setFont("DJ", 8); c.setFillGray(.5); c.drawRightString(W - M, 12 * mm, "CartaColibri · github.com/chiuta/CartaColibri"); c.setFillGray(0)
+        c.setFont("DJ", 8); c.setFillGray(.5); c.drawRightString(W - M, 12 * mm, "CartaColibri · Chiuță & Dumbrava · github.com/chiuta/CartaColibri"); c.setFillGray(0)
         c.showPage()
     c.setFont("DJB", 18); c.drawString(M, H - 25 * mm, END["title"][lang]); y = H - 38 * mm; c.setFont("DJ", 10.5)
     for ln in wrap(c, END["text"][lang], "DJ", 10.5, W - 2 * M): c.drawString(M, y, ln); y -= 5.4 * mm

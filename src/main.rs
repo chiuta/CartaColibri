@@ -26,7 +26,8 @@ cartacolibri summarize --group taxes        summarize a group with citations\n  
 cartacolibri summarize --group taxes --mock offline, no model needed\n  \
 cartacolibri doctor                         check that everything works\n  \
 cartacolibri completions zsh > _cartacolibri  shell tab-completion\n\n\
-LANGUAGE: --lang ro|en|fr|de|es|it|pt|hu (or env CARTA_LANG). Colours: off when piped or NO_COLOR is set."
+LANGUAGE: --lang ro|en|fr|de|es|it|pt|hu (or env CARTA_LANG). Colours: off when piped or NO_COLOR is set.\n\n\
+Authors: Alexandru-Ionuț Chiuță and Alexandru Dumbrava. MIT licence."
 )]
 struct Cli {
     /// state directory (default ~/.cartacolibri or $CARTACOLIBRI_HOME)

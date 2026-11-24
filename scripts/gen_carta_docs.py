@@ -10,6 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["en", "ro", "fr", "it", "es", "pt", "de", "hu"]
 NAMES = {"en": "English", "ro": "Română", "fr": "Français", "it": "Italiano", "es": "Español", "pt": "Português", "de": "Deutsch", "hu": "Magyar"}
 REPO = "https://github.com/chiuta/CartaColibri"
+COAUTHOR = {"en": "co-author", "ro": "coautor", "fr": "co-auteur", "it": "coautore", "es": "coautor", "pt": "coautor", "de": "Mitautor", "hu": "társszerző"}
 
 X = {  # key -> {lang: text}
 "tagline": {
@@ -239,6 +240,8 @@ def md_readme(lang, root=False):
 ## {t('h_lic')}
 
 {t('lic')}
+
+**Alexandru-Ionuț Chiuță** · **Alexandru Dumbrava** ({COAUTHOR[lang]})
 
 ## {t('h_docs')}
 

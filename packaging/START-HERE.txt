@@ -58,3 +58,4 @@ Everything runs on your computer only. No account, no cloud, no telemetry.
 5. Az MI-összefoglalókhoz indítsd el a helyi Colibri motort (alapértelmezett: http://127.0.0.1:8000).
 
 MIT licence - github.com/chiuta/CartaColibri
+Alexandru-Ionuț Chiuță & Alexandru Dumbrava

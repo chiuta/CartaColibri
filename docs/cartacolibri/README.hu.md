@@ -184,6 +184,8 @@ Sebezhetőséget találtál? Jelezd privátban, ahogy a [SECURITY.md](../../SECU
 
 A CartaColibri **MIT licenc** alatt jelenik meg. Clean-room Rust implementáció: a [Colibrì](https://github.com/JustVugg/colibri) motorral (JustVugg, Apache-2.0) kizárólag a nyilvános HTTP-átjárón át beszél, és nem tartalmaz belőle kódot. Az index- és keresőréteg a DocFetcher nyilvános kézikönyvében leírt viselkedést követi; DocFetcher-kód nincs benne. A web-grab böngésző az operációs rendszer saját webview-jára épül, és nem tartalmaz Falkon-kódot.
 
+**Alexandru-Ionuț Chiuță** · **Alexandru Dumbrava** (társszerző)
+
 ## Továbbiak
 
 [Teljes dokumentáció](../cartacolibri.md) · [A Colibrì motor README-je](https://github.com/JustVugg/colibri) · [Közreműködés](../../CONTRIBUTING.md) · [📄 Illusztrált PDF-útmutató](CartaColibri-Tutorial.hu.pdf)
