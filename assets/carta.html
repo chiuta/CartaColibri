@@ -108,6 +108,30 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
  .viewer{inset:0;border-radius:0}.dlg{padding:16px}.card{margin:10px}
  .scroll{overflow:visible}.body{min-height:60vh}
 }
+.strip{display:flex;gap:6px 22px;flex-wrap:wrap;padding:8px 18px;border-bottom:1px solid var(--line);align-items:center;font-size:.9em}.strip[hidden],.dym[hidden]{display:none}
+.strip .chips{align-items:center}.strip .chip{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dym{padding:8px 18px;border-bottom:1px solid var(--line);background:var(--surface)}.dym>div+div{margin-top:6px}
+.linkbtn{background:none;border:0;color:var(--cyan);cursor:pointer;text-decoration:underline;padding:0;font-weight:600}
+.tagc{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:999px;padding:0 9px;font-size:.78em;background:var(--s2);margin:2px 4px 0 0;color:var(--mute)}
+.tagc.rm{padding:0 2px 0 10px;font-size:.87em;color:var(--ink)}.tagc button{border:0;background:none;cursor:pointer;color:var(--mute);padding:3px 7px;border-radius:50%;min-width:24px;min-height:24px}.tagc button:hover{color:var(--bad)}
+.stm{color:var(--amber);margin-right:4px}
+.vbody{display:flex;flex:1;min-height:0}.vbody pre{flex:1;min-width:0}
+.dpanel{width:310px;flex:none;border-left:1px solid var(--line);padding:14px;overflow:auto}.dpanel h4{margin:14px 0 6px;font-size:.8em;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}.dpanel h4:first-child{margin-top:0}
+.dpanel .row input[type=text]{flex:1}.dpanel textarea{min-height:110px}
+.starbtn[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#2b1d00}
+.rel{list-style:none;margin:0;padding:0}.rel li{border-top:1px solid var(--line);padding:4px 0}.rel button{background:none;border:0;color:var(--cyan);cursor:pointer;text-align:left;padding:2px 0;text-decoration:underline;word-break:break-all}
+.msg{margin:10px 0}.msg .who{font-size:.8em;font-weight:700;color:var(--mute);margin-bottom:2px}.msg.u .mb{background:var(--sel);border-radius:var(--r);padding:8px 12px;white-space:pre-wrap}
+.msg.b .mb{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;background:var(--s2)}
+.nf{border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px}.nf b{color:var(--amber)}.nf p{margin:4px 0 0}
+.src details{width:100%}.src details .snip{white-space:pre-wrap;margin-top:4px}
+.fl{display:block;margin:12px 0 4px;font-weight:600}
+.cards{display:flex;gap:12px;flex-wrap:wrap;padding:14px 18px 0}.cards .card{margin:0;flex:1;min-width:150px}.cards .big{font-size:1.7em;font-weight:700;color:var(--cyan)}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:0 0}.sgrid .card h3,.card h3{margin:0 0 8px;font-size:1em}
+.bars{width:100%;max-width:520px;height:auto}.bars.tl{max-width:760px}.bars .bl{fill:var(--ink);font-size:12px}.bars .bb{fill:var(--cyan)}.bars .bv{fill:var(--mute);font-size:12px}.bars .ax{fill:var(--mute);font-size:11px}
+.tl .bb{fill:var(--blue)}
+.duprow{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}.duprow span{flex:1;word-break:break-all;font-size:.9em}
+.flex1{flex:1}
+@media(max-width:820px){.vbody{flex-direction:column;overflow:auto}.dpanel{width:auto;border-left:0;border-top:1px solid var(--line);overflow:visible}.vbody pre{min-height:40vh;flex:none}}
 </style>
 </head>
 <body>
@@ -117,6 +141,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   <a class="rb" href="/" data-tip="" data-i="chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></a>
   <button class="rb" data-view="library" data-tip="" data-i="library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.8 1-3 13-3.8-1z"/></svg></button>
   <button class="rb" data-view="fetch" data-tip="" data-i="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+  <button class="rb" data-view="stats" data-tip="" data-i="stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></button>
   <span class="sp"></span>
   <button class="rb" id="bigBtn" data-tip="" data-i="text_size" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19l5-13 5 13M5 14h6M15 19l3.5-8 3.5 8M16.3 16.5h4.4"/></svg></button>
   <button class="rb" id="themeBtn" data-tip=""><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
@@ -144,10 +169,14 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
       <div class="row"><label class="wrap"><input type="checkbox" id="ocrTxt"> <span data-i="ocr_txt"></span></label><button class="hlp" type="button" data-h="h_ocr" data-al="help_label">?</button></div>
       <div class="row"><label class="wrap"><input type="checkbox" id="ocrPdf"> <span data-i="ocr_pdf"></span></label></div>
       <div class="muted" id="ocrNote" style="font-size:.8em"></div>
+      <div class="row"><button class="btn sm" id="bringBtn" data-i="bring"></button></div>
       <h3 data-i="problems"></h3><div id="problems" class="muted" style="font-size:.8em"></div>
     </div>
     <div class="body">
-      <div class="bar"><button class="btn sm" id="sideToggle" aria-expanded="false" data-i="side_toggle"></button><b id="libCount"></b><span class="muted" id="libStats"></span></div>
+      <div class="bar"><button class="btn sm" id="sideToggle" aria-expanded="false" data-i="side_toggle"></button><b id="libCount"></b><span class="muted" id="libStats"></span><span class="flex1"></span>
+        <button class="linkbtn" id="dupBtn" hidden></button>
+        <select id="libTag" data-al="f_tag"></select><label><input type="checkbox" id="libStar"> <span data-i="f_starred"></span></label><button class="btn sm" id="expLib" data-i="export"></button></div>
+      <div class="strip" id="strip" hidden></div>
       <div class="scroll"><table id="libTable"><thead><tr><th><input type="checkbox" id="libAll" data-al="select_all"></th><th data-i="name"></th><th class="c-type" data-i="type"></th><th class="n c-size" data-i="size"></th><th class="c-path" data-i="path"></th><th><span class="vh" data-i="view"></span></th></tr></thead><tbody id="libRows"></tbody></table>
         <div class="empty" id="libEmpty">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>
@@ -163,16 +192,33 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
       <div class="chips" id="exts"></div>
       <div class="row"><input type="number" id="minKb" min="0" data-ph="min_kb" data-al="min_kb" style="width:50%"><input type="number" id="maxKb" min="0" data-ph="max_kb" data-al="max_kb" style="width:50%"></div>
       <div class="row"><input type="text" id="pathLike" data-ph="path_contains" data-al="path_contains" style="width:100%"></div>
+      <div class="row"><select id="fTag" data-al="f_tag" style="width:100%"></select></div>
+      <div class="row"><label><input type="checkbox" id="fStar"> <span data-i="f_starred"></span></label></div>
       <div class="row"><button class="btn sm" id="clearF" data-i="clear_filters"></button></div>
+      <h3 data-i="sv_title"></h3><div id="savedList"></div>
+      <div class="row"><input type="text" id="svName" data-ph="sv_name_ph" data-al="sv_name_ph" style="width:100%" maxlength="80"></div>
+      <div class="row"><button class="btn sm" id="svSave" data-i="sv_save"></button></div>
       <h3><span data-i="groups"></span><button class="hlp" type="button" data-h="h_groups" data-al="help_label">?</button></h3><div id="groupList"></div>
       <div class="row"><input type="text" id="gName" data-ph="group_name" data-al="group_name" style="width:100%"></div>
       <div class="row"><button class="btn pri sm" id="gFromSel" data-i="create_index_sel"></button></div>
       <div class="muted" style="font-size:.8em" data-i="group_hint"></div>
     </div>
     <div class="body">
-      <form class="bar" id="qform" role="search"><button class="btn sm" id="sideToggle2" type="button" aria-expanded="false" data-i="side_toggle" style="display:none"></button><input type="text" id="q" data-ph="query_ph" data-al="search" autocomplete="off"><button class="btn pri" id="go" type="submit" data-i="search"></button><span class="muted" id="resCount" role="status"></span></form>
+      <form class="bar" id="qform" role="search"><button class="btn sm" id="sideToggle2" type="button" aria-expanded="false" data-i="side_toggle" style="display:none"></button><input type="text" id="q" data-ph="query_ph" data-al="search" autocomplete="off"><button class="btn pri" id="go" type="submit" data-i="search"></button><span class="muted" id="resCount" role="status"></span><button class="btn sm" id="expRes" type="button" data-i="export"></button></form>
+      <div class="dym" id="dym" hidden></div>
       <div class="scroll"><table id="resTable"><thead><tr><th><input type="checkbox" id="resAll" data-al="select_all"></th><th class="n" data-i="score"></th><th data-i="name"></th><th class="c-type" data-i="type"></th><th class="n c-size" data-i="size"></th><th class="c-path" data-i="path"></th></tr></thead><tbody id="resRows"></tbody></table><div class="empty" id="resEmpty"></div></div>
     </div>
+  </section>
+  <!-- STATS: numbers, timeline, backup, index health -->
+  <section class="view" id="v-stats" aria-label="Stats">
+    <div class="body"><div class="scroll" id="statsBody">
+      <div class="bar"><b data-i="st_title"></b></div>
+      <div id="statsOut"></div>
+      <div class="card"><h3 data-i="bk_title"></h3><p class="muted" data-i="bk_lead" style="margin-top:0"></p>
+        <div class="row"><label class="wrap"><input type="checkbox" id="bkIdx"> <span data-i="bk_idx"></span></label></div>
+        <div class="row"><button class="btn pri" id="bkGo" data-i="bk_dl"></button><button class="btn" id="vfGo" data-i="vf_check"></button></div>
+        <div id="vfOut" role="status" aria-live="polite" style="margin-top:8px"></div></div>
+    </div></div>
   </section>
 </main>
 
@@ -180,21 +226,44 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
 <aside class="drawer" id="drawer" role="dialog" aria-label="RAG-CARTA">
   <div class="hd"><img src="/carta-mark.png" alt="" width="28"><b>RAG-CARTA</b><button class="hlp" type="button" data-h="task_help" data-al="help_label">?</button><button class="btn sm" id="dClose" data-i="close"></button></div>
   <div class="bd">
+    <div class="seg" id="dTabs" role="tablist" style="margin-bottom:12px"><button role="tab" data-tab="task" aria-selected="true" data-i="tab_task"></button><button role="tab" data-tab="chat" aria-selected="false" data-i="tab_chat"></button></div>
+    <div class="row"><label class="wrap"><input type="checkbox" id="mock"> <span data-i="mock"></span></label><button class="hlp" type="button" data-h="h_mock" data-al="help_label">?</button></div>
+    <div id="taskPane">
     <div class="muted" id="cartaEmpty" data-i="carta_empty" style="margin-bottom:12px"></div>
     <div class="seg" id="taskSeg" role="tablist"><button role="tab" data-t="summarize" aria-selected="true" data-i="summarize"></button><button role="tab" data-t="extract" aria-selected="false" data-i="extract"></button><button role="tab" data-t="synthesize" aria-selected="false" data-i="synthesize"></button></div>
+    <div class="row" style="margin-top:10px"><label for="taskSel" data-i="task_label" style="flex:none"></label><select id="taskSel" style="flex:1"></select></div>
+    <p class="muted" id="taskDesc" style="margin:2px 0 0"></p>
     <h4 data-i="scope" style="margin:14px 0 6px"></h4>
     <div class="row"><label><input type="radio" name="scope" value="sel" checked> <span id="scopeSelTxt"></span></label></div>
     <div class="row"><label><input type="radio" name="scope" value="group"> <span data-i="scope_group"></span></label><select id="scopeGroup" data-al="scope_group"></select></div>
     <div id="fieldsRow" class="row" style="display:none"><input type="text" id="fields" data-ph="fields_ph" data-al="fields_ph" style="width:100%"><button class="hlp" type="button" data-h="h_fields" data-al="help_label">?</button></div>
     <div id="fmtRow" class="row" style="display:none"><label><input type="checkbox" id="asJson"> JSON</label></div>
+    <div id="targetRow" class="row" style="display:none"><input type="text" id="target" data-ph="target_ph" data-al="target_ph" style="width:100%" maxlength="40"></div>
+    <div class="row"><label for="ansLang" data-i="ans_lang" style="flex:none"></label><select id="ansLang" style="flex:1"></select></div>
+    <div class="row"><label class="wrap"><input type="checkbox" id="verify"> <span data-i="verify_cit"></span></label></div>
     <div class="row"><label class="wrap"><input type="checkbox" id="saveOut"> <span data-i="save_out"></span></label><button class="hlp" type="button" data-h="h_save" data-al="help_label">?</button></div>
-    <div class="row"><label class="wrap"><input type="checkbox" id="mock"> <span data-i="mock"></span></label><button class="hlp" type="button" data-h="h_mock" data-al="help_label">?</button></div>
+    <div class="row"><label for="saveFmt" data-i="save_fmt" style="flex:none"></label><select id="saveFmt" style="flex:1"></select></div>
     <div id="out" class="md" style="margin-top:14px" aria-live="polite"></div>
+    </div>
+    <div id="chatPane" hidden>
+      <div class="row"><label for="chatGroup" data-i="chat_scope" style="flex:none"></label><select id="chatGroup" style="flex:1"></select><button class="btn sm" id="chatNew" data-i="chat_new"></button></div>
+      <p class="muted" id="chatEmpty" data-i="chat_empty"></p>
+      <div id="chatLog" role="log" aria-live="polite" data-al="tab_chat"></div>
+    </div>
   </div>
-  <div class="ft"><textarea id="req" rows="3" data-ph="message_ph" data-al="message_ph"></textarea>
+  <div class="ft" id="taskFt"><textarea id="req" rows="3" data-ph="message_ph" data-al="message_ph"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn pri" id="run" data-i="run"></button><button class="btn" id="copy" data-i="copy_answer"></button><span class="muted" id="runSt" role="status"></span></div></div>
+  <div class="ft" id="chatFt" hidden><textarea id="chatIn" rows="2" data-ph="chat_ph" data-al="chat_ph" maxlength="4000"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn pri" id="chatSend" data-i="chat_send"></button><span class="muted" id="chatSt" role="status"></span></div></div>
 </aside>
-<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="vTitle"><div class="bar"><b id="vTitle" style="flex:1"></b><button class="btn sm" id="vClose" data-i="close"></button></div><pre id="vText" tabindex="0"></pre></div>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="vTitle"><div class="bar"><b id="vTitle" style="flex:1"></b><button class="btn sm starbtn" id="vStar" aria-pressed="false" data-i="dp_star"></button><button class="btn sm" id="vClose" data-i="close"></button></div>
+  <div class="vbody"><pre id="vText" tabindex="0"></pre>
+  <aside class="dpanel" aria-label="">
+    <h4 data-i="dp_tags"></h4><div id="vTags"></div>
+    <div class="row"><input type="text" id="vTagIn" list="tagDl" data-ph="dp_tag_ph" data-al="dp_tag_ph" maxlength="40" autocomplete="off"><button class="btn sm" id="vTagAdd" data-i="dp_add"></button></div><datalist id="tagDl"></datalist>
+    <h4 data-i="dp_note"></h4><textarea id="vNote" data-ph="dp_note_ph" data-al="dp_note_ph" maxlength="20000"></textarea><div class="muted" id="vNoteSt" role="status" style="font-size:.85em;min-height:1.3em"></div>
+    <h4 data-i="dp_related"></h4><ul class="rel" id="vRel"></ul>
+  </aside></div></div>
 
 <!-- first-run welcome wizard -->
 <div class="modal" id="wiz"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="wTitle">
@@ -225,12 +294,40 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   <div class="acts"><button class="btn" id="wBack" data-i="w_back"></button><button class="btn pri" id="wNext" data-i="w_next"></button><button class="btn pri" id="wFinish" data-i="w_done"></button><span class="sp"></span><button class="btn sm" id="wSkip" data-i="w_skip"></button></div>
 </div></div>
 
+<!-- export -->
+<div class="modal" id="exp"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="expT">
+  <h2 id="expT" data-i="export"></h2><p class="lead" data-i="exp_lead"></p>
+  <label class="fl" for="expSrc" data-i="exp_what"></label><select id="expSrc" style="width:100%"></select>
+  <label class="fl" for="expFmt" data-i="exp_fmt"></label><select id="expFmt" style="width:100%"></select>
+  <div id="expSt" role="status" class="muted" style="margin-top:8px"></div>
+  <div class="acts"><button class="btn pri" id="expGo" data-i="exp_go"></button><span class="sp"></span><button class="btn" id="expClose" data-i="close"></button></div>
+</div></div>
+<!-- duplicates -->
+<div class="modal" id="dup"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dupT">
+  <h2 id="dupT" data-i="dup_title"></h2><p class="lead" data-i="dup_lead"></p><div id="dupList"></div>
+  <div class="acts"><span class="sp"></span><button class="btn pri" id="dupClose" data-i="close"></button></div>
+</div></div>
+<!-- bring things in + feeds -->
+<div class="modal" id="bring"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="brT">
+  <h2 id="brT" data-i="bring"></h2><p class="lead" data-i="br_lead"></p>
+  <input type="file" id="impFile" accept=".html,.htm,.bib,.bibtex,.enex,.csv,.zip" hidden>
+  <div class="row"><button class="btn pri" id="impPick" data-i="br_choose"></button></div>
+  <p class="muted" style="font-size:.87em;margin:4px 0" data-i="br_types"></p><div id="impSt" role="status" aria-live="polite"></div>
+  <h2 style="margin-top:22px" data-i="feeds"></h2><p class="lead" data-i="fd_lead"></p>
+  <div class="row"><input type="text" id="feedUrl" data-ph="fd_ph" data-al="fd_ph" style="flex:1" autocomplete="off" spellcheck="false"><button class="btn pri" id="feedAdd" data-i="fd_add"></button></div>
+  <div id="feedList"></div>
+  <div class="row"><button class="btn" id="feedPoll" data-i="fd_poll"></button><button class="btn" id="opmlIn" data-i="fd_opml_in"></button><button class="btn" id="opmlOut" data-i="fd_opml_out"></button><input type="file" id="opmlFile" accept=".opml,.xml,text/xml" hidden></div>
+  <div id="feedSt" role="status" aria-live="polite" class="muted"></div>
+  <div class="acts"><span class="sp"></span><button class="btn pri" id="brClose" data-i="close"></button></div>
+</div></div>
+
 <!-- keyboard cheat-sheet -->
 <div class="modal" id="kb"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="kbT">
   <h2 id="kbT" data-i="kb_title"></h2>
   <table class="kbt"><tbody>
    <tr><td><kbd>/</kbd></td><td data-i="k_search"></td></tr>
    <tr><td><kbd>1</kbd> <kbd>2</kbd></td><td><span data-i="library"></span> / <span data-i="search"></span></td></tr>
+   <tr><td><kbd>3</kbd></td><td data-i="k_stats"></td></tr>
    <tr><td><kbd>c</kbd></td><td data-i="k_carta"></td></tr>
    <tr><td><kbd>a</kbd></td><td data-i="k_add"></td></tr>
    <tr><td><kbd>t</kbd></td><td data-i="k_theme"></td></tr>
@@ -405,7 +502,155 @@ k_close:{en:'Close a window',ro:'Închide o fereastră',fr:'Fermer une fenêtre'
 k_run:{en:'Run, from the message box',ro:'Rulează, din caseta de mesaj',fr:'Lancer, depuis la zone de message',it:'Esegui, dalla casella di messaggio',es:'Ejecutar, desde el cuadro de mensaje',pt:'Executar, a partir da caixa de mensagem',de:'Starten, aus dem Nachrichtenfeld',hu:'Indítás az üzenetmezőből'},
 k_open:{en:'On a result: read the document',ro:'Pe un rezultat: citește documentul',fr:'Sur un résultat : lire le document',it:'Su un risultato: leggi il documento',es:'En un resultado: leer el documento',pt:'Num resultado: ler o documento',de:'Bei einem Treffer: Dokument lesen',hu:'Találatnál: dokumentum olvasása'},
 k_toggle:{en:'On a result: select or unselect',ro:'Pe un rezultat: bifează sau debifează',fr:'Sur un résultat : cocher ou décocher',it:'Su un risultato: spunta o togli la spunta',es:'En un resultado: marcar o desmarcar',pt:'Num resultado: marcar ou desmarcar',de:'Bei einem Treffer: an- oder abhaken',hu:'Találatnál: bejelölés vagy törlés'},
-k_tour:{en:'Show the welcome guide again',ro:'Arată din nou ghidul de bun venit',fr:'Revoir le guide de bienvenue',it:'Rivedi la guida introduttiva',es:'Ver de nuevo la guía de bienvenida',pt:'Ver outra vez o guia de boas-vindas',de:'Willkommensführer erneut zeigen',hu:'Üdvözlő útmutató újramutatása'}
+k_tour:{en:'Show the welcome guide again',ro:'Arată din nou ghidul de bun venit',fr:'Revoir le guide de bienvenue',it:'Rivedi la guida introduttiva',es:'Ver de nuevo la guía de bienvenida',pt:'Ver outra vez o guia de boas-vindas',de:'Willkommensführer erneut zeigen',hu:'Üdvözlő útmutató újramutatása'},
+indexing_files:{en:'Indexing {seen}/{total} files',ro:'Indexez {seen}/{total} fișiere',fr:'Indexation de {seen}/{total} fichiers',it:'Indicizzazione di {seen}/{total} file',es:'Indexando {seen}/{total} archivos',pt:'A indexar {seen}/{total} ficheiros',de:'Indizierung: {seen}/{total} Dateien',hu:'Indexelés: {seen}/{total} fájl'},
+indexing_keep:{en:'You can keep working while this runs.',ro:'Poți continua să lucrezi cât timp rulează.',fr:'Tu peux continuer à travailler pendant ce temps.',it:'Puoi continuare a lavorare mentre procede.',es:'Puedes seguir trabajando mientras tanto.',pt:'Podes continuar a trabalhar entretanto.',de:'Du kannst währenddessen weiterarbeiten.',hu:'Közben nyugodtan dolgozhatsz tovább.'},
+e_busy:{en:'Indexing is still running. Wait for it to finish, then try again.',ro:'Indexarea încă rulează. Așteaptă să se termine, apoi încearcă din nou.',fr:'L’indexation est encore en cours. Attends qu’elle se termine, puis réessaie.',it:'L’indicizzazione è ancora in corso. Aspetta che finisca, poi riprova.',es:'La indexación sigue en marcha. Espera a que termine y vuelve a intentarlo.',pt:'A indexação ainda está a decorrer. Espera que termine e tenta de novo.',de:'Die Indizierung läuft noch. Warte, bis sie fertig ist, und versuche es dann erneut.',hu:'Az indexelés még tart. Várd meg a végét, aztán próbáld újra.'},
+dym_showing:{en:'Showing results for',ro:'Rezultate pentru',fr:'Résultats pour',it:'Risultati per',es:'Mostrando resultados para',pt:'A mostrar resultados para',de:'Treffer für',hu:'Találatok ehhez:'},
+dym_instead:{en:'search instead for',ro:'caută în schimb',fr:'chercher plutôt',it:'cerca invece',es:'buscar en su lugar',pt:'pesquisar antes',de:'stattdessen suchen nach',hu:'inkább ezt keresd:'},
+dym_try:{en:'Did you mean:',ro:'Ai vrut să spui:',fr:'Tu voulais dire :',it:'Intendevi:',es:'¿Querías decir?',pt:'Querias dizer:',de:'Meintest du:',hu:'Erre gondoltál:'},
+f_tag:{en:'Tag',ro:'Etichetă',fr:'Étiquette',it:'Etichetta',es:'Etiqueta',pt:'Etiqueta',de:'Tag',hu:'Címke'},
+f_any_tag:{en:'Any tag',ro:'Orice etichetă',fr:'Toutes les étiquettes',it:'Qualsiasi etichetta',es:'Cualquier etiqueta',pt:'Qualquer etiqueta',de:'Beliebiger Tag',hu:'Bármely címke'},
+f_starred:{en:'Starred only',ro:'Doar cele cu stea',fr:'Favoris seulement',it:'Solo i preferiti',es:'Solo destacados',pt:'Só os favoritos',de:'Nur markierte',hu:'Csak csillagosak'},
+dup_banner:{en:'{n} duplicate files: review',ro:'{n} fișiere duplicate: verifică',fr:'{n} fichiers en double : à vérifier',it:'{n} file duplicati: controlla',es:'{n} archivos duplicados: revisar',pt:'{n} ficheiros duplicados: rever',de:'{n} doppelte Dateien: prüfen',hu:'{n} duplikált fájl: nézd át'},
+dup_title:{en:'Duplicate files',ro:'Fișiere duplicate',fr:'Fichiers en double',it:'File duplicati',es:'Archivos duplicados',pt:'Ficheiros duplicados',de:'Doppelte Dateien',hu:'Duplikált fájlok'},
+dup_lead:{en:'These files have exactly the same content. Keep one and delete the others yourself; CartaColibri never deletes anything.',ro:'Aceste fișiere au exact același conținut. Păstrează unul și șterge-le tu pe celelalte; CartaColibri nu șterge nimic.',fr:'Ces fichiers ont exactement le même contenu. Garde-en un et supprime les autres toi-même ; CartaColibri ne supprime jamais rien.',it:'Questi file hanno esattamente lo stesso contenuto. Tienine uno ed elimina gli altri tu stesso; CartaColibri non elimina mai nulla.',es:'Estos archivos tienen exactamente el mismo contenido. Conserva uno y borra los demás tú mismo; CartaColibri nunca borra nada.',pt:'Estes ficheiros têm exatamente o mesmo conteúdo. Guarda um e apaga os outros tu mesmo; o CartaColibri nunca apaga nada.',de:'Diese Dateien haben genau denselben Inhalt. Behalte eine und lösche die anderen selbst; CartaColibri löscht nie etwas.',hu:'Ezeknek a fájloknak pontosan ugyanaz a tartalma. Tarts meg egyet, a többit te töröld; a CartaColibri soha nem töröl semmit.'},
+dup_none:{en:'No duplicates found.',ro:'Nu am găsit duplicate.',fr:'Aucun doublon trouvé.',it:'Nessun duplicato trovato.',es:'No se encontraron duplicados.',pt:'Não foram encontrados duplicados.',de:'Keine Duplikate gefunden.',hu:'Nincs duplikátum.'},
+dup_group:{en:'Same content, {n} copies',ro:'Același conținut, {n} copii',fr:'Même contenu, {n} copies',it:'Stesso contenuto, {n} copie',es:'Mismo contenido, {n} copias',pt:'Mesmo conteúdo, {n} cópias',de:'Gleicher Inhalt, {n} Kopien',hu:'Azonos tartalom, {n} példány'},
+prob_n:{en:'{n} files could not be read',ro:'{n} fișiere nu au putut fi citite',fr:'{n} fichiers n’ont pas pu être lus',it:'{n} file non si sono potuti leggere',es:'{n} archivos no se pudieron leer',pt:'{n} ficheiros não puderam ser lidos',de:'{n} Dateien konnten nicht gelesen werden',hu:'{n} fájlt nem sikerült beolvasni'},
+dp_tags:{en:'Tags',ro:'Etichete',fr:'Étiquettes',it:'Etichette',es:'Etiquetas',pt:'Etiquetas',de:'Tags',hu:'Címkék'},
+dp_tag_ph:{en:'Add a tag',ro:'Adaugă o etichetă',fr:'Ajoute une étiquette',it:'Aggiungi un’etichetta',es:'Añade una etiqueta',pt:'Adiciona uma etiqueta',de:'Tag hinzufügen',hu:'Címke hozzáadása'},
+dp_add:{en:'Add',ro:'Adaugă',fr:'Ajouter',it:'Aggiungi',es:'Añadir',pt:'Adicionar',de:'Hinzufügen',hu:'Hozzáadás'},
+dp_rm_tag:{en:'Remove tag {x}',ro:'Șterge eticheta {x}',fr:'Retirer l’étiquette {x}',it:'Rimuovi l’etichetta {x}',es:'Quitar la etiqueta {x}',pt:'Remover a etiqueta {x}',de:'Tag {x} entfernen',hu:'A(z) {x} címke eltávolítása'},
+dp_no_tags:{en:'No tags yet.',ro:'Încă nu are etichete.',fr:'Pas encore d’étiquettes.',it:'Ancora nessuna etichetta.',es:'Aún no hay etiquetas.',pt:'Ainda sem etiquetas.',de:'Noch keine Tags.',hu:'Még nincs címke.'},
+dp_star:{en:'Star this document',ro:'Pune stea documentului',fr:'Mettre ce document en favori',it:'Metti tra i preferiti',es:'Destacar este documento',pt:'Marcar este documento como favorito',de:'Dokument markieren',hu:'Dokumentum megjelölése csillaggal'},
+dp_note:{en:'Your note',ro:'Nota ta',fr:'Ta note',it:'La tua nota',es:'Tu nota',pt:'A tua nota',de:'Deine Notiz',hu:'Jegyzeted'},
+dp_note_ph:{en:'Write a private note about this document. It saves by itself.',ro:'Scrie o notă privată despre acest document. Se salvează singură.',fr:'Écris une note privée sur ce document. Elle s’enregistre toute seule.',it:'Scrivi una nota privata su questo documento. Si salva da sola.',es:'Escribe una nota privada sobre este documento. Se guarda sola.',pt:'Escreve uma nota privada sobre este documento. Guarda-se sozinha.',de:'Schreibe eine private Notiz zu diesem Dokument. Die Notiz speichert sich selbst.',hu:'Írj egy privát jegyzetet ehhez a dokumentumhoz. Magától mentődik.'},
+dp_saving:{en:'Saving…',ro:'Se salvează…',fr:'Enregistrement…',it:'Salvataggio…',es:'Guardando…',pt:'A guardar…',de:'Wird gespeichert …',hu:'Mentés…'},
+dp_saved:{en:'Note saved',ro:'Nota a fost salvată',fr:'Note enregistrée',it:'Nota salvata',es:'Nota guardada',pt:'Nota guardada',de:'Notiz gespeichert',hu:'Jegyzet elmentve'},
+dp_related:{en:'Related documents',ro:'Documente înrudite',fr:'Documents liés',it:'Documenti correlati',es:'Documentos relacionados',pt:'Documentos relacionados',de:'Verwandte Dokumente',hu:'Kapcsolódó dokumentumok'},
+dp_no_related:{en:'Nothing related found.',ro:'Nu am găsit nimic înrudit.',fr:'Rien de lié trouvé.',it:'Nessun documento correlato.',es:'No se encontró nada relacionado.',pt:'Não foi encontrado nada relacionado.',de:'Nichts Verwandtes gefunden.',hu:'Nincs kapcsolódó dokumentum.'},
+recent:{en:'Recently opened',ro:'Deschise recent',fr:'Ouverts récemment',it:'Aperti di recente',es:'Abiertos hace poco',pt:'Abertos recentemente',de:'Zuletzt geöffnet',hu:'Nemrég megnyitott'},
+most_opened:{en:'Most opened',ro:'Cele mai deschise',fr:'Les plus ouverts',it:'Più aperti',es:'Más abiertos',pt:'Mais abertos',de:'Am häufigsten geöffnet',hu:'Leggyakrabban megnyitott'},
+sv_title:{en:'Saved searches',ro:'Căutări salvate',fr:'Recherches enregistrées',it:'Ricerche salvate',es:'Búsquedas guardadas',pt:'Pesquisas guardadas',de:'Gespeicherte Suchen',hu:'Mentett keresések'},
+sv_name_ph:{en:'Name for this search',ro:'Nume pentru această căutare',fr:'Nom de cette recherche',it:'Nome per questa ricerca',es:'Nombre de esta búsqueda',pt:'Nome desta pesquisa',de:'Name für diese Suche',hu:'A keresés neve'},
+sv_save:{en:'Save this search',ro:'Salvează căutarea',fr:'Enregistrer la recherche',it:'Salva la ricerca',es:'Guardar la búsqueda',pt:'Guardar a pesquisa',de:'Suche speichern',hu:'Keresés mentése'},
+sv_none:{en:'Nothing saved yet.',ro:'Încă nu ai salvat nimic.',fr:'Rien d’enregistré pour l’instant.',it:'Ancora nulla di salvato.',es:'Todavía no hay nada guardado.',pt:'Ainda nada guardado.',de:'Noch nichts gespeichert.',hu:'Még nincs mentett keresés.'},
+sv_run:{en:'Run saved search {x}',ro:'Rulează căutarea salvată {x}',fr:'Lancer la recherche {x}',it:'Esegui la ricerca salvata {x}',es:'Ejecutar la búsqueda guardada {x}',pt:'Executar a pesquisa guardada {x}',de:'Gespeicherte Suche {x} ausführen',hu:'A(z) {x} mentett keresés futtatása'},
+sv_rm:{en:'Delete saved search {x}',ro:'Șterge căutarea salvată {x}',fr:'Supprimer la recherche {x}',it:'Elimina la ricerca salvata {x}',es:'Eliminar la búsqueda guardada {x}',pt:'Apagar a pesquisa guardada {x}',de:'Gespeicherte Suche {x} löschen',hu:'A(z) {x} mentett keresés törlése'},
+sv_saved:{en:'Search saved.',ro:'Căutarea a fost salvată.',fr:'Recherche enregistrée.',it:'Ricerca salvata.',es:'Búsqueda guardada.',pt:'Pesquisa guardada.',de:'Suche gespeichert.',hu:'Keresés elmentve.'},
+sv_need:{en:'Type a search or pick a filter first, and give it a name.',ro:'Scrie mai întâi o căutare sau alege un filtru și dă-i un nume.',fr:'Saisis d’abord une recherche ou choisis un filtre, et donne-lui un nom.',it:'Scrivi prima una ricerca o scegli un filtro e dagli un nome.',es:'Escribe primero una búsqueda o elige un filtro, y ponle un nombre.',pt:'Escreve primeiro uma pesquisa ou escolhe um filtro e dá-lhe um nome.',de:'Gib zuerst eine Suche ein oder wähle einen Filter und vergib einen Namen.',hu:'Előbb írj be egy keresést vagy válassz szűrőt, és adj neki nevet.'},
+sv_removed:{en:'Saved search deleted.',ro:'Căutarea salvată a fost ștearsă.',fr:'Recherche supprimée.',it:'Ricerca salvata eliminata.',es:'Búsqueda guardada eliminada.',pt:'Pesquisa guardada apagada.',de:'Gespeicherte Suche gelöscht.',hu:'A mentett keresés törölve.'},
+tab_task:{en:'Task',ro:'Sarcină',fr:'Tâche',it:'Attività',es:'Tarea',pt:'Tarefa',de:'Aufgabe',hu:'Feladat'},
+tab_chat:{en:'Chat',ro:'Chat',fr:'Chat',it:'Chat',es:'Chat',pt:'Chat',de:'Chat',hu:'Chat'},
+task_label:{en:'What should I do?',ro:'Ce să fac?',fr:'Que dois-je faire ?',it:'Cosa devo fare?',es:'¿Qué hago?',pt:'O que devo fazer?',de:'Was soll ich tun?',hu:'Mit tegyek?'},
+tn_compare:{en:'Compare',ro:'Compară',fr:'Comparer',it:'Confronta',es:'Comparar',pt:'Comparar',de:'Vergleichen',hu:'Összehasonlítás'},
+tn_timeline:{en:'Timeline',ro:'Cronologie',fr:'Chronologie',it:'Cronologia',es:'Cronología',pt:'Cronologia',de:'Zeitleiste',hu:'Idővonal'},
+tn_glossary:{en:'Glossary',ro:'Glosar',fr:'Glossaire',it:'Glossario',es:'Glosario',pt:'Glossário',de:'Glossar',hu:'Szójegyzék'},
+tn_outline:{en:'Outline',ro:'Schiță',fr:'Plan',it:'Schema',es:'Esquema',pt:'Esquema',de:'Gliederung',hu:'Vázlat'},
+tn_actions:{en:'Action items',ro:'Sarcini de făcut',fr:'Actions à faire',it:'Azioni da fare',es:'Acciones pendientes',pt:'Ações a fazer',de:'Aufgabenliste',hu:'Teendők'},
+tn_faq:{en:'Questions and answers',ro:'Întrebări și răspunsuri',fr:'Questions et réponses',it:'Domande e risposte',es:'Preguntas y respuestas',pt:'Perguntas e respostas',de:'Fragen und Antworten',hu:'Kérdések és válaszok'},
+tn_flashcards:{en:'Flashcards',ro:'Fișe de studiu',fr:'Cartes de révision',it:'Schede di studio',es:'Tarjetas de estudio',pt:'Cartões de estudo',de:'Lernkarten',hu:'Tanulókártyák'},
+tn_quiz:{en:'Quiz',ro:'Test',fr:'Quiz',it:'Quiz',es:'Cuestionario',pt:'Questionário',de:'Quiz',hu:'Kvíz'},
+tn_translate:{en:'Translate',ro:'Tradu',fr:'Traduire',it:'Traduci',es:'Traducir',pt:'Traduzir',de:'Übersetzen',hu:'Fordítás'},
+tn_explain:{en:'Explain simply',ro:'Explică simplu',fr:'Expliquer simplement',it:'Spiega in modo semplice',es:'Explicar con sencillez',pt:'Explicar de forma simples',de:'Einfach erklären',hu:'Egyszerű magyarázat'},
+tn_contradictions:{en:'Find contradictions',ro:'Găsește contradicții',fr:'Trouver les contradictions',it:'Trova le contraddizioni',es:'Buscar contradicciones',pt:'Encontrar contradições',de:'Widersprüche finden',hu:'Ellentmondások keresése'},
+td_summarize:{en:'A short overview of what the documents say.',ro:'O prezentare scurtă a ceea ce spun documentele.',fr:'Un bref aperçu de ce que disent les documents.',it:'Una breve panoramica di ciò che dicono i documenti.',es:'Un resumen breve de lo que dicen los documentos.',pt:'Uma visão geral breve do que dizem os documentos.',de:'Ein kurzer Überblick darüber, was in den Dokumenten steht.',hu:'Rövid áttekintés arról, mit mondanak a dokumentumok.'},
+td_extract:{en:'Pull out specific facts (names, dates, amounts) into a table.',ro:'Scoate date precise (nume, date, sume) într-un tabel.',fr:'Sortir des faits précis (noms, dates, montants) dans un tableau.',it:'Estrae dati precisi (nomi, date, importi) in una tabella.',es:'Saca datos concretos (nombres, fechas, importes) a una tabla.',pt:'Tira dados concretos (nomes, datas, montantes) para uma tabela.',de:'Zieht konkrete Angaben (Namen, Daten, Beträge) in eine Tabelle.',hu:'Konkrét adatokat (nevek, dátumok, összegek) gyűjt táblázatba.'},
+td_synthesize:{en:'Combine several documents into one answer.',ro:'Combină mai multe documente într-un singur răspuns.',fr:'Combiner plusieurs documents en une seule réponse.',it:'Combina più documenti in un’unica risposta.',es:'Combina varios documentos en una sola respuesta.',pt:'Combina vários documentos numa só resposta.',de:'Fasst mehrere Dokumente zu einer Antwort zusammen.',hu:'Több dokumentumot egyetlen válaszba von össze.'},
+td_compare:{en:'Put the documents side by side: what they share and where they differ.',ro:'Pune documentele alături: ce au în comun și prin ce diferă.',fr:'Mettre les documents côte à côte : ce qu’ils ont en commun et ce qui les distingue.',it:'Mette i documenti fianco a fianco: cosa hanno in comune e dove differiscono.',es:'Pone los documentos lado a lado: qué tienen en común y en qué difieren.',pt:'Coloca os documentos lado a lado: o que têm em comum e onde diferem.',de:'Stellt die Dokumente nebeneinander: Gemeinsamkeiten und Unterschiede.',hu:'Egymás mellé teszi a dokumentumokat: mi közös bennük, miben térnek el.'},
+td_timeline:{en:'List the events in date order.',ro:'Înșiruie evenimentele în ordine cronologică.',fr:'Lister les événements par ordre chronologique.',it:'Elenca gli eventi in ordine di data.',es:'Lista los hechos por orden de fecha.',pt:'Lista os acontecimentos por ordem de data.',de:'Listet die Ereignisse in zeitlicher Reihenfolge auf.',hu:'Időrendbe szedi az eseményeket.'},
+td_glossary:{en:'Explain the key terms the documents use.',ro:'Explică termenii importanți folosiți în documente.',fr:'Expliquer les termes clés employés dans les documents.',it:'Spiega i termini chiave usati nei documenti.',es:'Explica los términos clave que usan los documentos.',pt:'Explica os termos-chave usados nos documentos.',de:'Erklärt die wichtigsten Begriffe der Dokumente.',hu:'Elmagyarázza a dokumentumok kulcsfogalmait.'},
+td_outline:{en:'Give the structure: headings and main points.',ro:'Arată structura: titluri și puncte principale.',fr:'Donner la structure : titres et points principaux.',it:'Mostra la struttura: titoli e punti principali.',es:'Muestra la estructura: títulos y puntos principales.',pt:'Mostra a estrutura: títulos e pontos principais.',de:'Zeigt die Struktur: Überschriften und Hauptpunkte.',hu:'Megmutatja a szerkezetet: címek és fő pontok.'},
+td_actions:{en:'List the things someone has to do, with who and by when if stated.',ro:'Listează ce are de făcut cineva, cu cine și până când, dacă se spune.',fr:'Lister ce qu’il y a à faire, avec qui et pour quand si c’est indiqué.',it:'Elenca cosa c’è da fare, con chi e per quando se indicato.',es:'Lista lo que hay que hacer, con quién y para cuándo si se indica.',pt:'Lista o que há para fazer, com quem e até quando, se estiver indicado.',de:'Listet auf, was zu tun ist, mit wem und bis wann, falls angegeben.',hu:'Felsorolja a teendőket, ki végzi és meddig, ha szerepel.'},
+td_faq:{en:'Turn the documents into questions people would ask, with answers.',ro:'Transformă documentele în întrebări frecvente, cu răspunsuri.',fr:'Transformer les documents en questions fréquentes, avec réponses.',it:'Trasforma i documenti in domande frequenti, con risposte.',es:'Convierte los documentos en preguntas frecuentes con sus respuestas.',pt:'Transforma os documentos em perguntas frequentes, com respostas.',de:'Macht aus den Dokumenten häufige Fragen samt Antworten.',hu:'Gyakori kérdésekké és válaszokká alakítja a dokumentumokat.'},
+td_flashcards:{en:'Make question-and-answer cards for studying.',ro:'Face fișe cu întrebare și răspuns pentru învățat.',fr:'Créer des cartes question-réponse pour réviser.',it:'Crea schede domanda-risposta per studiare.',es:'Crea tarjetas de pregunta y respuesta para estudiar.',pt:'Cria cartões de pergunta e resposta para estudar.',de:'Erstellt Frage-Antwort-Karten zum Lernen.',hu:'Kérdés-válasz kártyákat készít tanuláshoz.'},
+td_quiz:{en:'Write a short quiz with the answers at the end.',ro:'Scrie un test scurt, cu răspunsurile la sfârșit.',fr:'Écrire un court quiz avec les réponses à la fin.',it:'Scrive un breve quiz con le risposte alla fine.',es:'Escribe un cuestionario corto con las respuestas al final.',pt:'Escreve um questionário curto com as respostas no fim.',de:'Schreibt ein kurzes Quiz mit den Lösungen am Ende.',hu:'Rövid kvízt ír, a válaszokkal a végén.'},
+td_translate:{en:'Translate the documents into the language you type below.',ro:'Traduce documentele în limba pe care o scrii mai jos.',fr:'Traduire les documents dans la langue saisie ci-dessous.',it:'Traduce i documenti nella lingua indicata qui sotto.',es:'Traduce los documentos al idioma que escribas abajo.',pt:'Traduz os documentos para a língua que escreveres abaixo.',de:'Übersetzt die Dokumente in die unten eingegebene Sprache.',hu:'Lefordítja a dokumentumokat az alább megadott nyelvre.'},
+td_explain:{en:'Explain the content in plain words, step by step.',ro:'Explică conținutul în cuvinte simple, pas cu pas.',fr:'Expliquer le contenu avec des mots simples, pas à pas.',it:'Spiega il contenuto con parole semplici, passo dopo passo.',es:'Explica el contenido con palabras sencillas, paso a paso.',pt:'Explica o conteúdo com palavras simples, passo a passo.',de:'Erklärt den Inhalt in einfachen Worten, Schritt für Schritt.',hu:'Egyszerű szavakkal, lépésről lépésre elmagyarázza a tartalmat.'},
+td_contradictions:{en:'Look for places where the documents disagree with each other.',ro:'Caută locurile în care documentele se contrazic.',fr:'Chercher les endroits où les documents se contredisent.',it:'Cerca i punti in cui i documenti si contraddicono.',es:'Busca los puntos en que los documentos se contradicen.',pt:'Procura os pontos em que os documentos se contradizem.',de:'Sucht Stellen, an denen sich die Dokumente widersprechen.',hu:'Megkeresi, hol mondanak ellent egymásnak a dokumentumok.'},
+target_ph:{en:'Translate into which language? e.g. French',ro:'În ce limbă să traduc? ex. franceză',fr:'Dans quelle langue ? ex. anglais',it:'In che lingua? es. inglese',es:'¿A qué idioma? p. ej. francés',pt:'Para que língua? ex. francês',de:'In welche Sprache? z. B. Französisch',hu:'Melyik nyelvre? pl. francia'},
+verify_cit:{en:'Check every citation and mark sentences the text does not support',ro:'Verifică fiecare citare și marchează frazele nesusținute de text',fr:'Vérifier chaque citation et marquer les phrases que le texte ne soutient pas',it:'Controlla ogni citazione e segna le frasi non sostenute dal testo',es:'Comprobar cada cita y marcar las frases que el texto no respalda',pt:'Verificar cada citação e marcar as frases que o texto não sustenta',de:'Jede Quellenangabe prüfen und nicht belegte Sätze markieren',hu:'Minden hivatkozás ellenőrzése, a szöveggel nem alátámasztott mondatok megjelölése'},
+ans_lang:{en:'Answer language',ro:'Limba răspunsului',fr:'Langue de la réponse',it:'Lingua della risposta',es:'Idioma de la respuesta',pt:'Língua da resposta',de:'Sprache der Antwort',hu:'A válasz nyelve'},
+ans_auto:{en:'Same as my request',ro:'La fel ca cererea mea',fr:'La même que ma demande',it:'La stessa della mia richiesta',es:'La misma que mi petición',pt:'A mesma do meu pedido',de:'Wie meine Anfrage',hu:'Ugyanaz, mint a kérésem'},
+save_fmt:{en:'File type',ro:'Tipul fișierului',fr:'Type de fichier',it:'Tipo di file',es:'Tipo de archivo',pt:'Tipo de ficheiro',de:'Dateityp',hu:'Fájltípus'},
+fmt_txt:{en:'Text for Word (txt)',ro:'Text pentru Word (txt)',fr:'Texte pour Word (txt)',it:'Testo per Word (txt)',es:'Texto para Word (txt)',pt:'Texto para Word (txt)',de:'Text für Word (txt)',hu:'Szöveg Wordhöz (txt)'},
+fmt_html:{en:'Web page (html)',ro:'Pagină web (html)',fr:'Page web (html)',it:'Pagina web (html)',es:'Página web (html)',pt:'Página web (html)',de:'Webseite (html)',hu:'Weboldal (html)'},
+fmt_mdn:{en:'Markdown (md)',ro:'Markdown (md)',fr:'Markdown (md)',it:'Markdown (md)',es:'Markdown (md)',pt:'Markdown (md)',de:'Markdown (md)',hu:'Markdown (md)'},
+chat_ph:{en:'Ask about your documents…',ro:'Întreabă despre documentele tale…',fr:'Pose une question sur tes documents…',it:'Chiedi qualcosa sui tuoi documenti…',es:'Pregunta sobre tus documentos…',pt:'Pergunta sobre os teus documentos…',de:'Frag etwas zu deinen Dokumenten …',hu:'Kérdezz a dokumentumaidról…'},
+chat_send:{en:'Send',ro:'Trimite',fr:'Envoyer',it:'Invia',es:'Enviar',pt:'Enviar',de:'Senden',hu:'Küldés'},
+chat_new:{en:'New conversation',ro:'Conversație nouă',fr:'Nouvelle conversation',it:'Nuova conversazione',es:'Nueva conversación',pt:'Nova conversa',de:'Neues Gespräch',hu:'Új beszélgetés'},
+chat_scope:{en:'Look in',ro:'Caută în',fr:'Chercher dans',it:'Cerca in',es:'Buscar en',pt:'Procurar em',de:'Suchen in',hu:'Ebben keressen'},
+chat_all:{en:'Whole library',ro:'Toată biblioteca',fr:'Toute la bibliothèque',it:'Tutta la biblioteca',es:'Toda la biblioteca',pt:'Toda a biblioteca',de:'Ganze Bibliothek',hu:'Teljes könyvtár'},
+chat_empty:{en:'Ask a question. Every answer comes from your documents and shows where it was found.',ro:'Pune o întrebare. Fiecare răspuns vine din documentele tale și arată de unde provine.',fr:'Pose une question. Chaque réponse vient de tes documents et indique où elle a été trouvée.',it:'Fai una domanda. Ogni risposta viene dai tuoi documenti e mostra dove è stata trovata.',es:'Haz una pregunta. Cada respuesta sale de tus documentos y muestra dónde se encontró.',pt:'Faz uma pergunta. Cada resposta vem dos teus documentos e mostra onde foi encontrada.',de:'Stell eine Frage. Jede Antwort stammt aus deinen Dokumenten und zeigt, wo sie steht.',hu:'Tegyél fel egy kérdést. Minden válasz a dokumentumaidból jön, és megmutatja, hol találta.'},
+chat_nf:{en:'Not found in your documents',ro:'Nu am găsit în documentele tale',fr:'Introuvable dans tes documents',it:'Non trovato nei tuoi documenti',es:'No se encontró en tus documentos',pt:'Não encontrado nos teus documentos',de:'In deinen Dokumenten nicht gefunden',hu:'Nem található a dokumentumaidban'},
+chat_nf_hint:{en:'Nothing in your documents answers this. Try other words, or add more documents.',ro:'Nimic din documentele tale nu răspunde la asta. Încearcă alte cuvinte sau adaugă mai multe documente.',fr:'Rien dans tes documents ne répond à cela. Essaie d’autres mots ou ajoute des documents.',it:'Nei tuoi documenti non c’è risposta. Prova con altre parole o aggiungi documenti.',es:'Nada en tus documentos responde a esto. Prueba con otras palabras o añade más documentos.',pt:'Nada nos teus documentos responde a isto. Experimenta outras palavras ou adiciona mais documentos.',de:'In deinen Dokumenten steht dazu nichts. Probier andere Wörter oder füge Dokumente hinzu.',hu:'A dokumentumaid nem válaszolnak erre. Próbálj más szavakat, vagy adj hozzá dokumentumokat.'},
+chat_you:{en:'You',ro:'Tu',fr:'Toi',it:'Tu',es:'Tú',pt:'Tu',de:'Du',hu:'Te'},
+chat_bot:{en:'CartaColibri',ro:'CartaColibri',fr:'CartaColibri',it:'CartaColibri',es:'CartaColibri',pt:'CartaColibri',de:'CartaColibri',hu:'CartaColibri'},
+chat_wait:{en:'Looking through your documents…',ro:'Caut în documentele tale…',fr:'Je cherche dans tes documents…',it:'Cerco nei tuoi documenti…',es:'Buscando en tus documentos…',pt:'A procurar nos teus documentos…',de:'Deine Dokumente werden durchsucht …',hu:'Átnézem a dokumentumaidat…'},
+chat_src:{en:'Where this came from',ro:'De unde provine',fr:'D’où cela vient',it:'Da dove viene',es:'De dónde sale',pt:'De onde vem',de:'Woher das stammt',hu:'Honnan származik'},
+chat_passage:{en:'Show the passage',ro:'Arată pasajul',fr:'Voir le passage',it:'Mostra il passaggio',es:'Ver el pasaje',pt:'Ver a passagem',de:'Textstelle zeigen',hu:'A szövegrész megmutatása'},
+export:{en:'Export',ro:'Exportă',fr:'Exporter',it:'Esporta',es:'Exportar',pt:'Exportar',de:'Exportieren',hu:'Exportálás'},
+exp_lead:{en:'Take your documents out as a file you can open anywhere.',ro:'Scoate documentele într-un fișier pe care îl poți deschide oriunde.',fr:'Sors tes documents dans un fichier que tu peux ouvrir partout.',it:'Porta fuori i tuoi documenti in un file apribile ovunque.',es:'Saca tus documentos en un archivo que puedes abrir en cualquier sitio.',pt:'Tira os teus documentos num ficheiro que podes abrir em qualquer lado.',de:'Hole deine Dokumente als Datei heraus, die du überall öffnen kannst.',hu:'Vidd ki a dokumentumaidat egy fájlban, amit bárhol megnyithatsz.'},
+exp_what:{en:'What to export',ro:'Ce exportăm',fr:'Que veux-tu exporter',it:'Cosa esportare',es:'Qué exportar',pt:'O que exportar',de:'Was exportieren',hu:'Mit exportáljunk'},
+exp_results:{en:'Current results ({n})',ro:'Rezultatele curente ({n})',fr:'Résultats actuels ({n})',it:'Risultati attuali ({n})',es:'Resultados actuales ({n})',pt:'Resultados atuais ({n})',de:'Aktuelle Treffer ({n})',hu:'Jelenlegi találatok ({n})'},
+exp_sel:{en:'Selected documents ({n})',ro:'Documentele bifate ({n})',fr:'Documents cochés ({n})',it:'Documenti selezionati ({n})',es:'Documentos marcados ({n})',pt:'Documentos selecionados ({n})',de:'Ausgewählte Dokumente ({n})',hu:'Kijelölt dokumentumok ({n})'},
+exp_all:{en:'Whole library',ro:'Toată biblioteca',fr:'Toute la bibliothèque',it:'Tutta la biblioteca',es:'Toda la biblioteca',pt:'Toda a biblioteca',de:'Ganze Bibliothek',hu:'Teljes könyvtár'},
+exp_group:{en:'Group: {x}',ro:'Grup: {x}',fr:'Groupe : {x}',it:'Gruppo: {x}',es:'Grupo: {x}',pt:'Grupo: {x}',de:'Gruppe: {x}',hu:'Csoport: {x}'},
+exp_saved:{en:'Saved search: {x}',ro:'Căutare salvată: {x}',fr:'Recherche enregistrée : {x}',it:'Ricerca salvata: {x}',es:'Búsqueda guardada: {x}',pt:'Pesquisa guardada: {x}',de:'Gespeicherte Suche: {x}',hu:'Mentett keresés: {x}'},
+exp_fmt:{en:'Format',ro:'Format',fr:'Format',it:'Formato',es:'Formato',pt:'Formato',de:'Format',hu:'Formátum'},
+fmt_md:{en:'Markdown: a reading list',ro:'Markdown: listă de lectură',fr:'Markdown : une liste de lecture',it:'Markdown: una lista di lettura',es:'Markdown: una lista de lectura',pt:'Markdown: uma lista de leitura',de:'Markdown: eine Leseliste',hu:'Markdown: olvasólista'},
+fmt_csv:{en:'CSV: opens in a spreadsheet',ro:'CSV: se deschide în foaie de calcul',fr:'CSV : s’ouvre dans un tableur',it:'CSV: si apre in un foglio di calcolo',es:'CSV: se abre en una hoja de cálculo',pt:'CSV: abre numa folha de cálculo',de:'CSV: öffnet sich in einer Tabelle',hu:'CSV: táblázatkezelőben nyílik'},
+fmt_json:{en:'JSON: with tags and notes',ro:'JSON: cu etichete și note',fr:'JSON : avec étiquettes et notes',it:'JSON: con etichette e note',es:'JSON: con etiquetas y notas',pt:'JSON: com etiquetas e notas',de:'JSON: mit Tags und Notizen',hu:'JSON: címkékkel és jegyzetekkel'},
+fmt_zip:{en:'ZIP: the files plus citations',ro:'ZIP: fișierele plus citările',fr:'ZIP : les fichiers et les citations',it:'ZIP: i file più le citazioni',es:'ZIP: los archivos y las citas',pt:'ZIP: os ficheiros e as citações',de:'ZIP: die Dateien samt Quellenangaben',hu:'ZIP: a fájlok és a hivatkozások'},
+exp_go:{en:'Download',ro:'Descarcă',fr:'Télécharger',it:'Scarica',es:'Descargar',pt:'Transferir',de:'Herunterladen',hu:'Letöltés'},
+exp_done:{en:'The file was sent to your downloads.',ro:'Fișierul a fost trimis în descărcări.',fr:'Le fichier est dans tes téléchargements.',it:'Il file è nei tuoi download.',es:'El archivo está en tus descargas.',pt:'O ficheiro foi para as tuas transferências.',de:'Die Datei liegt in deinen Downloads.',hu:'A fájl a letöltéseid között van.'},
+exp_nothing:{en:'There is nothing to export yet.',ro:'Încă nu e nimic de exportat.',fr:'Il n’y a encore rien à exporter.',it:'Non c’è ancora nulla da esportare.',es:'Todavía no hay nada que exportar.',pt:'Ainda não há nada para exportar.',de:'Es gibt noch nichts zu exportieren.',hu:'Még nincs mit exportálni.'},
+stats:{en:'Stats',ro:'Cifre',fr:'Chiffres',it:'Numeri',es:'Cifras',pt:'Números',de:'Zahlen',hu:'Számok'},
+st_title:{en:'Your library in numbers',ro:'Biblioteca ta în cifre',fr:'Ta bibliothèque en chiffres',it:'La tua biblioteca in numeri',es:'Tu biblioteca en cifras',pt:'A tua biblioteca em números',de:'Deine Bibliothek in Zahlen',hu:'A könyvtárad számokban'},
+st_docs:{en:'Documents',ro:'Documente',fr:'Documents',it:'Documenti',es:'Documentos',pt:'Documentos',de:'Dokumente',hu:'Dokumentumok'},
+st_size:{en:'Total size',ro:'Mărime totală',fr:'Taille totale',it:'Dimensione totale',es:'Tamaño total',pt:'Tamanho total',de:'Gesamtgröße',hu:'Teljes méret'},
+st_words:{en:'Words',ro:'Cuvinte',fr:'Mots',it:'Parole',es:'Palabras',pt:'Palavras',de:'Wörter',hu:'Szavak'},
+st_types:{en:'By type',ro:'După tip',fr:'Par type',it:'Per tipo',es:'Por tipo',pt:'Por tipo',de:'Nach Typ',hu:'Típus szerint'},
+st_folders:{en:'By folder',ro:'După folder',fr:'Par dossier',it:'Per cartella',es:'Por carpeta',pt:'Por pasta',de:'Nach Ordner',hu:'Mappa szerint'},
+st_years:{en:'By year',ro:'După an',fr:'Par année',it:'Per anno',es:'Por año',pt:'Por ano',de:'Nach Jahr',hu:'Év szerint'},
+st_langs:{en:'Languages',ro:'Limbi',fr:'Langues',it:'Lingue',es:'Idiomas',pt:'Línguas',de:'Sprachen',hu:'Nyelvek'},
+st_big:{en:'Biggest files',ro:'Cele mai mari fișiere',fr:'Fichiers les plus gros',it:'File più grandi',es:'Archivos más grandes',pt:'Maiores ficheiros',de:'Größte Dateien',hu:'Legnagyobb fájlok'},
+st_timeline:{en:'Documents by month',ro:'Documente pe luni',fr:'Documents par mois',it:'Documenti per mese',es:'Documentos por mes',pt:'Documentos por mês',de:'Dokumente pro Monat',hu:'Dokumentumok havonta'},
+st_tl_aria:{en:'Documents by month, from {a} to {b}',ro:'Documente pe luni, din {a} până în {b}',fr:'Documents par mois, de {a} à {b}',it:'Documenti per mese, da {a} a {b}',es:'Documentos por mes, de {a} a {b}',pt:'Documentos por mês, de {a} a {b}',de:'Dokumente pro Monat, von {a} bis {b}',hu:'Dokumentumok havonta, {a} és {b} között'},
+st_none:{en:'Add some documents to see the numbers here.',ro:'Adaugă documente ca să vezi cifrele aici.',fr:'Ajoute des documents pour voir les chiffres ici.',it:'Aggiungi dei documenti per vedere qui i numeri.',es:'Añade documentos para ver aquí las cifras.',pt:'Adiciona documentos para veres aqui os números.',de:'Füge Dokumente hinzu, um hier die Zahlen zu sehen.',hu:'Adj hozzá dokumentumokat, hogy itt lásd a számokat.'},
+unknown:{en:'Unknown',ro:'Necunoscut',fr:'Inconnu',it:'Sconosciuto',es:'Desconocido',pt:'Desconhecido',de:'Unbekannt',hu:'Ismeretlen'},
+bk_title:{en:'Backup and index health',ro:'Copie de siguranță și starea indexului',fr:'Sauvegarde et état de l’index',it:'Backup e salute dell’indice',es:'Copia de seguridad y estado del índice',pt:'Cópia de segurança e estado do índice',de:'Sicherung und Zustand des Index',hu:'Mentés és az index állapota'},
+bk_lead:{en:'The backup is one zip with your groups, tags, notes and saved searches. It does not contain your original folders.',ro:'Copia de siguranță este un zip cu grupurile, etichetele, notele și căutările tale salvate. Nu conține folderele tale originale.',fr:'La sauvegarde est un zip avec tes groupes, étiquettes, notes et recherches enregistrées. Elle ne contient pas tes dossiers d’origine.',it:'Il backup è un unico zip con i tuoi gruppi, etichette, note e ricerche salvate. Non contiene le tue cartelle originali.',es:'La copia es un zip con tus grupos, etiquetas, notas y búsquedas guardadas. No contiene tus carpetas originales.',pt:'A cópia é um zip com os teus grupos, etiquetas, notas e pesquisas guardadas. Não contém as tuas pastas originais.',de:'Die Sicherung ist ein Zip mit deinen Gruppen, Tags, Notizen und gespeicherten Suchen. Deine Originalordner sind nicht enthalten.',hu:'A mentés egyetlen zip a csoportjaiddal, címkéiddel, jegyzeteiddel és mentett kereséseiddel. Az eredeti mappáidat nem tartalmazza.'},
+bk_dl:{en:'Download a backup',ro:'Descarcă o copie de siguranță',fr:'Télécharger une sauvegarde',it:'Scarica un backup',es:'Descargar una copia',pt:'Transferir uma cópia',de:'Sicherung herunterladen',hu:'Mentés letöltése'},
+bk_idx:{en:'Include the search index (bigger file)',ro:'Include și indexul de căutare (fișier mai mare)',fr:'Inclure l’index de recherche (fichier plus gros)',it:'Includi l’indice di ricerca (file più grande)',es:'Incluir el índice de búsqueda (archivo más grande)',pt:'Incluir o índice de pesquisa (ficheiro maior)',de:'Suchindex einschließen (größere Datei)',hu:'A keresési index is (nagyobb fájl)'},
+bk_done:{en:'The backup was sent to your downloads.',ro:'Copia de siguranță a fost trimisă în descărcări.',fr:'La sauvegarde est dans tes téléchargements.',it:'Il backup è nei tuoi download.',es:'La copia está en tus descargas.',pt:'A cópia foi para as tuas transferências.',de:'Die Sicherung liegt in deinen Downloads.',hu:'A mentés a letöltéseid között van.'},
+vf_check:{en:'Check the index',ro:'Verifică indexul',fr:'Vérifier l’index',it:'Controlla l’indice',es:'Revisar el índice',pt:'Verificar o índice',de:'Index prüfen',hu:'Index ellenőrzése'},
+vf_repair:{en:'Repair the index',ro:'Repară indexul',fr:'Réparer l’index',it:'Ripara l’indice',es:'Reparar el índice',pt:'Reparar o índice',de:'Index reparieren',hu:'Index javítása'},
+vf_ok:{en:'Your index is healthy: {n} documents.',ro:'Indexul tău este în regulă: {n} documente.',fr:'Ton index est en bonne santé : {n} documents.',it:'Il tuo indice è sano: {n} documenti.',es:'Tu índice está sano: {n} documentos.',pt:'O teu índice está saudável: {n} documentos.',de:'Dein Index ist in Ordnung: {n} Dokumente.',hu:'Az indexed rendben van: {n} dokumentum.'},
+vf_bad:{en:'The index has {n} problems. Repairing rebuilds it from your folders; your files are not touched.',ro:'Indexul are {n} probleme. Repararea îl reconstruiește din foldere; fișierele tale nu sunt atinse.',fr:'L’index a {n} problèmes. La réparation le reconstruit à partir de tes dossiers ; tes fichiers ne sont pas touchés.',it:'L’indice ha {n} problemi. La riparazione lo ricostruisce dalle tue cartelle; i file non vengono toccati.',es:'El índice tiene {n} problemas. Al repararlo se reconstruye desde tus carpetas; tus archivos no se tocan.',pt:'O índice tem {n} problemas. Reparar reconstrói-o a partir das tuas pastas; os teus ficheiros não são tocados.',de:'Der Index hat {n} Probleme. Beim Reparieren wird er aus deinen Ordnern neu aufgebaut; deine Dateien bleiben unberührt.',hu:'Az indexnek {n} hibája van. A javítás a mappáidból újraépíti; a fájljaidhoz nem nyúl.'},
+vf_rebuilt:{en:'The index was rebuilt: {n} documents.',ro:'Indexul a fost reconstruit: {n} documente.',fr:'L’index a été reconstruit : {n} documents.',it:'L’indice è stato ricostruito: {n} documenti.',es:'El índice se reconstruyó: {n} documentos.',pt:'O índice foi reconstruído: {n} documentos.',de:'Der Index wurde neu aufgebaut: {n} Dokumente.',hu:'Az index újraépült: {n} dokumentum.'},
+bring:{en:'Bring things in',ro:'Adu lucruri din altă parte',fr:'Importer des éléments',it:'Importa da altrove',es:'Traer cosas de otro sitio',pt:'Trazer coisas de fora',de:'Etwas hereinholen',hu:'Behozatal máshonnan'},
+br_lead:{en:'Bring in bookmarks, references and notes from other tools. Each one becomes a note you can search.',ro:'Adu semne de carte, referințe și notițe din alte instrumente. Fiecare devine o notă în care poți căuta.',fr:'Importe des marque-pages, références et notes d’autres outils. Chacun devient une note où tu peux chercher.',it:'Porta segnalibri, riferimenti e note da altri strumenti. Ognuno diventa una nota in cui puoi cercare.',es:'Trae marcadores, referencias y notas de otras herramientas. Cada uno se convierte en una nota en la que puedes buscar.',pt:'Traz marcadores, referências e notas de outras ferramentas. Cada um passa a ser uma nota onde podes pesquisar.',de:'Hole Lesezeichen, Literaturangaben und Notizen aus anderen Programmen. Jedes wird zu einer durchsuchbaren Notiz.',hu:'Hozz be könyvjelzőket, hivatkozásokat és jegyzeteket más programokból. Mindegyikből kereshető jegyzet lesz.'},
+br_types:{en:'Works with browser bookmarks (.html), BibTeX (.bib), Evernote (.enex), Pocket or Raindrop (.csv) and an Obsidian vault (.zip).',ro:'Merge cu semne de carte din browser (.html), BibTeX (.bib), Evernote (.enex), Pocket sau Raindrop (.csv) și un seif Obsidian (.zip).',fr:'Fonctionne avec les marque-pages du navigateur (.html), BibTeX (.bib), Evernote (.enex), Pocket ou Raindrop (.csv) et un coffre Obsidian (.zip).',it:'Funziona con i segnalibri del browser (.html), BibTeX (.bib), Evernote (.enex), Pocket o Raindrop (.csv) e un vault Obsidian (.zip).',es:'Funciona con marcadores del navegador (.html), BibTeX (.bib), Evernote (.enex), Pocket o Raindrop (.csv) y una bóveda de Obsidian (.zip).',pt:'Funciona com marcadores do navegador (.html), BibTeX (.bib), Evernote (.enex), Pocket ou Raindrop (.csv) e um cofre do Obsidian (.zip).',de:'Funktioniert mit Browser-Lesezeichen (.html), BibTeX (.bib), Evernote (.enex), Pocket oder Raindrop (.csv) und einem Obsidian-Vault (.zip).',hu:'Működik böngészői könyvjelzőkkel (.html), BibTeX-szel (.bib), Evernote-tal (.enex), Pocket vagy Raindrop exporttal (.csv) és Obsidian-tárral (.zip).'},
+br_choose:{en:'Choose a file to bring in',ro:'Alege un fișier de adus',fr:'Choisir un fichier à importer',it:'Scegli un file da importare',es:'Elegir un archivo para traer',pt:'Escolher um ficheiro para trazer',de:'Datei zum Hereinholen wählen',hu:'Válaszd ki a behozandó fájlt'},
+br_done:{en:'Brought in {n} notes and indexed them.',ro:'Am adus {n} note și le-am indexat.',fr:'{n} notes importées et indexées.',it:'Importate {n} note e indicizzate.',es:'Se trajeron {n} notas y se indexaron.',pt:'Trouxe {n} notas e indexei-as.',de:'{n} Notizen hereingeholt und indiziert.',hu:'{n} jegyzet behozva és indexelve.'},
+br_none:{en:'Nothing new was found in that file.',ro:'Nu am găsit nimic nou în acel fișier.',fr:'Rien de nouveau dans ce fichier.',it:'Nessuna novità in quel file.',es:'No se encontró nada nuevo en ese archivo.',pt:'Não foi encontrado nada de novo nesse ficheiro.',de:'In dieser Datei wurde nichts Neues gefunden.',hu:'Ebben a fájlban nincs semmi új.'},
+br_bad:{en:'Pick a .html, .bib, .enex, .csv or .zip file.',ro:'Alege un fișier .html, .bib, .enex, .csv sau .zip.',fr:'Choisis un fichier .html, .bib, .enex, .csv ou .zip.',it:'Scegli un file .html, .bib, .enex, .csv o .zip.',es:'Elige un archivo .html, .bib, .enex, .csv o .zip.',pt:'Escolhe um ficheiro .html, .bib, .enex, .csv ou .zip.',de:'Wähle eine .html-, .bib-, .enex-, .csv- oder .zip-Datei.',hu:'Válassz egy .html, .bib, .enex, .csv vagy .zip fájlt.'},
+feeds:{en:'News feeds',ro:'Fluxuri de știri',fr:'Flux d’actualités',it:'Feed di notizie',es:'Fuentes de noticias',pt:'Feeds de notícias',de:'Newsfeeds',hu:'Hírforrások'},
+fd_lead:{en:'Subscribe to a site’s feed. New posts are saved as notes you can search.',ro:'Abonează-te la fluxul unui site. Articolele noi se salvează ca notițe în care poți căuta.',fr:'Abonne-toi au flux d’un site. Les nouveaux articles sont enregistrés comme des notes où tu peux chercher.',it:'Iscriviti al feed di un sito. I nuovi articoli vengono salvati come note in cui puoi cercare.',es:'Suscríbete a la fuente de un sitio. Las entradas nuevas se guardan como notas en las que puedes buscar.',pt:'Subscreve o feed de um site. As publicações novas são guardadas como notas onde podes pesquisar.',de:'Abonniere den Feed einer Website. Neue Beiträge werden als durchsuchbare Notizen gespeichert.',hu:'Iratkozz fel egy oldal hírforrására. Az új bejegyzések kereshető jegyzetként mentődnek.'},
+fd_ph:{en:'Feed address, https://…',ro:'Adresa fluxului, https://…',fr:'Adresse du flux, https://…',it:'Indirizzo del feed, https://…',es:'Dirección de la fuente, https://…',pt:'Endereço do feed, https://…',de:'Feed-Adresse, https://…',hu:'A hírforrás címe, https://…'},
+fd_add:{en:'Subscribe',ro:'Abonează-te',fr:'S’abonner',it:'Iscriviti',es:'Suscribirse',pt:'Subscrever',de:'Abonnieren',hu:'Feliratkozás'},
+fd_none:{en:'No feeds yet.',ro:'Încă nu ai fluxuri.',fr:'Pas encore de flux.',it:'Ancora nessun feed.',es:'Aún no hay fuentes.',pt:'Ainda sem feeds.',de:'Noch keine Feeds.',hu:'Még nincs hírforrás.'},
+fd_poll:{en:'Check now',ro:'Verifică acum',fr:'Vérifier maintenant',it:'Controlla ora',es:'Comprobar ahora',pt:'Verificar agora',de:'Jetzt prüfen',hu:'Ellenőrzés most'},
+fd_polling:{en:'Checking your feeds…',ro:'Verific fluxurile…',fr:'Vérification des flux…',it:'Controllo dei feed…',es:'Comprobando las fuentes…',pt:'A verificar os feeds…',de:'Feeds werden geprüft …',hu:'A hírforrások ellenőrzése…'},
+fd_result:{en:'{new} new items from {ok} feeds; {bad} could not be reached.',ro:'{new} elemente noi din {ok} fluxuri; {bad} nu au răspuns.',fr:'{new} nouveaux éléments de {ok} flux ; {bad} injoignables.',it:'{new} nuovi elementi da {ok} feed; {bad} non raggiungibili.',es:'{new} elementos nuevos de {ok} fuentes; {bad} sin respuesta.',pt:'{new} itens novos de {ok} feeds; {bad} sem resposta.',de:'{new} neue Einträge aus {ok} Feeds; {bad} nicht erreichbar.',hu:'{new} új elem {ok} hírforrásból; {bad} nem érhető el.'},
+fd_rm:{en:'Unsubscribe from {x}',ro:'Dezabonează-te de la {x}',fr:'Se désabonner de {x}',it:'Annulla l’iscrizione a {x}',es:'Cancelar la suscripción a {x}',pt:'Cancelar a subscrição de {x}',de:'{x} abbestellen',hu:'Leiratkozás: {x}'},
+fd_opml_in:{en:'Import OPML',ro:'Importă OPML',fr:'Importer OPML',it:'Importa OPML',es:'Importar OPML',pt:'Importar OPML',de:'OPML importieren',hu:'OPML importálása'},
+fd_opml_out:{en:'Export OPML',ro:'Exportă OPML',fr:'Exporter OPML',it:'Esporta OPML',es:'Exportar OPML',pt:'Exportar OPML',de:'OPML exportieren',hu:'OPML exportálása'},
+fd_opml_done:{en:'{n} new feeds added.',ro:'{n} fluxuri noi adăugate.',fr:'{n} nouveaux flux ajoutés.',it:'{n} nuovi feed aggiunti.',es:'{n} fuentes nuevas añadidas.',pt:'{n} feeds novos adicionados.',de:'{n} neue Feeds hinzugefügt.',hu:'{n} új hírforrás hozzáadva.'},
+opens_n:{en:'{n}×',ro:'{n}×',fr:'{n}×',it:'{n}×',es:'{n}×',pt:'{n}×',de:'{n}×',hu:'{n}×'},
+k_stats:{en:'Go to Stats',ro:'Mergi la Cifre',fr:'Aller aux Chiffres',it:'Vai ai Numeri',es:'Ir a Cifras',pt:'Ir para Números',de:'Zu den Zahlen',hu:'Ugrás a Számokhoz'}
 };
 let LANG=(()=>{try{const s=localStorage.getItem('carta.lang');if(s&&L[s])return s}catch(e){}const n=(navigator.language||'en').slice(0,2);return L[n]?n:'en'})();
 const T=k=>(D[k]&&(D[k][LANG]||D[k].en))||k;
@@ -423,11 +668,18 @@ function applyLang(){document.documentElement.lang=LANG;
 async function api(path,method='GET',body){
   const o={method,headers:{'X-Colibri-UI':'1'}};
   if(body!==undefined){o.headers['Content-Type']='application/json';o.body=JSON.stringify(body)}
-  const r=await fetch('/carta/'+path,o);const j=await r.json().catch(()=>({}));
+  /* GET: 6 s timeout and two retries (a request that never comes back must not leave a blank page) */
+  const tries=method==='GET'?3:1;let r,lastErr;
+  for(let i=0;i<tries;i++){
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),method==='GET'?6000:600000);
+    try{r=await fetch('/carta/'+path,{...o,signal:ac.signal});clearTimeout(tm);if(r.status<500||i===tries-1)break}
+    catch(e){clearTimeout(tm);lastErr=e;if(i===tries-1)throw e}}
+  const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(j.error||r.statusText);return j}
 function fe(e){const raw=String(e&&e.message||e),l=raw.toLowerCase();let k='e_generic';
   if(l.includes('not a folder')||/no such (file|directory)/.test(l))k='e_folder';
   else if(l.includes('no answer from the colibr'))k='e_engine';
+  else if(l.includes('already running'))k='e_busy';
   else if(/failed to fetch|networkerror|load failed|network request/.test(l))k='e_net';
   return{k,msg:T(k),raw}}
 function toast(m,bad,o){o=o||{};const t=$('#toast');t.className='toast on'+(bad?' err':'');t.setAttribute('role',bad?'alert':'status');
@@ -442,29 +694,39 @@ async function copyText(t){try{await navigator.clipboard.writeText(t)}catch(e){c
 
 /* ---- progress ---- */
 const Prog={start(t){$$('.progbox').forEach(b=>b.classList.add('on'));this.set(t,null)},
-  set(t,f){$$('.progTxt').forEach(x=>x.textContent=t);$$('.pbar').forEach(p=>{p.classList.toggle('ind',f==null);p.firstElementChild.style.width=f==null?'':Math.round(f*100)+'%'})},
+  set(t,f){$$('.progTxt').forEach(x=>x.textContent=t);$$('.pbar').forEach(p=>{p.classList.toggle('ind',f==null);p.firstElementChild.style.width=f==null?'':Math.round(f*100)+'%'});
+    $$('.pbar').forEach(p=>{if(f!=null){p.setAttribute('role','progressbar');p.setAttribute('aria-valuemin','0');p.setAttribute('aria-valuemax','100');p.setAttribute('aria-valuenow',Math.round(f*100));p.removeAttribute('aria-hidden')}else{p.removeAttribute('role');p.setAttribute('aria-hidden','true')}})},
   end(){$$('.progbox').forEach(b=>b.classList.remove('on'))}};
 function poll(fn){let on=true;const tick=async()=>{if(!on)return;try{await fn()}catch(e){}if(on)setTimeout(tick,700)};setTimeout(tick,350);return()=>{on=false}}
-async function indexJob(call,live){Prog.start(T('indexing'));const b0=S.lib.documents.length;
-  const stop=live?poll(async()=>{const l=await api('library');Prog.set(F('indexing_n',{n:Math.max(0,l.documents.length-b0)}),null)}):()=>{};
+/* real progress: the server keeps the state of the running index job; we only read it */
+function showProg(p){if(!p||!p.running)return;const n=p.total>0?F('indexing_files',{seen:Math.min(p.seen,p.total),total:p.total}):T('indexing');Prog.set(n+' · '+T('indexing_keep'),p.total>0?Math.min(1,p.seen/p.total):null)}
+async function indexJob(call){Prog.start(T('indexing'));const stop=poll(async()=>showProg(await api('progress')));
   try{return await call()}finally{stop();Prog.end()}}
+async function waitIndex(){Prog.start(T('indexing'));try{for(;;){const p=await api('progress');showProg(p);if(!p.running)return p;await new Promise(r=>setTimeout(r,600))}}finally{Prog.end()}}
 
 /* ---- state ---- */
-const S={lib:{roots:[],documents:[],groups:{},problems:[]},results:[],selLib:new Set(),selRes:new Set(),extOn:new Set(),group:null,task:'summarize',ocr:false,gw:false,searched:false,lastQ:'',samples:[],samplesKey:'',wizRes:[]};
-async function load(){S.lib=await api('library');renderAll();computeSamples()}
+const S={lib:{roots:[],documents:[],groups:{},problems:[]},results:[],selLib:new Set(),selRes:new Set(),extOn:new Set(),group:null,task:'summarize',ocr:false,gw:false,searched:false,lastQ:'',samples:[],samplesKey:'',wizRes:[],meta:{},tags:{},saved:[],recent:[],most:[],dups:[],dym:null,activeSaved:null,libTag:'',libStar:false};
+const safe=(f,d)=>f().catch(()=>d);
+async function load(){S.lib=await api('library');
+  const [m,r,d,sv]=await Promise.all([safe(()=>api('meta'),{meta:{},tags:{}}),safe(()=>api('recent'),{recent:[],most:[]}),safe(()=>api('duplicates'),{groups:[]}),safe(()=>api('saved'),{saved:[]})]);
+  S.meta=m.meta;S.tags=m.tags;S.recent=r.recent;S.most=r.most;S.dups=d.groups;S.saved=sv.saved;renderAll();computeSamples()}
 
-function renderAll(){renderRoots();renderLib();renderGroups();renderExts();renderRes();renderDrawerScope();wizState();$('#ocrNote').textContent=S.ocr?T('ocr_ready'):T('ocr_missing')}
+function renderAll(){renderRoots();renderTagSel();renderLib();renderStrip();renderDup();renderGroups();renderExts();renderRes();renderDym();renderSaved();renderDrawerScope();renderTaskSel();renderStatic();wizState();$('#ocrNote').textContent=S.ocr?T('ocr_ready'):T('ocr_missing')}
 function renderRoots(){const c={};S.lib.documents.forEach(d=>c[d.root]=(c[d.root]||0)+1);
   $('#roots').innerHTML=S.lib.roots.map(r=>`<div class="row"><label title="${esc(r)}">${esc(r)}</label><span class="muted">${c[r]||0}</span><button class="btn sm bad" data-rm="${esc(r)}" aria-label="${esc(F('rm_aria',{x:r}))}">✕</button></div>`).join('')}
-function renderLib(){const d=S.lib.documents;$('#libCount').textContent=d.length+' '+T('docs_n');$('#libEmpty').style.display=d.length?'none':'block';$('#libTable').style.display=d.length?'':'none';
-  $('#libRows').innerHTML=d.map(x=>`<tr class="${S.selLib.has(x.id)?'sel':''}"><td><input type="checkbox" data-l="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selLib.has(x.id)?'checked':''}></td><td>${esc(base(x.path))}</td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td><td><button class="btn sm" data-v="${x.id}" data-n="${esc(base(x.path))}" aria-label="${esc(T('view')+' '+base(x.path))}">${T('view')}</button></td></tr>`).join('');
-  $('#problems').innerHTML=S.lib.problems.length?S.lib.problems.map(p=>`<div title="${esc(p.reason)}">⚠ ${esc(base(p.path))}<br><span style="opacity:.8">${esc(p.reason)}</span></div>`).join(''):'—'}
+const mt=p=>S.meta[p]||{tags:[],starred:false,has_note:false,opens:0};
+const tagsHtml=p=>mt(p).tags.map(t=>`<span class="tagc">${esc(t)}</span>`).join('');
+const starHtml=p=>mt(p).starred?'<span class="stm" aria-hidden="true">★</span><span class="vh">★ </span>':'';
+const libDocs=()=>S.lib.documents.filter(d=>{const m=mt(d.path);return(!S.libTag||m.tags.includes(S.libTag))&&(!S.libStar||m.starred)});
+function renderLib(){const all=S.lib.documents,d=libDocs();$('#libCount').textContent=d.length+' '+T('docs_n');$('#libEmpty').style.display=all.length?'none':'block';$('#libTable').style.display=d.length?'':'none';
+  $('#libRows').innerHTML=d.map(x=>`<tr class="${S.selLib.has(x.id)?'sel':''}"><td><input type="checkbox" data-l="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selLib.has(x.id)?'checked':''}></td><td>${starHtml(x.path)}${esc(base(x.path))}<div>${tagsHtml(x.path)}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td><td><button class="btn sm" data-v="${x.id}" data-n="${esc(base(x.path))}" aria-label="${esc(T('view')+' '+base(x.path))}">${T('view')}</button></td></tr>`).join('');
+  $('#problems').innerHTML=S.lib.problems.length?`<div style="margin-bottom:4px">${esc(F('prob_n',{n:S.lib.problems.length}))}</div>`+S.lib.problems.map(p=>`<div title="${esc(p.reason)}">⚠ ${esc(base(p.path))}<br><span style="opacity:.8">${esc(p.reason)}</span></div>`).join(''):'—'}
 function renderGroups(){const g=S.lib.groups;
   $('#groupList').innerHTML=Object.keys(g).map(n=>`<div class="row"><label title="${esc(g[n].description||'')}"><input type="radio" name="grp" value="${esc(n)}" ${S.group===n?'checked':''}> ${esc(n)}</label><span class="muted">${g[n].members.length}</span><button class="btn sm bad" data-gd="${esc(n)}" aria-label="${esc(T('remove')+' '+n)}">✕</button></div>`).join('')
     +`<div class="row"><label><input type="radio" name="grp" value="" ${!S.group?'checked':''}> ${T('library')}</label></div>`}
 function renderExts(){const set=new Set(S.lib.documents.map(d=>d.ext));
   $('#exts').innerHTML=[...set].sort().map(e=>`<button type="button" class="chip ${S.extOn.has(e)?'on':''}" data-e="${esc(e)}" aria-pressed="${S.extOn.has(e)}">${esc(e)}</button>`).join('')}
-const filtersOn=()=>S.extOn.size||$('#minKb').value||$('#maxKb').value||$('#pathLike').value||S.group;
+const filtersOn=()=>S.extOn.size||$('#fTag').value||$('#fStar').checked||$('#minKb').value||$('#maxKb').value||$('#pathLike').value||S.group;
 function chipsHtml(){const s=S.samples;if(!s.length)return '';const a=s.slice(0,3);if(s[3])a.push(s[3].slice(0,5)+'*');
   return `<div class="chips" role="group" aria-label="${esc(T('examples'))}"><span class="muted">${T('examples')}</span> ${a.map(w=>`<button type="button" class="chip" data-ex="${esc(w)}">${esc(w)}</button>`).join('')}</div>`}
 function emptySearch(){
@@ -473,7 +735,7 @@ function emptySearch(){
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><h2>${T('empty_search_title')}</h2><p>${T('hint_fetch')}</p>${chipsHtml()}<p style="font-size:.87em">${T('syntax_tip')}</p>`}
 function renderRes(){const r=S.results;$('#resCount').textContent=r.length?r.length+' '+T('results_n'):'';
   $('#resTable').style.display=r.length?'':'none';const e=$('#resEmpty');e.style.display=r.length?'none':'block';if(!r.length)e.innerHTML=emptySearch();
-  $('#resRows').innerHTML=r.map(x=>`<tr tabindex="0" class="${S.selRes.has(x.id)?'sel':''}" data-r="${x.id}" title="${esc(T('res_hint'))}"><td><input type="checkbox" data-c="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selRes.has(x.id)?'checked':''}></td><td class="n">${x.score}</td><td>${esc(base(x.path))}<div class="snip">${esc(x.snippet).replace(/\[([^\]]+)\]/g,'<b>$1</b>')}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td></tr>`).join('')}
+  $('#resRows').innerHTML=r.map(x=>`<tr tabindex="0" class="${S.selRes.has(x.id)?'sel':''}" data-r="${x.id}" title="${esc(T('res_hint'))}"><td><input type="checkbox" data-c="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selRes.has(x.id)?'checked':''}></td><td class="n">${x.score}</td><td>${starHtml(x.path)}${esc(base(x.path))}<div>${tagsHtml(x.path)}</div><div class="snip">${esc(x.snippet).replace(/\[([^\]]+)\]/g,'<b>$1</b>')}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td></tr>`).join('')}
 
 /* delegated events: keep focus while ticking boxes */
 document.addEventListener('click',e=>{const t=e.target;let b;
@@ -497,10 +759,71 @@ $('#resRows').addEventListener('keydown',e=>{const r=e.target.closest('tr');if(!
   if(e.key==='Enter'){e.preventDefault();openResult(r)}else if(e.key===' '){e.preventDefault();const c=r.querySelector('input');c.checked=!c.checked;c.dispatchEvent(new Event('change',{bubbles:true}))}
   else if(e.key==='ArrowDown'&&r.nextElementSibling){e.preventDefault();r.nextElementSibling.focus()}else if(e.key==='ArrowUp'&&r.previousElementSibling){e.preventDefault();r.previousElementSibling.focus()}});
 const openResult=r=>openDoc(+r.dataset.r,base(S.results.find(x=>x.id==r.dataset.r).path));
-async function openDoc(id,name){try{const j=await api('doc?id='+id);$('#vTitle').textContent=name;
-  const q=$('#q').value.trim().split(/\s+/).filter(w=>/\w/.test(w)&&!/^(AND|OR|NOT)$/.test(w)).map(w=>w.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);
+const V={id:0,path:'',dirty:false,t:0};
+async function openDoc(id,name){await flushNote();try{const j=await api('doc?id='+id);$('#vTitle').textContent=name;
+  const q=((S.dym&&S.dym.corrected)||$('#q').value).trim().split(/\s+/).filter(w=>/\w/.test(w)&&!/^(AND|OR|NOT)$/.test(w)).map(w=>w.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);
   let h=esc(j.text);if(q.length)h=h.replace(new RegExp('('+q.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi'),'<mark>$1</mark>');
-  $('#vText').innerHTML=h;openM($('#viewer'),'#vClose')}catch(e){fail(e)}}
+  $('#vText').innerHTML=h;V.id=id;V.path='';V.dirty=false;$('#vNote').value='';$('#vNoteSt').textContent='';$('#vTags').innerHTML='';$('#vRel').innerHTML='';
+  openM($('#viewer'),'#vClose');api('open','POST',{id}).catch(()=>{});loadPanel(id)}catch(e){fail(e)}}
+
+/* ---- document panel: tags, star, note, related ---- */
+function setMeta(path,patch){S.meta[path]=Object.assign({tags:[],starred:false,has_note:false,opens:0},S.meta[path],patch)}
+async function loadPanel(id){try{const m=await api('docmeta?id='+id);if(V.id!==id)return;V.path=m.path;V.m=m;S.tags=m.all_tags;
+  setMeta(m.path,{tags:m.tags,starred:m.starred,has_note:!!m.note});$('#vNote').value=m.note;renderPanel()}catch(e){}}
+function renderPanel(){const m=V.m;if(!m)return;
+  $('#vTags').innerHTML=m.tags.length?m.tags.map(t=>`<span class="tagc rm">${esc(t)}<button type="button" data-tagrm="${esc(t)}" aria-label="${esc(F('dp_rm_tag',{x:t}))}">✕</button></span>`).join(''):`<span class="muted">${T('dp_no_tags')}</span>`;
+  $('#tagDl').innerHTML=Object.keys(S.tags||{}).map(t=>`<option value="${esc(t)}"></option>`).join('');
+  $('#vStar').setAttribute('aria-pressed',m.starred);$('#vStar').textContent=(m.starred?'★ ':'☆ ')+T('dp_star');
+  $('#vRel').innerHTML=m.related.length?m.related.map(r=>`<li><button type="button" data-rel="${r.id}" data-n="${esc(base(r.path))}">${esc(base(r.path))}</button> <span class="muted">${Math.round(r.score)}%</span></li>`).join(''):`<li class="muted">${T('dp_no_related')}</li>`;
+  renderLib();renderRes();renderStrip()}
+async function docPost(route,body){const j=await api(route,'POST',Object.assign({id:V.id},body));return j}
+async function addTags(){const raw=$('#vTagIn').value;const add=raw.split(',').map(x=>x.trim()).filter(Boolean);if(!add.length||!V.m)return;
+  try{const j=await docPost('tags',{add});$('#vTagIn').value='';V.m.tags=j.tags;S.tags=j.all_tags;setMeta(V.m.path,{tags:j.tags});renderPanel();renderTagSel();$('#vTagIn').focus()}catch(e){fail(e)}}
+async function rmTag(t){if(!V.m)return;try{const j=await docPost('tags',{remove:[t]});V.m.tags=j.tags;S.tags=j.all_tags;setMeta(V.m.path,{tags:j.tags});renderPanel();renderTagSel()}catch(e){fail(e)}}
+async function toggleStar(){if(!V.m)return;const on=!V.m.starred;try{await docPost('star',{on});V.m.starred=on;setMeta(V.m.path,{starred:on});renderPanel()}catch(e){fail(e)}}
+async function flushNote(){clearTimeout(V.t);if(!V.dirty||!V.id)return;V.dirty=false;const id=V.id,note=$('#vNote').value;$('#vNoteSt').textContent=T('dp_saving');
+  try{await api('note','POST',{id,note});if(V.m)setMeta(V.m.path,{has_note:!!note.trim()});$('#vNoteSt').textContent=T('dp_saved')}catch(e){V.dirty=true;$('#vNoteSt').textContent='';fail(e)}}
+$('#vNote').addEventListener('input',()=>{V.dirty=true;$('#vNoteSt').textContent=T('dp_saving');clearTimeout(V.t);V.t=setTimeout(flushNote,800)});
+$('#vNote').addEventListener('blur',flushNote);
+$('#vTagAdd').onclick=addTags;$('#vTagIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addTags()}});$('#vStar').onclick=toggleStar;
+$('#viewer').addEventListener('closed',async()=>{await flushNote();safe(()=>api('recent'),null).then(r=>{if(r){S.recent=r.recent;S.most=r.most;renderStrip()}})});
+function renderTagSel(){const names=Object.keys(S.tags||{}).sort();
+  [['#libTag','libTag'],['#fTag','']].forEach(([sel,k])=>{const e=$(sel),cur=e.value;e.innerHTML=`<option value="">${esc(T('f_any_tag'))}</option>`+names.map(t=>`<option value="${esc(t)}">${esc(t)} (${S.tags[t]})</option>`).join('');
+    e.value=names.includes(cur)?cur:'';if(k)S[k]=e.value})}
+$('#libTag').onchange=e=>{S.libTag=e.target.value;renderLib()};$('#libStar').onchange=e=>{S.libStar=e.target.checked;renderLib()};
+function renderStrip(){const e=$('#strip'),byP=new Map(S.lib.documents.map(d=>[d.path,d]));
+  const grp=(t,a,x)=>a.length?`<div class="chips" role="group" aria-label="${esc(T(t))}"><span class="muted">${T(t)}</span>${a.map(r=>`<button type="button" class="chip" data-od="${r.id}" data-n="${esc(base(r.path))}" title="${esc(r.path)}">${esc(base(r.path))}${x?' · '+F('opens_n',{n:r.opens}):''}</button>`).join('')}</div>`:'';
+  const h=grp('recent',S.recent.filter(r=>byP.has(r.path)))+grp('most_opened',S.most.filter(r=>byP.has(r.path)&&r.opens>1),1);e.innerHTML=h;e.hidden=!h}
+
+/* ---- saved searches ---- */
+function renderSaved(){$('#savedList').innerHTML=S.saved.length?S.saved.map(x=>`<div class="row"><button type="button" class="linkbtn flex1" style="text-align:left" data-svrun="${esc(x.name)}" aria-label="${esc(F('sv_run',{x:x.name}))}">${esc(x.name)}</button><button class="btn sm bad" data-svrm="${esc(x.name)}" aria-label="${esc(F('sv_rm',{x:x.name}))}">✕</button></div>`).join(''):`<div class="muted" style="font-size:.87em">${T('sv_none')}</div>`}
+async function saveSearch(){const q=$('#q').value.trim(),f=filtersOn();if(!q&&!f){toast(T('sv_need'),1);$('#q').focus();return}
+  const name=($('#svName').value.trim()||q||$('#fTag').value||'★').slice(0,80);
+  const b={name,query:q,ext:[...S.extOn],tag:$('#fTag').value||undefined,starred:$('#fStar').checked,group:S.group||undefined,path:$('#pathLike').value||undefined};
+  if($('#minKb').value)b.min=Math.round($('#minKb').value*1024);if($('#maxKb').value)b.max=Math.round($('#maxKb').value*1024);
+  try{await api('saved','POST',b);$('#svName').value='';S.saved=(await api('saved')).saved;renderSaved();toast(T('sv_saved'))}catch(e){fail(e)}}
+async function runSaved(name){try{const j=await api('saved/run?name='+encodeURIComponent(name)),sv=S.saved.find(x=>x.name===name);
+  searchSeq++;S.results=j.hits;S.dym=null;S.selRes=new Set();S.searched=true;S.lastQ=name;S.activeSaved=name;if(sv)$('#q').value=sv.query;show('fetch');renderRes();renderDym();renderDrawerScope()}catch(e){fail(e)}}
+$('#svSave').onclick=saveSearch;$('#svName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveSearch()}});
+
+/* ---- duplicates ---- */
+const dupExtra=()=>S.dups.reduce((n,g)=>n+g.length-1,0);
+function renderDup(){const b=$('#dupBtn'),n=dupExtra();b.hidden=!n;b.textContent=F('dup_banner',{n})}
+$('#dupBtn').onclick=()=>{$('#dupList').innerHTML=S.dups.length?S.dups.map(g=>`<h3 style="font-size:1em;margin:12px 0 4px">${esc(F('dup_group',{n:g.length}))}</h3>`+g.map(x=>`<div class="duprow"><span title="${esc(x.path)}"><b>${esc(base(x.path))}</b><br><span class="muted">${esc(x.path)}</span></span><button class="btn sm" data-dv="${x.id}" data-n="${esc(base(x.path))}">${T('view')}</button></div>`).join('')).join(''):`<p class="muted">${T('dup_none')}</p>`;openM($('#dup'),'#dupClose')};
+$('#dupClose').onclick=()=>closeM($('#dup'));
+
+/* new delegated clicks */
+document.addEventListener('click',e=>{const t=e.target;let b;
+  if(b=t.closest('[data-exact]')){$('#q').value=b.dataset.exact;return search({exact:true})}
+  if(b=t.closest('[data-sg]')){$('#q').value=b.dataset.sg;return search()}
+  if(b=t.closest('[data-od]'))return openDoc(+b.dataset.od,b.dataset.n);
+  if(b=t.closest('[data-rel]'))return openDoc(+b.dataset.rel,b.dataset.n);
+  if(b=t.closest('[data-dv]')){closeM($('#dup'));return openDoc(+b.dataset.dv,b.dataset.n)}
+  if(b=t.closest('[data-tagrm]'))return rmTag(b.dataset.tagrm);
+  if(b=t.closest('[data-svrun]'))return runSaved(b.dataset.svrun);
+  if(b=t.closest('[data-svrm]'))return(async()=>{try{await api('saved','DELETE',{name:b.dataset.svrm});S.saved=(await api('saved')).saved;renderSaved();toast(T('sv_removed'))}catch(x){fail(x)}})();
+  if(b=t.closest('[data-op]')){const d=S.lib.documents.find(x=>x.path===b.dataset.op);return d?openDoc(d.id,base(d.path)):toast(T('e_generic'),1)}
+  if(b=t.closest('[data-fdrm]'))return feedRm(b.dataset.fdrm)});
 
 /* ---- example queries drawn from the user's own documents ---- */
 const STOP=new Set('about after again against because before between could during every first from have having into other should since still such than that their there these they this those through under until very were what when where which while with would your also been being both each more most only over same some then them will'.split(' '));
@@ -511,12 +834,12 @@ async function computeSamples(){const ds=S.lib.documents.slice(0,3),key=ds.map(d
 /* ---- library actions ---- */
 function doneMsg(s){let m=F('index_done',{n:S.lib.documents.length});if(s&&s.failed)m+=' '+F('index_skipped',{k:s.failed});toast(m)}
 async function addFolder(p,quiet){p=(p||'').trim();if(!p)return false;
-  try{const s=await indexJob(()=>api('folders','POST',{path:p}),true);$('#newRoot').value='';$('#wRoot').value='';await load();quiet?toast(T('folder_restored')):doneMsg(s);return true}catch(e){fail(e);return false}}
+  try{const s=await indexJob(()=>api('folders','POST',{path:p}));$('#newRoot').value='';$('#wRoot').value='';await load();quiet?toast(T('folder_restored')):doneMsg(s);return true}catch(e){fail(e);return false}}
 async function removeRoot(p){try{await api('folders','DELETE',{path:p});await load();toast(T('folder_removed'),0,{action:{label:T('undo'),fn:()=>addFolder(p,true)},ms:10000})}catch(e){fail(e)}}
 $('#addRoot').onclick=()=>addFolder($('#newRoot').value);$('#newRoot').onkeydown=e=>{if(e.key==='Enter')addFolder(e.target.value)};
 $('#wAdd').onclick=()=>addFolder($('#wRoot').value);$('#wRoot').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addFolder(e.target.value)}};
 $('#emptyAdd').onclick=()=>{if(window.matchMedia('(max-width:820px)').matches)$('#v-library').classList.add('side-on');$('#newRoot').focus()};
-$('#reindex').onclick=async()=>{try{const s=await indexJob(()=>api('index','POST',{}),false);await load();doneMsg(s)}catch(e){fail(e)}};
+$('#reindex').onclick=async()=>{const b=$('#reindex');b.disabled=true;try{await api('index','POST',{background:true});const p=await waitIndex();await load();p.error?toast(p.error,1):doneMsg({failed:p.failed})}catch(e){fail(e)}b.disabled=false};
 $('#pick').onclick=()=>$('#file').click();$('#wPick').onclick=()=>$('#file').click();$('#file').onchange=e=>{uploadFiles(e.target.files);e.target.value=''};
 async function uploadFiles(fs){fs=[...fs].filter(f=>!f.name.startsWith('.'));if(!fs.length)return;
   const ocr=[$('#ocrTxt').checked&&'txt',$('#ocrPdf').checked&&'pdf'].filter(Boolean).join(',');let ok=0,i=0;const bad=[];
@@ -534,17 +857,33 @@ addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();dragN
 addEventListener('dragover',e=>{if(hasFiles(e))e.preventDefault()});
 addEventListener('dragleave',e=>{if(!hasFiles(e))return;dragN=Math.max(0,dragN-1);if(!dragN)$('#dropov').classList.remove('on')});
 addEventListener('drop',async e=>{if(!hasFiles(e))return;e.preventDefault();dragN=0;$('#dropov').classList.remove('on');uploadFiles(await collect(e.dataTransfer))});
-$('#libAll').onchange=e=>{S.selLib=e.target.checked?new Set(S.lib.documents.map(d=>d.id)):new Set();renderLib();renderDrawerScope()};
+$('#libAll').onchange=e=>{S.selLib=e.target.checked?new Set(libDocs().map(d=>d.id)):new Set();renderLib();renderDrawerScope()};
 $('#resAll').onchange=e=>{S.selRes=e.target.checked?new Set(S.results.map(d=>d.id)):new Set();renderRes();renderDrawerScope()};
-function clearFilters(){S.extOn.clear();['#minKb','#maxKb','#pathLike'].forEach(s=>$(s).value='');S.group=null;renderExts();renderGroups();if(S.lastQ)search()}
+function clearFilters(){S.extOn.clear();['#minKb','#maxKb','#pathLike'].forEach(s=>$(s).value='');$('#fTag').value='';$('#fStar').checked=false;S.group=null;renderExts();renderGroups();if(S.lastQ)search()}
 $('#clearF').onclick=clearFilters;
 
 /* ---- search ---- */
-async function search(){const q=$('#q').value.trim();if(!q){$('#q').focus();return}const p=new URLSearchParams({q});
+let searchSeq=0,searchDeb=0;
+function searchParams(q){const p=new URLSearchParams({q});
   if(S.extOn.size)p.set('ext',[...S.extOn].join(','));if($('#minKb').value)p.set('min',$('#minKb').value*1024);if($('#maxKb').value)p.set('max',$('#maxKb').value*1024);
   if($('#pathLike').value)p.set('path',$('#pathLike').value);if(S.group)p.set('group',S.group);
-  $('#resCount').textContent=T('searching');
-  try{S.results=await api('search?'+p);S.selRes=new Set();S.searched=true;S.lastQ=q;renderRes();renderDrawerScope();if(S.results.length)$('#resRows tr').focus({preventScroll:true})}catch(e){fail(e);renderRes()}}
+  if($('#fTag').value)p.set('tag',$('#fTag').value);if($('#fStar').checked)p.set('starred','1');return p}
+async function search(o){o=o||{};const q=$('#q').value.trim();clearTimeout(searchDeb);
+  if(!q&&!$('#fTag').value&&!$('#fStar').checked){if(o.auto){S.results=[];S.dym=null;S.searched=false;S.selRes=new Set();renderRes();renderDym()}else $('#q').focus();return}
+  const p=searchParams(q),my=++searchSeq;if(!o.auto)$('#resCount').textContent=T('searching');
+  try{const exact=o.exact&&!p.get('tag')&&!p.get('starred');
+    const r=exact?{query:q,hits:await api('search?'+p),corrected:null,suggestions:[]}:await api('find?'+p);
+    if(my!==searchSeq)return;
+    S.results=r.hits;S.dym=r;S.selRes=new Set();S.searched=true;S.lastQ=q;S.activeSaved=null;renderRes();renderDym();renderDrawerScope();
+    if(!o.auto&&S.results.length)$('#resRows tr').focus({preventScroll:true})}
+  catch(e){if(my===searchSeq){if(!o.auto)fail(e);renderRes()}}}
+$('#q').addEventListener('input',()=>{clearTimeout(searchDeb);const q=$('#q').value.trim();if(q.length<2&&q.length>0)return;searchDeb=setTimeout(()=>search({auto:true}),300)});
+$('#fTag').onchange=$('#fStar').onchange=()=>search({auto:true});
+function renderDym(){const e=$('#dym'),r=S.dym;if(!r||!S.searched){e.hidden=true;e.innerHTML='';return}let h='';
+  if(r.corrected)h+=`<div role="status">${T('dym_showing')} <b>${esc(r.corrected)}</b> — ${T('dym_instead')} <button class="linkbtn" type="button" data-exact="${esc(r.query)}">${esc(r.query)}</button></div>`;
+  const sg=(r.suggestions||[]).filter(x=>x!==r.corrected&&x!==r.query).slice(0,5);
+  if(sg.length&&(!r.hits.length||r.corrected))h+=`<div class="chips" role="group" aria-label="${esc(T('dym_try'))}"><span class="muted">${T('dym_try')}</span> ${sg.map(x=>`<button type="button" class="chip" data-sg="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
+  e.innerHTML=h;e.hidden=!h}
 $('#qform').onsubmit=e=>{e.preventDefault();search()};
 $('#gFromSel').onclick=async()=>{const n=$('#gName').value.trim();const ids=S.selRes.size?S.selRes:S.selLib;if(!n||!ids.size){toast(T('need_selection'),1);return}
   const docs=S.lib.documents.filter(d=>ids.has(d.id)).map(d=>d.path);try{await api('groups','POST',{name:n,members:docs,description:S.results.length?'search: '+$('#q').value:''});$('#gName').value='';await load()}catch(e){fail(e)}};
@@ -554,11 +893,42 @@ $('#gFromSel').onclick=async()=>{const n=$('#gName').value.trim();const ids=S.se
 function selInfo(){if(S.selRes.size)return{ids:[...S.selRes],top:false};if(S.selLib.size)return{ids:[...S.selLib],top:false};return{ids:S.results.slice(0,8).map(r=>r.id),top:S.results.length>0}}
 const selIds=()=>selInfo().ids;
 function renderDrawerScope(){const s=selInfo();$('#scopeSelTxt').textContent=s.ids.length+' '+T(s.top?'top_n':'selected_n');
-  const g=S.lib.groups;$('#scopeGroup').innerHTML=Object.keys(g).map(n=>`<option>${esc(n)}</option>`).join('');$('#cartaEmpty').style.display=s.ids.length||Object.keys(g).length?'none':''}
-function toggleCarta(){const d=$('#drawer');if(d.classList.contains('on'))closeM(d);else{renderDrawerScope();openM(d,'#req')}}
+  const g=S.lib.groups;$('#scopeGroup').innerHTML=Object.keys(g).map(n=>`<option>${esc(n)}</option>`).join('');$('#cartaEmpty').style.display=s.ids.length||Object.keys(g).length?'none':'';const cg=$('#chatGroup'),cv=cg.value;cg.innerHTML=`<option value="">${esc(T('chat_all'))}</option>`+Object.keys(g).map(n=>`<option>${esc(n)}</option>`).join('');cg.value=Object.keys(g).includes(cv)?cv:''}
+function toggleCarta(){const d=$('#drawer');if(d.classList.contains('on'))closeM(d);else{renderDrawerScope();openM(d,pref('tab')==='chat'?'#chatIn':'#req')}}
 $('#cartaBtn').onclick=toggleCarta;$('#dClose').onclick=()=>closeM($('#drawer'));
+const TASKS=['summarize','extract','synthesize','compare','timeline','glossary','outline','actions','faq','flashcards','quiz','translate','explain','contradictions'];
+const tn=t=>T(['summarize','extract','synthesize'].includes(t)?t:'tn_'+t);
 $$('#taskSeg button').forEach(b=>b.onclick=()=>setTask(b.dataset.t));
-function setTask(t){S.task=t;pref('task',t);$$('#taskSeg button').forEach(x=>x.setAttribute('aria-selected',x.dataset.t===t));$('#fieldsRow').style.display=$('#fmtRow').style.display=t==='extract'?'flex':'none'}
+$('#taskSel').onchange=e=>setTask(e.target.value);
+function renderTaskSel(){const e=$('#taskSel');e.innerHTML=TASKS.map(t=>`<option value="${t}">${esc(tn(t))}</option>`).join('');e.value=S.task;$('#taskDesc').textContent=T('td_'+S.task)}
+function setTask(t){if(!TASKS.includes(t))t='summarize';S.task=t;pref('task',t);$$('#taskSeg button').forEach(x=>x.setAttribute('aria-selected',x.dataset.t===t));$('#taskSel').value=t;$('#taskDesc').textContent=T('td_'+t);
+  $('#fieldsRow').style.display=$('#fmtRow').style.display=t==='extract'?'flex':'none';$('#targetRow').style.display=t==='translate'?'flex':'none'}
+function renderStatic(){const al=$('#ansLang'),av=al.value;al.innerHTML=`<option value="">${esc(T('ans_auto'))}</option>`+Object.entries(L).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('');al.value=av||pref('ansLang')||'';
+  const sf=$('#saveFmt'),sv=sf.value;sf.innerHTML=[['md','fmt_mdn'],['html','fmt_html'],['txt','fmt_txt']].map(([k,l])=>`<option value="${k}">${esc(T(l))}</option>`).join('');sf.value=sv||pref('saveFmt')||'md';if(!sf.value)sf.value='md';
+  const ef=$('#expFmt'),ev=ef.value;ef.innerHTML=[['md','fmt_md'],['csv','fmt_csv'],['json','fmt_json'],['zip','fmt_zip']].map(([k,l])=>`<option value="${k}">${esc(T(l))}</option>`).join('');ef.value=ev||'md'}
+$('#ansLang').onchange=e=>pref('ansLang',e.target.value);$('#saveFmt').onchange=e=>pref('saveFmt',e.target.value);
+function setTab(t){if(t!=='chat')t='task';pref('tab',t);$$('#dTabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
+  $('#taskPane').hidden=$('#taskFt').hidden=t!=='task';$('#chatPane').hidden=$('#chatFt').hidden=t!=='chat';
+  if($('#drawer').classList.contains('on'))setTimeout(()=>$(t==='chat'?'#chatIn':'#req').focus(),20)}
+$$('#dTabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+/* chat: the conversation lives on the server, keyed by this page session */
+const chatSid=(()=>{try{const a=new Uint8Array(12);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return Date.now()+Math.random().toString(36).slice(2)}})();
+function addMsg(who,text,wait){const w=document.createElement('div');w.className='msg '+who;
+  w.innerHTML=`<div class="who"></div><div class="mb md"></div>`;w.firstChild.textContent=T(who==='u'?'chat_you':'chat_bot');const mb=w.lastChild;if(text!=null)mb.textContent=text;else if(wait)mb.innerHTML=`<span class="muted">${esc(T('chat_wait'))}</span>`;
+  $('#chatLog').appendChild(w);$('#chatEmpty').style.display='none';w.scrollIntoView({block:'end'});return w}
+function renderBot(w,j){const mb=w.querySelector('.mb');
+  if(!j.found){mb.innerHTML=`<div class="nf" role="status"><b>⚠ ${esc(T('chat_nf'))}</b><p>${esc(T('chat_nf_hint'))}</p></div>`;return}
+  const cited=j.sources.filter(x=>new RegExp('\\b'+x.label+'\\b').test(j.answer)),list=cited.length?cited:j.sources;
+  let h=(j.note?`<p class="muted">${esc(j.note)}</p>`:'')+md(j.answer);
+  if(list.length)h+=`<div class="srcs"><h4>${T('chat_src')}</h4>${list.map(x=>`<div class="src" data-sid="${esc(x.label)}"><b class="cite">[${esc(x.label)}]</b><span class="nm" title="${esc(x.path)}">${esc(base(x.path))}</span><button class="btn sm" data-op="${esc(x.path)}">${T('open_source')}</button><details><summary>${T('chat_passage')}</summary><div class="snip">${esc(x.passage)}</div></details></div>`).join('')}</div>`;
+  mb.innerHTML=h;w.scrollIntoView({block:'end'})}
+async function chatSend(){const q=$('#chatIn').value.trim();if(!q)return;$('#chatIn').value='';addMsg('u',q);const w=addMsg('b',null,true);$('#chatSend').disabled=true;
+  const again=()=>{w.remove();$('#chatIn').value=q;chatSend()};
+  try{renderBot(w,await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value}))}
+  catch(e){errBox(w.querySelector('.mb'),e,again,()=>{$('#mock').checked=true;pref('mock','1');again()})}
+  $('#chatSend').disabled=false;$('#chatIn').focus()}
+$('#chatSend').onclick=chatSend;$('#chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();chatSend()}});
+$('#chatNew').onclick=async()=>{try{await api('chat/reset','POST',{sid:chatSid})}catch(e){}$('#chatLog').innerHTML='';$('#chatEmpty').style.display='';$('#chatIn').focus()};
 function md(t){let h=esc(t);h=h.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^---$/gm,'<hr>');
   h=h.replace(/((?:^\|.*\|\s*$\n?)+)/gm,m=>{const rows=m.trim().split('\n').filter(r=>!/^\|[\s:|-]+\|$/.test(r.trim()));return '<table>'+rows.map((r,i)=>'<tr>'+r.trim().slice(1,-1).split('|').map(c=>`<${i?'td':'th'}>${c.trim()}</${i?'td':'th'}>`).join('')+'</tr>').join('')+'</table>'});
   h=h.replace(/((?:^[-*] .*$\n?)+)/gm,m=>'<ul>'+m.trim().split('\n').map(l=>'<li>'+l.replace(/^[-*] /,'')+'</li>').join('')+'</ul>');
@@ -572,7 +942,8 @@ function errBox(el,e,again,offline){const f=fe(e);
   el.innerHTML=`<div class="errbox" role="alert"><p>${esc(f.msg)}</p><div class="ans">${f.k==='e_engine'?`<button class="btn pri sm" data-a="off">${T('use_offline')}</button>`:''}<button class="btn sm" data-a="re">${T('retry')}</button></div><details><summary>${T('e_details')}</summary>${esc(f.raw)}</details></div>`;
   const o=el.querySelector('[data-a=off]');if(o)o.onclick=offline;el.querySelector('[data-a=re]').onclick=again}
 let lastText='';
-async function runDrawer(){const scope=document.querySelector('[name=scope]:checked').value;const body={task:S.task,request:$('#req').value.trim(),save:$('#saveOut').checked,mock:$('#mock').checked};
+async function runDrawer(){const scope=document.querySelector('[name=scope]:checked').value;const body={task:S.task,request:$('#req').value.trim(),save:$('#saveOut').checked,save_fmt:$('#saveFmt').value,mock:$('#mock').checked,verify:$('#verify').checked,lang:$('#ansLang').value};
+  if(S.task==='translate'){body.target=$('#target').value.trim();if(!body.target){toast(T('target_ph'),1);$('#target').focus();return}}
   if(scope==='group')body.group=$('#scopeGroup').value;else body.ids=selIds();
   if(!body.group&&!body.ids.length){toast(T('need_selection'),1);return}
   if(S.task==='extract'){body.fields=$('#fields').value.split(',').map(s=>s.trim()).filter(Boolean);body.fmt=$('#asJson').checked?'json':'table'}
@@ -583,6 +954,77 @@ async function runDrawer(){const scope=document.querySelector('[name=scope]:chec
 $('#run').onclick=runDrawer;
 $('#copy').onclick=()=>{if(lastText)copyText(lastText).then(()=>toast(T('copied')))};
 $('#vClose').onclick=()=>closeM($('#viewer'));
+
+/* ---- downloads: export, backup, OPML ---- */
+async function dl(path){const r=await fetch('/carta/'+path,{headers:{'X-Colibri-UI':'1'}});
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||r.statusText)}
+  const cd=r.headers.get('Content-Disposition')||'',m=cd.match(/filename="([^"]+)"/),name=m?m[1]:'download';
+  const b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);return name}
+function openExport(pref0){const o=[];const sel=S.selRes.size?S.selRes.size:S.selLib.size;
+  if(S.activeSaved)o.push(['s:'+S.activeSaved,F('exp_saved',{x:S.activeSaved})]);
+  else if(S.results.length)o.push(['results',F('exp_results',{n:S.results.length})]);
+  if(sel)o.push(['sel',F('exp_sel',{n:sel})]);
+  Object.keys(S.lib.groups).forEach(g=>o.push(['g:'+g,F('exp_group',{x:g})]));
+  S.saved.forEach(x=>{if(x.name!==S.activeSaved)o.push(['s:'+x.name,F('exp_saved',{x:x.name})])});
+  o.push(['all',T('exp_all')]);
+  const e=$('#expSrc');e.innerHTML=o.map(x=>`<option value="${esc(x[0])}">${esc(x[1])}</option>`).join('');
+  if(pref0&&o.some(x=>x[0]===pref0))e.value=pref0;$('#expSt').textContent='';openM($('#exp'),'#expSrc')}
+$('#expRes').onclick=()=>openExport(S.results.length||S.activeSaved?null:'all');
+$('#expLib').onclick=()=>openExport(S.selLib.size?'sel':'all');
+$('#expClose').onclick=()=>closeM($('#exp'));
+$('#expGo').onclick=async()=>{const v=$('#expSrc').value,p=new URLSearchParams({format:$('#expFmt').value});
+  if(v==='results'){const q=S.lastQ;for(const[k,x]of searchParams(q))p.set(k,x);if(!q&&!p.get('tag')&&!p.get('starred')){toast(T('exp_nothing'),1);return}}
+  else if(v==='sel'){p.set('ids',(S.selRes.size?[...S.selRes]:[...S.selLib]).slice(0,300).join(','))}
+  else if(v.startsWith('g:'))p.set('group',v.slice(2));else if(v.startsWith('s:'))p.set('saved',v.slice(2));
+  const b=$('#expGo');b.disabled=true;try{await dl('export?'+p);$('#expSt').textContent=T('exp_done');toast(T('exp_done'))}catch(e){fail(e)}b.disabled=false};
+
+/* ---- stats page ---- */
+const trunc=(t,n)=>{t=String(t);return t.length>n?'…'+t.slice(-(n-1)):t};
+function bars(data,fmt,lab){const rows=data.slice(0,12);if(!rows.length)return `<p class="muted">—</p>`;const mx=Math.max(1,...rows.map(r=>r[1])),W=440,rh=26,lw=140;
+  return `<svg class="bars" viewBox="0 0 ${W} ${rows.length*rh+4}" role="img" aria-label="${esc(rows.map(r=>(lab?lab(r[0]):r[0])+' '+(fmt?fmt(r[1]):r[1])).join(', '))}">`+rows.map((r,i)=>{const y=i*rh+2,w=Math.max(3,(W-lw-56)*r[1]/mx),l=lab?lab(r[0]):r[0];
+    return `<text class="bl" x="${lw-8}" y="${y+17}" text-anchor="end">${esc(trunc(l,21))}</text><rect class="bb" x="${lw}" y="${y+4}" width="${w}" height="16" rx="4"><title>${esc(l)}: ${fmt?fmt(r[1]):r[1]}</title></rect><text class="bv" x="${lw+w+6}" y="${y+17}">${fmt?fmt(r[1]):r[1]}</text>`}).join('')+'</svg>'}
+function timelineSvg(months){const m=months.slice().reverse().slice(-48);if(!m.length)return '';const n=m.length,W=720,H=140,pad=24,bw=Math.min(34,(W-pad*2)/n),mx=Math.max(1,...m.map(x=>x.count));
+  return `<svg class="bars tl" viewBox="0 0 ${W} ${H+22}" role="img" aria-label="${esc(F('st_tl_aria',{a:m[0].month,b:m[n-1].month}))}">`+m.map((x,i)=>{const h=Math.max(2,(H-14)*x.count/mx),X=pad+i*bw;
+    return `<rect class="bb" x="${X+1}" y="${H-h}" width="${Math.max(2,bw-2)}" height="${h}" rx="2"><title>${x.month}: ${x.count}</title></rect>`+(x.month.endsWith('-01')||i===0?`<text class="ax" x="${X}" y="${H+15}">${x.month.slice(0,4)}</text>`:'')}).join('')+`<text class="ax" x="${W-pad}" y="12" text-anchor="end">max ${mx}</text></svg>`}
+async function renderStats(){const o=$('#statsOut');try{const [st,tl]=await Promise.all([api('stats'),api('timeline')]);
+  if(!st.docs){o.innerHTML=`<div class="empty"><h2>${T('st_title')}</h2><p>${T('st_none')}</p></div>`;return}
+  const ent=m=>Object.entries(m).sort((a,b)=>b[1]-a[1]),lang=c=>c==='?'?T('unknown'):(L[c]||c);
+  const card=(t,body)=>`<div class="card"><h3>${esc(T(t))}</h3>${body}</div>`;
+  o.innerHTML=`<div class="cards"><div class="card"><div class="muted">${T('st_docs')}</div><div class="big">${st.docs.toLocaleString(LANG)}</div></div><div class="card"><div class="muted">${T('st_size')}</div><div class="big">${kb(st.total_bytes)}</div></div><div class="card"><div class="muted">${T('st_words')}</div><div class="big">${st.words_total.toLocaleString(LANG)}</div></div></div>`
+   +card('st_timeline',timelineSvg(tl.months))
+   +`<div class="sgrid">`+card('st_types',bars(ent(st.by_type)))+card('st_langs',bars(ent(st.languages),null,lang))+card('st_years',bars(Object.entries(st.by_year).sort((a,b)=>a[0]<b[0]?1:-1)))+card('st_folders',bars(ent(st.by_folder)))+`</div>`
+   +card('st_big',`<table><tbody>${st.biggest.map(([p,n])=>{const d=S.lib.documents.find(x=>x.path===p);return `<tr><td>${esc(base(p))}<div class="snip">${esc(p)}</div></td><td class="n">${kb(n)}</td><td>${d?`<button class="btn sm" data-v="${d.id}" data-n="${esc(base(p))}">${T('view')}</button>`:''}</td></tr>`}).join('')}</tbody></table>`)}
+  catch(e){fail(e)}}
+$('#bkGo').onclick=async()=>{const b=$('#bkGo');b.disabled=true;try{await dl('backup'+($('#bkIdx').checked?'?index=1':''));toast(T('bk_done'))}catch(e){fail(e)}b.disabled=false};
+async function verifyIdx(repair){const o=$('#vfOut');o.textContent=T('running');try{const r=await api('verify','POST',{repair});
+  if(r.rebuilt){o.innerHTML=`<span class="ok">${esc(F('vf_rebuilt',{n:r.docs}))}</span>`;await load()}
+  else if(r.ok)o.innerHTML=`<span class="ok">${esc(F('vf_ok',{n:r.docs}))}</span>`;
+  else o.innerHTML=`<p class="err">${esc(F('vf_bad',{n:r.problems.length}))}</p><ul>${r.problems.slice(0,8).map(x=>`<li>${esc(x)}</li>`).join('')}</ul><button class="btn pri" id="vfFix">${T('vf_repair')}</button>`;
+  const f=$('#vfFix');if(f)f.onclick=()=>verifyIdx(true)}catch(e){o.textContent='';fail(e)}}
+$('#vfGo').onclick=()=>verifyIdx(false);
+
+/* ---- bring things in + feeds ---- */
+$('#bringBtn').onclick=()=>{$('#impSt').textContent='';$('#feedSt').textContent='';loadFeeds();openM($('#bring'),'#impPick')};$('#brClose').onclick=()=>closeM($('#bring'));
+$('#impPick').onclick=()=>$('#impFile').click();
+$('#impFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const st=$('#impSt');
+  if(!/\.(html?|bib|bibtex|enex|csv|zip)$/i.test(f.name)){st.className='err';st.textContent=T('br_bad');return}
+  st.className='muted';st.textContent=T('running');const stop=poll(async()=>showProg(await api('progress')));Prog.start(T('indexing'));
+  try{const r=await fetch('/carta/import',{method:'POST',headers:{'X-Colibri-UI':'1','X-File-Name':encodeURIComponent(f.name)},body:f});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);
+    st.className=j.notes?'ok':'muted';st.textContent=j.notes?F('br_done',{n:j.notes}):T('br_none');await load()}
+  catch(x){st.className='err';st.textContent=fe(x).k==='e_generic'&&x.message?x.message:fe(x).msg}
+  finally{stop();Prog.end()}};
+async function loadFeeds(){try{const j=await api('feeds');renderFeeds(j.urls)}catch(e){fail(e)}}
+function renderFeeds(u){$('#feedList').innerHTML=u.length?u.map(x=>`<div class="row"><label title="${esc(x)}">${esc(x)}</label><button class="btn sm bad" data-fdrm="${esc(x)}" aria-label="${esc(F('fd_rm',{x}))}">✕</button></div>`).join(''):`<p class="muted">${T('fd_none')}</p>`}
+async function feedAdd(){const v=$('#feedUrl').value.trim();if(!v)return;try{const j=await api('feeds','POST',{url:v});$('#feedUrl').value='';renderFeeds(j.urls)}catch(e){toast(String(e.message||e),1)}}
+async function feedRm(u){try{renderFeeds((await api('feeds','DELETE',{url:u})).urls)}catch(e){fail(e)}}
+$('#feedAdd').onclick=feedAdd;$('#feedUrl').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();feedAdd()}});
+$('#feedPoll').onclick=async()=>{const b=$('#feedPoll'),o=$('#feedSt');b.disabled=true;o.textContent=T('fd_polling');
+  try{const j=await api('feeds/poll','POST',{});o.textContent=F('fd_result',{new:j.new_items,ok:j.feeds_ok,bad:j.feeds_failed});if(j.new_items)await load()}catch(e){o.textContent='';fail(e)}b.disabled=false};
+$('#opmlIn').onclick=()=>$('#opmlFile').click();
+$('#opmlFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const t=await f.text();
+  const r=await fetch('/carta/feeds/opml',{method:'POST',headers:{'X-Colibri-UI':'1','Content-Type':'text/xml'},body:t});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);
+  renderFeeds(j.urls);$('#feedSt').textContent=F('fd_opml_done',{n:j.added})}catch(x){fail(x)}};
+$('#opmlOut').onclick=async()=>{try{await dl('feeds/opml')}catch(e){fail(e)}};
 
 /* ---- modal stack: focus trap, Esc, focus restore ---- */
 const MS=[],FOC='button:not([disabled]),input:not([disabled]):not([type=hidden]),select,textarea,a[href],[tabindex="0"]';
@@ -629,7 +1071,7 @@ async function wizSummary(forceMock){const ids=(S.wizRes.length?S.wizRes:S.lib.d
 $('#wSum').onclick=()=>wizSummary(false);
 
 /* ---- shell: views, theme, text size, shortcuts ---- */
-function show(v){$$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));$$('.rb[data-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v?'page':'false'));pref('view',v);try{history.replaceState(null,'','#'+v)}catch(e){}}
+function show(v){$$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));if(v==='stats')renderStats();$$('.rb[data-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v?'page':'false'));pref('view',v);try{history.replaceState(null,'','#'+v)}catch(e){}}
 $$('.rb[data-view]').forEach(b=>b.onclick=()=>show(b.dataset.view));
 $('#lang').innerHTML=Object.entries(L).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');$('#lang').value=LANG;
 $('#lang').onchange=e=>{LANG=e.target.value;try{localStorage.setItem('carta.lang',LANG)}catch(x){}applyLang()};
@@ -640,8 +1082,8 @@ function toggleBig(){pref('big',pref('big')==='1'?'0':'1');applyBig()}
 $('#themeBtn').onclick=cycleTheme;$('#bigBtn').onclick=toggleBig;
 $('#helpBtn').onclick=()=>openM($('#kb'),'#kbClose');$('#kbClose').onclick=()=>closeM($('#kb'));
 $('#kbTour').onclick=()=>{closeM($('#kb'));openWiz(0)};
-[['#mock','mock'],['#saveOut','save'],['#ocrTxt','ocrTxt'],['#ocrPdf','ocrPdf']].forEach(([s,k])=>{$(s).checked=pref(k)==='1';$(s).addEventListener('change',()=>pref(k,$(s).checked?'1':'0'))});
-setTask(/^(summarize|extract|synthesize)$/.test(pref('task')||'')?pref('task'):'summarize');
+[['#mock','mock'],['#verify','verify'],['#saveOut','save'],['#ocrTxt','ocrTxt'],['#ocrPdf','ocrPdf']].forEach(([s,k])=>{$(s).checked=pref(k)==='1';$(s).addEventListener('change',()=>pref(k,$(s).checked?'1':'0'))});
+setTask(TASKS.includes(pref('task'))?pref('task'):'summarize');setTab(pref('tab'));
 addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(tipFor){hideTip();return}const m=MS[MS.length-1];if(m){e.preventDefault();closeM(m.el)}return}
   if(e.key==='Tab'&&MS.length){const m=MS[MS.length-1].el,f=[...m.querySelectorAll(FOC)].filter(x=>x.offsetParent!==null);if(f.length){const a=f[0],z=f[f.length-1],out=!m.contains(document.activeElement);
@@ -653,16 +1095,19 @@ addEventListener('keydown',e=>{
   const top=MS[MS.length-1];if(top&&top.el.id!=='drawer'&&e.key!=='?')return;
   const k=e.key;
   if(k==='/'){e.preventDefault();show('fetch');$('#q').focus()}
-  else if(k==='1')show('library');else if(k==='2')show('fetch');
+  else if(k==='1')show('library');else if(k==='2')show('fetch');else if(k==='3')show('stats');
   else if(k==='c')toggleCarta();
   else if(k==='a'){e.preventDefault();show('library');$('#v-library').classList.add('side-on');$('#newRoot').focus()}
   else if(k==='t')cycleTheme();else if(k==='+'||k==='=')toggleBig();
   else if(k==='?'){e.preventDefault();top&&top.el.id==='kb'?closeM($('#kb')):openM($('#kb'),'#kbClose')}});
 async function health(){try{const r=await fetch('/health',{cache:'no-store'});S.gw=r.ok}catch(e){S.gw=false}$('#gw').dataset.ok=S.gw;$('#gwTxt').textContent=T(S.gw?'gw_ok':'gw_off')}
-(async()=>{applyLang();const h=(location.hash||'').slice(1);let v=h==='fetch'||h==='library'?h:pref('view');
+(async()=>{applyLang();const h=(location.hash||'').slice(1);let v=/^(fetch|library|stats)$/.test(h)?h:pref('view');
   try{S.ocr=(await api('status')).ocr}catch(e){}
   try{await load()}catch(e){fail(e)}
-  if(v!=='fetch'&&v!=='library')v=S.lib.documents.length?'fetch':'library';show(v);health();setInterval(health,8000);
+  if(!S.lib)S.lib={documents:[],roots:[],groups:[]};
+  if(!/^(fetch|library|stats)$/.test(v||''))v=S.lib.documents.length?'fetch':'library';show(v);health();
+  try{const pr=await api('progress');if(pr.running)waitIndex().then(()=>load()).catch(()=>{})}catch(e){}
+  setInterval(health,8000);
   /* first run: open the welcome guide (not in automated browsers, unless ?welcome=1) */
   if(location.search.includes('welcome=1')||(!pref('welcomed')&&!S.lib.documents.length&&!navigator.webdriver))openWiz(0)})();
 </script>

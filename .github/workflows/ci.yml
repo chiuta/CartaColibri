@@ -42,6 +42,27 @@ jobs:
           python scripts/gen_carta_docs.py
           git diff --exit-code -- README.md docs/cartacolibri/README.*.md site-carta/index.html
 
+  e2e:
+    name: end-to-end web UI (real server + Chrome, 8 languages)
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - run: cargo build --release -p cartacolibri
+      - run: pip install playwright
+      - name: Chrome for playwright (the runner's Google Chrome, else the bundled Chromium)
+        run: |
+          if ! command -v google-chrome >/dev/null; then python -m playwright install --with-deps chromium; fi
+      - name: Run the browser tests
+        run: python tests/e2e/run_e2e.py --shots "$RUNNER_TEMP/e2e-shots"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: e2e-screenshots, path: '${{ runner.temp }}/e2e-shots', if-no-files-found: ignore }
+
   browser:
     name: web-grab browser (Linux self-test under Xvfb)
     runs-on: ubuntu-latest
@@ -62,6 +83,7 @@ jobs:
           xvfb-run -a target/debug/cartacolibri-browser http://127.0.0.1:8899/p.html --selftest-ask --mock --home "$RUNNER_TEMP/h"
           printf '<html><head><meta charset="utf-8"><title>Zbor</title></head><body><p>Păsările mici precum colibri își bat aripile foarte rapid.</p></body></html>' > site/q.html
           xvfb-run -a target/debug/cartacolibri-browser http://127.0.0.1:8899/p.html http://127.0.0.1:8899/q.html --selftest-tabs --mock --home "$RUNNER_TEMP/h2"
+          xvfb-run -a target/debug/cartacolibri-browser http://127.0.0.1:8899/p.html --selftest-forge --home "$RUNNER_TEMP/h3"
           target/debug/cartacolibri --home "$RUNNER_TEMP/h" search aripi | grep -q aripi
 
   browser-compile:

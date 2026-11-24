@@ -31,6 +31,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Privé par conception** — ni cloud ni télémétrie ; les originaux sont seulement lus. 8 langues : EN, RO, FR, IT, ES, PT, DE, HU.
 - **web-grab** — un petit navigateur en Rust (clean-room, remplace Falkon) avec onglets, qui connaît ta bibliothèque : un badge quand la page est déjà enregistrée (et quand elle a changé), des documents liés pendant que tu navigues, enregistrement en un clic, questions à ton Colibrì local sur une page — ou sur tous les onglets ouverts, avec citations. Une commande et un bookmarklet couvrent les autres navigateurs. Aussi : 🖍 surlignages enregistrés avec la page, 👁 pages surveillées avec le détail des changements (`cartacolibri webwatch`), instantané HTML à chaque sauvegarde, historique consultable optionnel (`cartacolibri history on`), 🗂📝📊 résumé ou extraction sur tous les onglets, et `?question` dans la barre d'adresse pour interroger toute ta bibliothèque.
 
+## Fonctions avancées
+
+- **Trouve** — une barre de progression pendant l’indexation ; « Tu voulais dire… ? » pour les fautes de frappe, avec des suggestions quand rien ne correspond ; les doublons listés et une raison claire pour chaque fichier ignoré.
+- **Organise** — des étiquettes, une étoile et une note privée sur chaque document ; elles survivent à la réindexation. Vois les documents liés, ce que tu as ouvert récemment et le plus souvent, et enregistre des recherches comme collections intelligentes.
+- **14 tâches** — comparer, chronologie, glossaire, plan, actions, FAQ, fiches, quiz, traduire, expliquer, contradictions, plus résumer, extraire et synthétiser. Coche **vérifier les citations** pour repérer les phrases que les sources n’appuient pas, et choisis la langue de la réponse.
+- **Chat** — pose des questions à la suite sur toute ta bibliothèque ou sur un groupe. Les réponses citent leurs sources, ou disent honnêtement « introuvable dans tes documents » au lieu de deviner.
+- **Partage et protège** — exporte un groupe, une étiquette ou une recherche en Markdown, CSV, JSON ou zip, avec citations ; une vue Statistiques avec graphiques et chronologie ; une sauvegarde en un seul fichier avec sommes de contrôle ; Vérifier/Réparer pour l’index.
+- **Fais entrer des choses** — importe les favoris du navigateur, un dossier Obsidian, Zotero/BibTeX, un CSV Pocket/Raindrop ou des exports Evernote, et suis des flux RSS/Atom (OPML en import et export) : ils deviennent des notes interrogeables. Les e-mails, agendas, sous-titres et notebooks sont aussi indexés.
+
 ## Démarrage rapide
 
 Compile-la (ou prends le zip portable) et lance la page locale. Pour les tâches IA, lance aussi le moteur Colibrì avec un modèle adapté à ta RAM (voir sa doc) :
@@ -53,6 +62,23 @@ cartacolibri synthesize "payment terms" --group Contracts --save --mock
 cartacolibri grab https://example.org/article      # web-grab (command line)
 cartacolibri-browser https://example.org           # web-grab (browser)
 ```
+
+## Plus de commandes
+
+| Commande | Ce qu’elle fait |
+|---|---|
+| `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | les 14 tâches (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize) ; `--verify` marque les phrases dont le `[S#]` n’est pas appuyé par le texte |
+| `chat [--group G]` | questions à la suite sur ta bibliothèque ; réponses citées, ou « introuvable dans tes documents » |
+| `tag add/rm/list/show`, `star`, `note` | ton organisation personnelle, conservée après réindexation |
+| `saved add/list/run/rm` | recherches enregistrées / collections intelligentes |
+| `recent`, `related PATH` | ce que tu as ouvert récemment ; documents similaires |
+| `export --format md\|csv\|json\|zip` | partage un groupe, une étiquette ou une recherche enregistrée, avec citations |
+| `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | sauvegarde en un seul fichier avec sommes de contrôle ; vérifie-la ; restaure-la |
+| `verify [--repair]` | vérifie l’index ; avec `--repair`, le reconstruit à partir de tes fichiers |
+| `stats`, `timeline` | chiffres sur ta bibliothèque ; documents par mois |
+| `import PATH` | favoris `.html`, dossier Obsidian, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
+| `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | abonnements RSS/Atom enregistrés comme notes |
+| `webwatch`, `history` | pages web surveillées avec diff ; historique de navigation optionnel |
 
 ## Comment ça s’articule
 
@@ -90,6 +116,24 @@ Le zip portable existe pour les deux, mais Linux est le système le mieux testé
 **Pourquoi « alpha » ?**  
 Parce qu’elle est jeune : le cœur fonctionne et est testé, mais pas sur tous les systèmes, et les vérifications automatiques sur GitHub ne sont pas encore confirmées. Attends-toi à des aspérités, et signale-les-nous.
 
+**Comment les étiquettes, étoiles et notes survivent-elles à la réindexation ?**  
+Elles ne sont pas stockées dans l’index de recherche mais dans un petit fichier à part, `organize.json`, dans ton dossier `<home>`, lié au chemin de chaque document. **Mettre à jour l’index**, une réindexation complète et même **Vérifier/Réparer** (qui reconstruit l’index) n’y touchent pas. Si tu renommes ou déplaces un fichier, il compte comme un nouveau document : les étiquettes restent sur l’ancien chemin.
+
+**Comment sauvegarder et restaurer ?**  
+Ouvre **Statistiques** et clique sur **Télécharger la sauvegarde** (coche la case pour inclure l’index), ou lance `cartacolibri backup my.zip`. C’est un seul zip avec sommes de contrôle, qui contient tes étiquettes, notes, groupes, recherches enregistrées et notes importées, jamais tes documents originaux. `cartacolibri backup-check my.zip` le teste et `cartacolibri restore my.zip` remet tout en place. Garde le zip ailleurs que sur cet ordinateur.
+
+**Comment importer des favoris, Obsidian ou Zotero ?**  
+Clique sur **Importer** dans la Bibliothèque, ou lance `cartacolibri import CHEMIN`. Il comprend un export de favoris du navigateur (`.html`), un dossier Obsidian, un fichier Zotero/BibTeX `.bib`, des fichiers `.csv` Pocket ou Raindrop et des exports Evernote `.enex`. Chaque élément devient une petite note de ta bibliothèque, que tu peux chercher, étiqueter et citer. Tes originaux sont seulement lus.
+
+**Comment fonctionnent les flux ?**  
+Dans **Importer → Flux**, colle une adresse RSS ou Atom et clique sur **Ajouter**. Quand tu cliques sur **Vérifier maintenant** (ou lances `cartacolibri feeds poll`), les nouveaux éléments sont enregistrés comme notes et indexés : tu peux les chercher et les interroger. Rien ne tourne tout seul en arrière-plan. Tu peux importer et exporter tes abonnements en OPML.
+
+**Que fait « vérifier les citations » ?**  
+Après la réponse de l’IA, CartaColibri relit chaque phrase. Si une phrase n’a pas de citation `[S#]`, ou si la source citée ne contient pas vraiment ce que dit la phrase, elle est marquée `[unsupported]`. C’est un filet de sécurité rapide, pas une garantie : ouvre la source pour tout ce qui compte.
+
+**Pourquoi une page web a-t-elle été refusée ?**  
+web-grab ne récupère que des pages publiques. Les adresses de ta propre machine ou d’un réseau privé (`localhost`, `192.168.x.x`, `10.x.x.x`, etc.) sont refusées, afin qu’une page web ne puisse jamais le piéger pour lire tes services internes. Si tu le veux vraiment, par exemple pour ton propre intranet, lance CartaColibri avec `CARTACOLIBRI_GRAB_LOCAL=1`.
+
 ## Quand quelque chose ne va pas
 
 Essaie d’abord `cartacolibri doctor` : il vérifie ton installation et t’indique quoi corriger.
@@ -106,6 +150,8 @@ Essaie d’abord `cartacolibri doctor` : il vérifie ton installation et t’ind
 | La réponse dit NOT FOUND | Les fichiers choisis ne contiennent pas l’information. C’est voulu : elle ne devine jamais. | Vérifie que le bon groupe est sélectionné, reformule la question ou ajoute au groupe les fichiers manquants. |
 | Le navigateur web-grab ne s’ouvre pas | Un composant système manque. | Linux : installe `libwebkit2gtk-4.1`. Windows : installe le runtime WebView2. En attendant, `cartacolibri grab URL` fonctionne sans lui. |
 | Ton propre script reçoit `403 missing X-Colibri-UI header` | C’est un contrôle de sécurité, pas un bug. | Envoie l’en-tête `X-Colibri-UI: 1` avec chaque appel à `/carta/*`. |
+| L’index semble cassé : résultats bizarres, fichiers manquants, une erreur sur la base de données | Le fichier d’index a été endommagé (par exemple par un plantage ou un disque plein) ou n’est plus synchronisé avec tes dossiers. | Ouvre **Statistiques → Vérifier / Réparer**, ou lance `cartacolibri verify --repair`. L’index est reconstruit à partir de tes fichiers ; tes étiquettes, notes et groupes sont conservés. |
+| Un fichier a été ignoré car « trop lent » | Sa lecture a dépassé la limite de temps (120 secondes par défaut), en général un PDF énorme ou abîmé, ou un très gros scan. | Augmente la limite, par exemple `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, puis **Mettre à jour l’index**. Ou découpe / réexporte le fichier. La raison s’affiche sous « Fichiers ignorés ». |
 
 ## Glossaire en mots simples
 
@@ -128,7 +174,11 @@ Essaie d’abord `cartacolibri doctor` : il vérifie ton installation et t’ind
 
 ## État des lieux, sans fard
 
-CartaColibri est un logiciel **alpha** (version 0.2.0-alpha) : il fonctionne, mais attends-toi à des aspérités et garde des sauvegardes de ce qui compte. Linux est la plateforme la mieux testée : le navigateur web-grab y est autotesté en CI. Sous **Windows et macOS**, le navigateur est compilé en CI mais n’a **jamais été lancé à la main**. Les vérifications automatiques sur GitHub (CI) **ne sont pas encore confirmées** : les jobs sont restés bloqués dans la file. Tes documents ne risquent rien dans tous les cas, puisqu’ils sont seulement lus.
+CartaColibri est un logiciel **alpha** (version 0.2.0-alpha) : il fonctionne, mais attends-toi à des aspérités et garde des sauvegardes de ce qui compte. Linux est la plateforme la mieux testée : le navigateur web-grab y est autotesté en CI. Sous **Windows et macOS**, le navigateur est compilé en CI mais n’a **jamais été lancé à la main**. Les vérifications automatiques sur GitHub (CI) **ne sont pas encore confirmées** : les jobs sont restés bloqués dans la file. Tes documents ne risquent rien dans tous les cas, puisqu’ils sont seulement lus. La préversion **v0.2.0-alpha.1** sur GitHub est encore un **brouillon** : les téléchargements portables ne sont donc pas encore publics ; d’ici là, compile depuis les sources.
+
+## Sécurité
+
+Tu as trouvé une faille ? Signale-la en privé, comme décrit dans [SECURITY.md](../../SECURITY.md) ; n’ouvre pas d’abord un ticket public. La façon dont le serveur se défend (loopback uniquement, en-tête `X-Colibri-UI`, pas d’adresses privées dans web-grab, originaux en lecture seule) est décrite dans [docs/threat-model.md](../threat-model.md).
 
 ## Licence et crédits
 

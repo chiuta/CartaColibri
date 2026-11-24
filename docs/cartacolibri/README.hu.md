@@ -31,6 +31,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Alapból privát** — nincs felhő, nincs telemetria; az eredetiket csak olvassa. 8 nyelv: EN, RO, FR, IT, ES, PT, DE, HU.
 - **web-grab** — egy kis Rust böngésző (clean-room, a Falkon helyett) lapokkal, amely ismeri a könyvtáradat: jelvény, ha az oldal már mentve van (és ha megváltozott), kapcsolódó dokumentumok böngészés közben, mentés egy kattintással, kérdések a helyi Colibrìhez egy oldalról — vagy az összes nyitott lapról, hivatkozásokkal. Egy parancs és egy bookmarklet a többi böngészőt fedi le.
 
+## Haladó funkciók
+
+- **Keresés** — folyamatjelző az indexelés közben; „Erre gondoltál…?” elgépeléseknél, javaslatokkal, ha semmi sem egyezik; a duplikátumok listázva, és minden kihagyott fájlhoz érthető ok.
+- **Rendszerezés** — címkék, csillag és privát jegyzet minden dokumentumon; túlélik az újraindexelést. Nézd a kapcsolódó dokumentumokat, a nemrég és a leggyakrabban megnyitottakat, és mentsd el a kereséseket okos gyűjteményként.
+- **14 feladat** — összehasonlítás, idővonal, szószedet, vázlat, teendők, GYIK, kártyák, kvíz, fordítás, magyarázat, ellentmondások, plusz összefoglalás, kinyerés és szintézis. Jelöld be az **idézetek ellenőrzését**, hogy megjelölje a forrásokkal alá nem támasztott mondatokat, és válaszd ki a válasz nyelvét.
+- **Chat** — tegyél fel egymásra épülő kérdéseket az egész könyvtáradról vagy egy csoportról. A válaszok megadják a forrásaikat, vagy őszintén kimondják: „nem található a dokumentumaidban”, találgatás helyett.
+- **Megosztás és mentés** — exportálj egy csoportot, címkét vagy keresést Markdown, CSV, JSON vagy zip formátumban, hivatkozásokkal; Statisztika nézet diagramokkal és idővonallal; egyfájlos, ellenőrzőösszeges biztonsági mentés; Ellenőrzés/Javítás az indexhez.
+- **Behozatal** — importálj böngészőkönyvjelzőket, Obsidian-mappát, Zotero/BibTeX-et, Pocket/Raindrop CSV-t vagy Evernote-exportot, és kövess RSS/Atom-csatornákat (OPML be- és kimenet): kereshető jegyzetekké válnak. Az e-mailek, naptárak, feliratok és notebookok is bekerülnek az indexbe.
+
 ## Gyors kezdés
 
 Fordítsd le (vagy töltsd le a hordozható zipet), és indítsd el a helyi oldalt. Az MI-feladatokhoz indítsd el a Colibrì motort is a RAM-odba férő modellel (lásd a dokumentációját):
@@ -53,6 +62,23 @@ cartacolibri synthesize "payment terms" --group Contracts --save --mock
 cartacolibri grab https://example.org/article      # web-grab (command line)
 cartacolibri-browser https://example.org           # web-grab (browser)
 ```
+
+## További parancsok
+
+| Parancs | Mit csinál |
+|---|---|
+| `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | a 14 feladat (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); a `--verify` megjelöli azokat a mondatokat, amelyek `[S#]` hivatkozását a szöveg nem támasztja alá |
+| `chat [--group G]` | egymásra épülő kérdések a könyvtáradról; a válaszok hivatkoznak, vagy „nem található a dokumentumaidban” |
+| `tag add/rm/list/show`, `star`, `note` | a saját rendszerezésed, amely az újraindexelés után is megmarad |
+| `saved add/list/run/rm` | mentett keresések / okos gyűjtemények |
+| `recent`, `related PATH` | amit nemrég megnyitottál; hasonló dokumentumok |
+| `export --format md\|csv\|json\|zip` | oszd meg egy csoportot, címkét vagy mentett keresést hivatkozásokkal |
+| `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | egyfájlos, ellenőrzőösszeges mentés; ellenőrzése; visszaállítása |
+| `verify [--repair]` | ellenőrzi az indexet; a `--repair` a fájljaidból újraépíti |
+| `stats`, `timeline` | számok a könyvtáradról; dokumentumok havonként |
+| `import PATH` | könyvjelzők `.html`, Obsidian-mappa, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
+| `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | RSS/Atom-feliratkozások, jegyzetként mentve |
+| `webwatch`, `history` | figyelt weboldalak különbségekkel; opcionális böngészési előzmények |
 
 ## Hogyan áll össze
 
@@ -90,6 +116,24 @@ A hordozható zip mindkettőre létezik, de a Linux a legjobban tesztelt rendsze
 **Miért „alfa”?**  
 Mert fiatal: a mag működik és tesztelt, de nem minden rendszeren, és a GitHub automatikus ellenőrzései még nincsenek megerősítve. Számíts apróbb hibákra, és jelezd nekünk őket.
 
+**Hogyan élik túl a címkék, csillagok és jegyzetek az újraindexelést?**  
+Nem a keresőindexben vannak, hanem egy külön kis fájlban, az `organize.json`-ban, a `<home>` mappádban, minden dokumentum útvonalához kötve. Az **Index frissítése**, a teljes újraindexelés és még az **Ellenőrzés/Javítás** (amely újraépíti az indexet) sem nyúl hozzájuk. Ha átnevezel vagy áthelyezel egy fájlt, új dokumentumnak számít, a címkék pedig a régi útvonalnál maradnak.
+
+**Hogyan készítek mentést, és hogyan állítom vissza?**  
+Nyisd meg a **Statisztika** nézetet, és nyomd meg a **Mentés letöltése** gombot (jelöld be a négyzetet, ha az indexet is szeretnéd), vagy futtasd: `cartacolibri backup my.zip`. Egyetlen zip, ellenőrzőösszegekkel, a címkéiddel, jegyzeteiddel, csoportjaiddal, mentett keresésekkel és importált jegyzetekkel, az eredeti dokumentumaid soha nincsenek benne. A `cartacolibri backup-check my.zip` ellenőrzi, a `cartacolibri restore my.zip` mindent visszaállít. A zipet tartsd máshol is, ne csak ezen a gépen.
+
+**Hogyan importálok könyvjelzőket, Obsidiant vagy Zotero-t?**  
+Kattints a Könyvtárban a **Behozatal** gombra, vagy futtasd: `cartacolibri import ÚTVONAL`. Érti a böngésző könyvjelző-exportját (`.html`), az Obsidian-mappát, a Zotero/BibTeX `.bib` fájlt, a Pocket vagy Raindrop `.csv` fájlokat és az Evernote `.enex` exportokat. Minden elem kis jegyzet lesz a könyvtáradban, amelyben kereshetsz, címkézhetsz és hivatkozhatsz. Az eredeti fájlokat csak olvassa.
+
+**Hogyan működnek a csatornák (feedek)?**  
+A **Behozatal → Csatornák** résznél illessz be egy RSS- vagy Atom-címet, és nyomd meg a **Hozzáadás** gombot. Amikor a **Ellenőrzés most** gombra kattintasz (vagy lefuttatod a `cartacolibri feeds poll` parancsot), az új elemek jegyzetként mentődnek és indexelődnek, így kereshetsz bennük és kérdezhetsz róluk. A háttérben semmi nem fut magától. A feliratkozásaidat OPML-ként hozhatod be és viheted ki.
+
+**Mit csinál az „idézetek ellenőrzése”?**  
+Miután az MI válaszolt, a CartaColibri újra elolvassa minden mondatot. Ha egy mondatnak nincs `[S#]` hivatkozása, vagy a hivatkozott forrás valójában nem tartalmazza, amit a mondat állít, `[unsupported]` jelölést kap. Ez gyors biztonsági háló, nem garancia: ami fontos, ott nyisd meg a forrást.
+
+**Miért utasítottak el egy weboldalt?**  
+A web-grab csak nyilvános oldalakat tölt le. A saját gépeden vagy privát hálózaton lévő címeket (`localhost`, `192.168.x.x`, `10.x.x.x` és hasonlók) elutasítja, hogy egy weboldal ne tudja rávenni a belső szolgáltatásaid olvasására. Ha tényleg ezt szeretnéd, például a saját intranetedhez, indítsd a CartaColibrit a `CARTACOLIBRI_GRAB_LOCAL=1` beállítással.
+
 ## Ha valami nem működik
 
 Először próbáld ki a `cartacolibri doctor` parancsot: ellenőrzi a beállításaidat, és megmondja, mit kell javítani.
@@ -106,6 +150,8 @@ Először próbáld ki a `cartacolibri doctor` parancsot: ellenőrzi a beállít
 | A válasz: NOT FOUND | A kiválasztott fájlok nem tartalmazzák az információt. Ez szándékos: soha nem találgat. | Nézd meg, hogy a megfelelő csoport van-e kiválasztva, fogalmazd át a kérdést, vagy add hozzá a hiányzó fájlokat a csoporthoz. |
 | A web-grab böngésző nem nyílik meg | Hiányzik egy rendszerkomponens. | Linux: telepítsd a `libwebkit2gtk-4.1` csomagot. Windows: telepítsd a WebView2 futtatókörnyezetet. Addig a `cartacolibri grab URL` nélküle is működik. |
 | A saját szkripted `403 missing X-Colibri-UI header` hibát kap | Ez biztonsági ellenőrzés, nem hiba. | Küldd el az `X-Colibri-UI: 1` fejlécet minden `/carta/*` hívással. |
+| Az index hibásnak tűnik: furcsa találatok, hiányzó fájlok, adatbázis-hiba | Az indexfájl megsérült (például összeomlás vagy tele lemez miatt), vagy elcsúszott a mappáidhoz képest. | Nyisd meg a **Statisztika → Ellenőrzés / Javítás** részt, vagy futtasd: `cartacolibri verify --repair`. A fájljaidból újraépíti az indexet; a címkéid, jegyzeteid és csoportjaid megmaradnak. |
+| Egy fájlt kihagyott, mert „túl lassú” volt | Az olvasása átlépte az időkorlátot (alapból 120 másodperc), általában egy hatalmas vagy sérült PDF, esetleg egy nagyon nagy szkennelés. | Emeld meg a korlátot, például `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, majd **Index frissítése**. Vagy darabold fel / exportáld újra a fájlt. Az ok a „Kihagyott fájlok” alatt látszik. |
 
 ## Szószedet egyszerű szavakkal
 
@@ -128,7 +174,11 @@ Először próbáld ki a `cartacolibri doctor` parancsot: ellenőrzi a beállít
 
 ## Őszinte állapotjelentés
 
-A CartaColibri **alfa** állapotú szoftver (0.2.0-alpha verzió): működik, de számíts apróbb hibákra, és a fontos dolgaidról tarts mentést. A Linux a legjobban tesztelt platform: ott a web-grab böngészőt a CI automatikusan kipróbálja. **Windowson és macOS-en** a böngészőt a CI lefordítja, de **kézzel még soha nem futtattuk**. A GitHubon az automatikus ellenőrzések (CI) **még nincsenek megerősítve**: a feladatok elakadtak a sorban. A dokumentumaid így is biztonságban vannak, mert csak olvassa őket.
+A CartaColibri **alfa** állapotú szoftver (0.2.0-alpha verzió): működik, de számíts apróbb hibákra, és a fontos dolgaidról tarts mentést. A Linux a legjobban tesztelt platform: ott a web-grab böngészőt a CI automatikusan kipróbálja. **Windowson és macOS-en** a böngészőt a CI lefordítja, de **kézzel még soha nem futtattuk**. A GitHubon az automatikus ellenőrzések (CI) **még nincsenek megerősítve**: a feladatok elakadtak a sorban. A dokumentumaid így is biztonságban vannak, mert csak olvassa őket. A GitHubon a **v0.2.0-alpha.1** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.
+
+## Biztonság
+
+Sebezhetőséget találtál? Jelezd privátban, ahogy a [SECURITY.md](../../SECURITY.md) leírja; kérlek, ne nyiss előbb nyilvános hibajegyet. Azt, hogyan védekezik a szerver (csak loopback, `X-Colibri-UI` fejléc, a web-grab nem megy privát címekre, az eredetik csak olvashatók), a [docs/threat-model.md](../threat-model.md) írja le.
 
 ## Licenc és köszönet
 

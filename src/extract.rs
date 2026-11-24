@@ -16,6 +16,191 @@ pub const IMG_EXT: &[&str] = &[".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp",
 pub type Parts = Vec<(String, String)>;
 pub type Res<T> = Result<T, String>;
 
+// ------------------------------------------------------------------ limits and guards
+
+fn env_u64(name: &str, default: u64) -> u64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|&n| n > 0)
+        .unwrap_or(default)
+}
+
+/// Seconds one file may take to read (env `CARTACOLIBRI_EXTRACT_TIMEOUT`, default 120).
+pub fn extract_timeout() -> std::time::Duration {
+    std::time::Duration::from_secs(env_u64("CARTACOLIBRI_EXTRACT_TIMEOUT", 120))
+}
+
+/// Most decoded text kept from one file (env `CARTACOLIBRI_MAX_TEXT_MB`, default 50 MB).
+pub fn max_text_bytes() -> usize {
+    (env_u64("CARTACOLIBRI_MAX_TEXT_MB", 50) as usize).saturating_mul(1024 * 1024)
+}
+
+/// Most pages OCR is run on in one PDF (env `CARTACOLIBRI_OCR_MAX_PAGES`, default 200).
+pub fn ocr_max_pages() -> usize {
+    env_u64("CARTACOLIBRI_OCR_MAX_PAGES", 200) as usize
+}
+
+/// Largest single file the readers will load into memory.
+const MAX_READ_BYTES: u64 = 256 * 1024 * 1024;
+/// XML guards: events read, element nesting depth.
+const XML_MAX_EVENTS: u64 = 20_000_000;
+const XML_MAX_DEPTH: u32 = 512;
+/// Zip guards: entries, and the compression ratio that marks a bomb.
+const ZIP_MAX_ENTRIES: usize = 100_000;
+const ZIP_BOMB_MIN_TOTAL: u64 = 50 * 1024 * 1024;
+const ZIP_BOMB_RATIO: u64 = 200;
+/// Workers that may be stuck at once per file kind before new ones of that kind are refused.
+pub const STUCK_LIMIT: usize = 4;
+/// Table guards: cells kept from a CSV/TSV.
+const CSV_MAX_CELLS: usize = 8_000_000;
+
+static STUCK: std::sync::Mutex<Vec<(String, usize)>> = std::sync::Mutex::new(Vec::new());
+
+fn stuck_adjust(kind: &str, delta: isize) -> usize {
+    let mut g = STUCK.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(slot) = g.iter_mut().find(|(k, _)| k == kind) {
+        slot.1 = slot.1.saturating_add_signed(delta);
+        return slot.1;
+    }
+    let n = 0usize.saturating_add_signed(delta);
+    g.push((kind.to_string(), n));
+    n
+}
+
+fn stuck_count(kind: &str) -> usize {
+    let g = STUCK.lock().unwrap_or_else(|e| e.into_inner());
+    g.iter().find(|(k, _)| k == kind).map_or(0, |(_, n)| *n)
+}
+
+/// Run a helper program with a hard deadline; the child is killed when it is exceeded.
+/// Output beyond 64 MB is dropped (the child is not blocked: the pipe keeps being drained).
+pub fn run_cmd(mut cmd: Command, timeout: std::time::Duration) -> Res<std::process::Output> {
+    use std::process::Stdio;
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    fn drain<R: Read + Send + 'static>(r: Option<R>) -> std::thread::JoinHandle<Vec<u8>> {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            if let Some(mut r) = r {
+                let mut chunk = [0u8; 65536];
+                while let Ok(n) = r.read(&mut chunk) {
+                    if n == 0 {
+                        break;
+                    }
+                    if buf.len() < 64 * 1024 * 1024 {
+                        buf.extend_from_slice(&chunk[..n]);
+                    }
+                }
+            }
+            buf
+        })
+    }
+    let out_h = drain(child.stdout.take());
+    let err_h = drain(child.stderr.take());
+    let deadline = std::time::Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(st)) => break st,
+            Ok(None) => {}
+            Err(e) => {
+                let _ = child.kill();
+                return Err(e.to_string());
+            }
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = out_h.join();
+            let _ = err_h.join();
+            return Err(TOO_LONG.into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    };
+    Ok(std::process::Output {
+        status,
+        stdout: out_h.join().unwrap_or_default(),
+        stderr: err_h.join().unwrap_or_default(),
+    })
+}
+
+const TOO_LONG: &str = "This file took too long to read, so it was skipped.";
+
+/// Read a regular file fully, refusing FIFOs/devices and files over the read limit.
+fn read_regular(path: &Path) -> Res<Vec<u8>> {
+    let md = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if !md.is_file() {
+        return Err(
+            "This is not an ordinary file (a device, pipe or socket), so it was skipped.".into(),
+        );
+    }
+    if md.len() > MAX_READ_BYTES {
+        return Err(format!(
+            "This file unpacks to more than {} MB; skipped.",
+            MAX_READ_BYTES >> 20
+        ));
+    }
+    let f = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut buf = Vec::with_capacity(md.len().min(MAX_READ_BYTES) as usize);
+    f.take(MAX_READ_BYTES + 1)
+        .read_to_end(&mut buf)
+        .map_err(|e| e.to_string())?;
+    if buf.len() as u64 > MAX_READ_BYTES {
+        return Err(format!(
+            "This file unpacks to more than {} MB; skipped.",
+            MAX_READ_BYTES >> 20
+        ));
+    }
+    Ok(buf)
+}
+
+fn read_regular_meta(path: &Path) -> Res<()> {
+    let md = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if !md.is_file() {
+        return Err(
+            "This is not an ordinary file (a device, pipe or socket), so it was skipped.".into(),
+        );
+    }
+    Ok(())
+}
+
+/// Keep the total text under the cap; add a note part when something was cut.
+fn limit_parts(mut parts: Parts) -> Parts {
+    let maxb = max_text_bytes();
+    let mut total = 0usize;
+    let mut cut_at: Option<usize> = None;
+    for (i, (_, t)) in parts.iter_mut().enumerate() {
+        if total >= maxb {
+            cut_at = Some(i);
+            break;
+        }
+        let room = maxb - total;
+        if t.len() > room {
+            let mut c = room;
+            while c > 0 && !t.is_char_boundary(c) {
+                c -= 1;
+            }
+            t.truncate(c);
+            cut_at = Some(i + 1);
+            break;
+        }
+        total += t.len();
+    }
+    if let Some(n) = cut_at {
+        parts.truncate(n);
+        parts.push((
+            "note".into(),
+            format!(
+                "[This file is very large: only the first {} MB of its text was indexed.]",
+                maxb >> 20
+            ),
+        ));
+    }
+    parts
+}
+
 fn re(cell: &'static OnceLock<Regex>, pat: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pat).unwrap())
 }
@@ -69,7 +254,10 @@ pub fn html_to_text(s: &str) -> String {
                     continue;
                 }
                 let end = rest.find('>').map(|p| p + 1).unwrap_or(rest.len());
-                let tag = &rest[1..end.saturating_sub(1).max(1)];
+                let tag = rest
+                    .get(1..end.saturating_sub(1).max(1))
+                    .or_else(|| rest.get(1..end))
+                    .unwrap_or("");
                 let closing = tag.starts_with('/');
                 let name: String = tag
                     .trim_start_matches('/')
@@ -97,10 +285,12 @@ pub fn html_to_text(s: &str) -> String {
             }
             b'&' if skip == 0 => {
                 let rest = &s[i + 1..];
-                match rest
-                    .find(';')
-                    .filter(|&p| p <= 10)
-                    .and_then(|p| entity(&rest[..p]).map(|e| (p, e)))
+                // look only a few bytes ahead (a long run of '&' must stay linear)
+                let window = &rest.as_bytes()[..rest.len().min(11)];
+                match window
+                    .iter()
+                    .position(|&c| c == b';')
+                    .and_then(|p| rest.get(..p).and_then(entity).map(|e| (p, e)))
                 {
                     Some((p, e)) => {
                         out.push_str(&e);
@@ -113,7 +303,10 @@ pub fn html_to_text(s: &str) -> String {
                 }
             }
             _ => {
-                let ch = s[i..].chars().next().unwrap();
+                let Some(ch) = s.get(i..).and_then(|r| r.chars().next()) else {
+                    i += 1;
+                    continue;
+                };
                 if skip == 0 {
                     out.push(ch)
                 }
@@ -137,9 +330,22 @@ pub fn xml_text(data: &[u8], text_in: &[&str], para: &[&str]) -> Res<String> {
     let mut rd = Reader::from_reader(data);
     let mut out = String::new();
     let mut depth_in = 0u32;
+    let (mut events, mut depth) = (0u64, 0u32);
+    let maxb = max_text_bytes();
     loop {
+        events += 1;
+        if events > XML_MAX_EVENTS {
+            return Err("xml: too many elements; the rest was skipped".into());
+        }
+        if out.len() > maxb {
+            break;
+        }
         match rd.read_event().map_err(|e| format!("xml: {e}"))? {
             Event::Start(e) => {
+                depth += 1;
+                if depth > XML_MAX_DEPTH {
+                    return Err("xml: elements nested too deeply".into());
+                }
                 if text_in.iter().any(|t| *t == local(e.name().as_ref())) {
                     depth_in += 1;
                 }
@@ -150,6 +356,7 @@ pub fn xml_text(data: &[u8], text_in: &[&str], para: &[&str]) -> Res<String> {
                 }
             }
             Event::End(e) => {
+                depth = depth.saturating_sub(1);
                 let n = e.name();
                 let n = local(n.as_ref());
                 if text_in.contains(&n) {
@@ -202,8 +409,40 @@ fn zip_read<R: Read + std::io::Seek>(z: &mut zip::ZipArchive<R>, name: &str) -> 
 }
 
 fn open_zip(path: &Path) -> Res<zip::ZipArchive<std::fs::File>> {
+    let md = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if !md.is_file() {
+        return Err(
+            "This is not an ordinary file (a device, pipe or socket), so it was skipped.".into(),
+        );
+    }
     let f = std::fs::File::open(path).map_err(|e| e.to_string())?;
-    zip::ZipArchive::new(f).map_err(|e| format!("not a valid zip container: {e}"))
+    let mut z = zip::ZipArchive::new(f).map_err(|e| format!("not a valid zip container: {e}"))?;
+    zip_sanity(&mut z)?;
+    Ok(z)
+}
+
+/// Reject archives with absurd entry counts or a compression-bomb ratio (declared sizes).
+fn zip_sanity<R: Read + std::io::Seek>(z: &mut zip::ZipArchive<R>) -> Res<()> {
+    if z.len() > ZIP_MAX_ENTRIES {
+        return Err(format!(
+            "zip: this archive lists {} entries, far too many to read safely; skipped",
+            z.len()
+        ));
+    }
+    let (mut total, mut packed) = (0u64, 0u64);
+    for i in 0..z.len() {
+        if let Ok(f) = z.by_index_raw(i) {
+            total = total.saturating_add(f.size());
+            packed = packed.saturating_add(f.compressed_size());
+        }
+    }
+    if total > ZIP_BOMB_MIN_TOTAL && total / packed.max(1) > ZIP_BOMB_RATIO {
+        return Err(format!(
+            "zip: unpacks to more than {} MB with a suspicious compression ratio; skipped (unpacks to more than the safe limit)",
+            ZIP_BOMB_MIN_TOTAL >> 20
+        ));
+    }
+    Ok(())
 }
 
 fn numbered(names: Vec<String>, prefix: &str, suffix: &str) -> Vec<(u64, String)> {
@@ -229,7 +468,12 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
         let data = zip_read(z, "xl/sharedStrings.xml")?;
         let mut rd = Reader::from_reader(&data[..]);
         let (mut cur, mut in_t, mut in_si) = (String::new(), false, false);
+        let mut ev = 0u64;
         loop {
+            ev += 1;
+            if ev > XML_MAX_EVENTS || shared.len() > 5_000_000 {
+                break;
+            }
             match rd.read_event().map_err(|e| e.to_string())? {
                 Event::Start(e) => match local(e.name().as_ref()) {
                     "si" => {
@@ -254,16 +498,26 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
         }
     }
     let mut out = Vec::new();
+    let mut spent = 0usize;
     for (i, (_, name)) in numbered(names, "xl/worksheets/sheet", ".xml")
         .into_iter()
+        .take(1000)
         .enumerate()
     {
+        if spent > max_text_bytes() {
+            break;
+        }
         let data = zip_read(z, &name)?;
         let mut rd = Reader::from_reader(&data[..]);
         let (mut rows, mut cells): (Vec<String>, Vec<String>) = (vec![], vec![]);
         let (mut ctype, mut val, mut in_c, mut in_v, mut in_t) =
             (String::new(), String::new(), false, false, false);
+        let mut ev = 0u64;
         loop {
+            ev += 1;
+            if ev > XML_MAX_EVENTS || rows.len() > 5_000_000 {
+                break;
+            }
             match rd.read_event().map_err(|e| e.to_string())? {
                 Event::Start(e) => match local(e.name().as_ref()) {
                     "c" => {
@@ -311,7 +565,9 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
                 _ => {}
             }
         }
-        out.push((format!("sheet {}", i + 1), rows.join("\n")));
+        let body = rows.join("\n");
+        spent += body.len();
+        out.push((format!("sheet {}", i + 1), body));
     }
     Ok(out)
 }
@@ -337,9 +593,9 @@ pub fn ocr_available() -> bool {
 }
 
 fn tesseract_lang(want: &str) -> String {
-    let have = Command::new("tesseract")
-        .arg("--list-langs")
-        .output()
+    let mut c = Command::new("tesseract");
+    c.arg("--list-langs");
+    let have = run_cmd(c, std::time::Duration::from_secs(20))
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default();
     let ok: Vec<&str> = want
@@ -366,7 +622,7 @@ pub fn ocr_image(path: &Path, pdf: bool) -> Res<Vec<u8>> {
     if pdf {
         c.arg("pdf");
     }
-    let o = c.output().map_err(|e| e.to_string())?;
+    let o = run_cmd(c, extract_timeout())?;
     if !o.status.success() {
         return Err(format!(
             "tesseract failed: {}",
@@ -387,19 +643,19 @@ fn ocr_pdf_page(path: &Path, n: usize) -> String {
         return String::new();
     };
     let base = d.join("p");
-    let _ = Command::new("pdftoppm")
-        .args([
-            "-r",
-            "200",
-            "-f",
-            &n.to_string(),
-            "-l",
-            &n.to_string(),
-            "-png",
-        ])
-        .arg(path)
-        .arg(&base)
-        .output();
+    let mut pp = Command::new("pdftoppm");
+    pp.args([
+        "-r",
+        "200",
+        "-f",
+        &n.to_string(),
+        "-l",
+        &n.to_string(),
+        "-png",
+    ])
+    .arg(path)
+    .arg(&base);
+    let _ = run_cmd(pp, extract_timeout());
     let png = std::fs::read_dir(&d).ok().and_then(|r| {
         r.flatten()
             .map(|e| e.path())
@@ -426,6 +682,15 @@ fn tempdir() -> std::io::Result<std::path::PathBuf> {
 }
 
 fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
+    let md = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if !md.is_file() {
+        return Err(
+            "This is not an ordinary file (a device, pipe or socket), so it was skipped.".into(),
+        );
+    }
+    if md.len() > MAX_READ_BYTES {
+        return Err("This file unpacks to more than the safe limit; skipped.".into());
+    }
     let p = path.to_path_buf();
     let native = std::panic::catch_unwind(move || pdf_extract::extract_text_by_pages(&p));
     if let Ok(Ok(pages)) = &native
@@ -434,12 +699,9 @@ fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
         return Ok(pages.clone());
     }
     if which("pdftotext") {
-        let o = Command::new("pdftotext")
-            .arg("-layout")
-            .arg(path)
-            .arg("-")
-            .output()
-            .map_err(|e| e.to_string())?;
+        let mut c = Command::new("pdftotext");
+        c.arg("-layout").arg(path).arg("-");
+        let o = run_cmd(c, extract_timeout())?;
         if o.status.success() {
             let t = decode(&o.stdout);
             return Ok(t
@@ -468,19 +730,33 @@ fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
 
 fn pdf_pages(path: &Path, ocr: bool) -> Res<Parts> {
     let pages = pdf_pages_raw(path)?;
-    Ok(pages
+    let (maxp, mut ocred, mut skipped) = (ocr_max_pages(), 0usize, 0usize);
+    let mut out: Parts = pages
         .into_iter()
         .enumerate()
         .map(|(i, t)| {
             let t = if ocr && t.trim().chars().count() < 20 {
-                let o = ocr_pdf_page(path, i + 1);
-                if o.is_empty() { t } else { o }
+                if ocred >= maxp {
+                    skipped += 1;
+                    t
+                } else {
+                    ocred += 1;
+                    let o = ocr_pdf_page(path, i + 1);
+                    if o.is_empty() { t } else { o }
+                }
             } else {
                 t
             };
             (format!("p.{}", i + 1), t)
         })
-        .collect())
+        .collect();
+    if skipped > 0 {
+        out.push((
+            "note".into(),
+            format!("[OCR was run on the first {maxp} scanned pages only; {skipped} more pages were not read.]"),
+        ));
+    }
+    Ok(out)
 }
 
 // ------------------------------------------------------------------ entry point
@@ -489,7 +765,19 @@ fn pdf_pages(path: &Path, ocr: bool) -> Res<Parts> {
 pub fn plain_reason(ext: &str, msg: &str) -> String {
     let m = msg.to_lowercase();
     let kind = ext.trim_start_matches('.').to_uppercase();
-    let s = if m.contains("permission denied") || m.contains("access is denied") {
+    let s = if m.contains("took too long")
+        || m.contains("got stuck")
+        || m.contains("not an ordinary file")
+    {
+        msg.to_string()
+    } else if m.contains("unpacks to more than")
+        || m.contains("far too many")
+        || m.contains("too many elements")
+        || m.contains("nested too deeply")
+    {
+        "This file contains a part that is far too large or complex to read safely; skipped."
+            .to_string()
+    } else if m.contains("permission denied") || m.contains("access is denied") {
         "No permission to read this file. Check its access rights, or copy it somewhere readable."
             .to_string()
     } else if m.contains("no such file") || m.contains("cannot find the") {
@@ -509,8 +797,6 @@ pub fn plain_reason(ext: &str, msg: &str) -> String {
     } else if m.contains("cannot read this pdf") || m.contains("pdftotext failed") {
         "This PDF is damaged, password-protected or unsupported (a scan? turn OCR on, or install poppler-utils)."
             .to_string()
-    } else if m.contains("unpacks to more than") {
-        "This file contains a part that is far too large to read safely; skipped.".to_string()
     } else if m.contains("panicked") {
         format!("This {kind} file is damaged in a way the reader could not handle; skipped.")
     } else {
@@ -519,17 +805,103 @@ pub fn plain_reason(ext: &str, msg: &str) -> String {
     s.chars().take(300).collect()
 }
 
-/// Like [`extract`] but a reader panic on a corrupt file becomes an ordinary error.
+/// Like [`extract`] but run in a worker thread under a deadline (env
+/// `CARTACOLIBRI_EXTRACT_TIMEOUT`, default 120 s; scans with OCR get ten times that).
+/// Errors are phrased for a non-technical reader.
 pub fn extract_safe(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
-    let p = path.to_path_buf();
-    let x = ext.to_string();
-    match std::panic::catch_unwind(move || extract(&p, &x, ocr)) {
-        Ok(r) => r.map_err(|m| plain_reason(ext, &m)),
+    let mut t = extract_timeout();
+    if ocr && (ext == ".pdf" || IMG_EXT.contains(&ext)) {
+        t *= 10;
+    }
+    extract_safe_with(path, ext, ocr, t)
+}
+
+/// [`extract_safe`] with an explicit deadline. Rust cannot kill a thread, so a reader that
+/// overruns is abandoned (it keeps running detached); after [`STUCK_LIMIT`] abandoned readers
+/// of one file kind no new reader of that kind is started until some of them finish.
+pub fn extract_safe_with(
+    path: &Path,
+    ext: &str,
+    ocr: bool,
+    timeout: std::time::Duration,
+) -> Res<Parts> {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU8, Ordering};
+    if stuck_count(ext) >= STUCK_LIMIT {
+        return Err(format!(
+            "Several earlier {} files got stuck while being read, so this one was skipped to keep indexing healthy.",
+            ext.trim_start_matches('.').to_uppercase()
+        ));
+    }
+    let state = Arc::new(AtomicU8::new(0)); // 0 running, 1 abandoned, 2 finished
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (p, x, st, kind) = (
+        path.to_path_buf(),
+        ext.to_string(),
+        state.clone(),
+        ext.to_string(),
+    );
+    let spawned = std::thread::Builder::new()
+        .name("cartacolibri-extract".into())
+        .stack_size(64 * 1024 * 1024)
+        .spawn(move || {
+            test_hook(&p);
+            let r = extract(&p, &x, ocr);
+            if st
+                .compare_exchange(0, 2, Ordering::SeqCst, Ordering::SeqCst)
+                .is_err()
+            {
+                stuck_adjust(&kind, -1); // finished after being abandoned
+            }
+            let _ = tx.send(r);
+        });
+    if let Err(e) = spawned {
+        return Err(format!("Could not start the reader: {e}"));
+    }
+    match rx.recv_timeout(timeout) {
+        Ok(r) => r.map(limit_parts).map_err(|m| plain_reason(ext, &m)),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            if state
+                .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
+                stuck_adjust(ext, 1);
+                Err(TOO_LONG.into())
+            } else {
+                // finished in the instant between the timeout and now
+                match rx.recv() {
+                    Ok(r) => r.map(limit_parts).map_err(|m| plain_reason(ext, &m)),
+                    Err(_) => Err(TOO_LONG.into()),
+                }
+            }
+        }
         Err(_) => Err(plain_reason(ext, "reader panicked")),
     }
 }
 
+/// Test hook: with `CARTACOLIBRI_TEST_SLOW_MS` set, files named `__slow__*` sleep that long
+/// before being read (simulates a reader that hangs). Inert otherwise.
+fn test_hook(p: &Path) {
+    if p.file_name()
+        .is_some_and(|n| n.to_string_lossy().starts_with("__slow__"))
+        && let Some(ms) = std::env::var("CARTACOLIBRI_TEST_SLOW_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+    {
+        std::thread::sleep(std::time::Duration::from_millis(ms));
+    }
+}
+
+/// Read one file. Never panics: a reader panic becomes an ordinary error.
 pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
+    let (p, x) = (path.to_path_buf(), ext.to_string());
+    match std::panic::catch_unwind(move || extract_inner(&p, &x, ocr)) {
+        Ok(r) => r,
+        Err(_) => Err("reader panicked on a damaged file".into()),
+    }
+}
+
+fn extract_inner(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
     match ext {
         ".pdf" => return pdf_pages(path, ocr),
         ".xlsx" => return xlsx_text(&mut open_zip(path)?),
@@ -547,8 +919,13 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
                 .collect();
             names.sort();
             let mut parts = Vec::new();
-            for n in names {
+            let (mut spent, maxb) = (0usize, max_text_bytes());
+            for n in names.into_iter().take(20_000) {
+                if spent > maxb {
+                    break;
+                }
                 let t = html_to_text(&decode(&zip_read(&mut z, &n)?));
+                spent += t.len();
                 let stem = Path::new(&n)
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
@@ -587,24 +964,29 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
                 .map(|n| n.into_owned())
                 .collect();
             let mut out = Vec::new();
+            let mut spent = 0usize;
             for (i, (_, n)) in numbered(names, "ppt/slides/slide", ".xml")
                 .into_iter()
+                .take(5000)
                 .enumerate()
             {
-                out.push((
-                    format!("slide {}", i + 1),
-                    xml_text(&zip_read(&mut z, &n)?, &["t"], &["p"])?,
-                ));
+                let t = xml_text(&zip_read(&mut z, &n)?, &["t"], &["p"])?;
+                spent += t.len();
+                out.push((format!("slide {}", i + 1), t));
+                if spent > max_text_bytes() {
+                    break;
+                }
             }
             return Ok(out);
         }
         e if IMG_EXT.contains(&e) => {
+            read_regular_meta(path)?;
             return Ok(vec![("OCR".into(), decode(&ocr_image(path, false)?))]);
         }
         _ => {}
     }
-    let raw = std::fs::read(path).map_err(|e| e.to_string())?;
-    let head = &raw[..raw.len().min(4096)];
+    let raw = read_regular(path)?;
+    let head = raw.get(..raw.len().min(4096)).unwrap_or(&[]);
     if !head.starts_with(&[0xff, 0xfe])
         && !head.starts_with(&[0xfe, 0xff])
         && head.iter().filter(|&&b| b == 0).count() * 10 > head.len().max(1)
@@ -725,6 +1107,13 @@ fn cap(mut s: String) -> String {
 
 /// Readers for the wave-2 text formats. `None` = not one of them (caller falls back to plain text).
 pub fn text_parts(ext: &str, raw: &[u8]) -> Option<Res<Parts>> {
+    match std::panic::catch_unwind(|| text_parts_inner(ext, raw)) {
+        Ok(r) => r,
+        Err(_) => Some(Err("reader panicked on a damaged file".into())),
+    }
+}
+
+fn text_parts_inner(ext: &str, raw: &[u8]) -> Option<Res<Parts>> {
     let one = |t: String| Some(Ok(vec![(String::new(), cap(t))]));
     match ext {
         ".eml" => one(eml_text(&decode(raw))),
@@ -1035,7 +1424,7 @@ fn ics_date(v: &str) -> String {
     if b.len() >= 8 && b[..8].iter().all(|c| c.is_ascii_digit()) {
         let d: String = b[..8].iter().collect();
         let mut o = format!("{}-{}-{}", &d[..4], &d[4..6], &d[6..8]);
-        if b.len() >= 13 && b[8] == 'T' {
+        if b.len() >= 13 && b[8] == 'T' && b[9..13].iter().all(|c| c.is_ascii_digit()) {
             let t: String = b[9..13].iter().collect();
             o.push_str(&format!(" {}:{}", &t[..2], &t[2..]));
         }
@@ -1140,6 +1529,7 @@ pub fn csv_rows(text: &str, delim: u8) -> Vec<Vec<String>> {
     let mut rows = Vec::new();
     let (mut row, mut field) = (Vec::<String>::new(), String::new());
     let (mut inq, mut had) = (false, false);
+    let mut cells = 0usize;
     let mut it = text.chars().peekable();
     while let Some(c) = it.next() {
         if inq {
@@ -1159,6 +1549,11 @@ pub fn csv_rows(text: &str, delim: u8) -> Vec<Vec<String>> {
         } else if c == d {
             row.push(std::mem::take(&mut field));
             had = true;
+            cells += 1;
+            if cells > CSV_MAX_CELLS {
+                rows.push(row);
+                return rows;
+            }
         } else if c == '\n' || c == '\r' {
             if c == '\r' && it.peek() == Some(&'\n') {
                 it.next();
@@ -1409,7 +1804,9 @@ fn zip_walk<R: Read + std::io::Seek>(
         *budget = budget.saturating_sub(buf.len() as u64);
         let p = format!("{prefix}{name}");
         if nested {
-            if let Ok(mut inner) = zip::ZipArchive::new(std::io::Cursor::new(buf)) {
+            if let Ok(mut inner) = zip::ZipArchive::new(std::io::Cursor::new(buf))
+                && zip_sanity(&mut inner).is_ok()
+            {
                 let _ = zip_walk(&mut inner, &format!("{p}!/"), depth + 1, budget, parts);
             }
             continue;

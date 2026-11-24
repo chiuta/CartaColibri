@@ -441,3 +441,10 @@ PRIV = {
  "**Az előzmények alapból ki vannak kapcsolva.** A web-grab böngésző előzményei csak akkor léteznek, ha bekapcsolod (`cartacolibri history on`), a lemezeden maradnak, és a `cartacolibri history clear` törli őket.",
 ],
 }
+
+# ---- power features: extra FAQ / troubleshooting entries and the "draft pre-release" fact (texts live in carta_docs_power.py)
+import carta_docs_power as _P
+for _l in LANGS:
+    FAQ[_l] = list(FAQ[_l]) + list(_P.FAQ[_l])
+    TROUBLE[_l] = list(TROUBLE[_l]) + list(_P.TROUBLE[_l])
+    L["status"][_l] = L["status"][_l].rstrip() + " " + _P.STATUS_EXTRA[_l]

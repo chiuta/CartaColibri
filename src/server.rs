@@ -228,7 +228,7 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
         );
     }
     let route = path.trim_start_matches("/carta/").trim_end_matches('/');
-    let limit = if route == "upload" {
+    let limit = if matches!(route, "upload" | "import") {
         MAX_UPLOAD
     } else {
         MAX_JSON
@@ -251,6 +251,15 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
         filename,
         backend_url: &backend,
     };
+    if api::is_download(req.method, route) {
+        return match api::download(home.as_deref(), &req) {
+            Ok(d) => {
+                let cd = format!("attachment; filename=\"{}\"", d.name);
+                respond(r, 200, d.ctype, d.bytes, &[hdr("Content-Disposition", &cd)]);
+            }
+            Err((code, m)) => json(r, code, serde_json::json!({"error": m}), &[]),
+        };
+    }
     let (code, v) = api::handle(home.as_deref(), &req);
     json(r, code, v, &[])
 }
@@ -288,8 +297,16 @@ pub fn serve(addr: &str, home: Option<String>, backend: String) -> Result<(), St
             );
             continue;
         }
+        let dbg = std::env::var_os("CARTACOLIBRI_DEBUG_REQ").map(|_| {
+            let line = format!("{} {}", req.method(), req.url());
+            eprintln!("[req] recv  {line}");
+            (line, std::time::Instant::now())
+        });
         std::thread::spawn(move || {
             handle(req, h, b);
+            if let Some((line, t0)) = dbg {
+                eprintln!("[req] done  {line}  {} ms", t0.elapsed().as_millis());
+            }
             ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         });
     }

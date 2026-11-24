@@ -10,7 +10,7 @@ const langs = ['en', 'ro', 'fr', 'it', 'es', 'pt', 'de', 'hu'];
 let bad = 0;
 for (const [k, v] of Object.entries(D)) for (const l of langs) if (!v[l] || !v[l].trim()) { console.error('missing', k, l); bad++; }
 const used = new Set([...html.matchAll(/data-(?:i|ph|al|h)="(\w+)"/g)].map(x => x[1]));
-[...js.matchAll(/\b[TF]\('(\w+)'\)/g)].forEach(x => used.add(x[1]));
+[...js.matchAll(/\b[TF]\('(\w+)'[,)]/g)].forEach(x => used.add(x[1]));
 for (const k of used) if (!D[k]) { console.error('undefined key', k); bad++; }
 const formal = /dumneavoastră|\bvous\b|\bSie\b|\bIhre?\b|\bLei\b|\busted\b|\bvocê\b|\bÖn\b/;
 for (const [k, v] of Object.entries(D)) for (const l of langs) if (formal.test(v[l])) { console.error('formal address', k, l); bad++; }

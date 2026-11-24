@@ -1,8 +1,78 @@
+/*
+ * CartaColibri web-grab overlay: security model and what it does NOT guarantee
+ * ----------------------------------------------------------------------------
+ * This file is injected as a wry initialization script (main frame only), so it runs in the SAME
+ * JavaScript world as the page. wry 0.57 (WebKitGTK / WebView2 / WKWebView) offers no isolated
+ * world for initialization scripts or for evaluate_script, so page scripts can ALWAYS see the global
+ * object, observe/patch built-ins and read anything this file displays. The design therefore does
+ * not hide the overlay from the page; it makes sure that the page cannot make the overlay or the
+ * Rust side do anything on its behalf.
+ *
+ * What it does:
+ *  - Two independent 256-bit secrets (page -> Rust, Rust -> page) are generated per webview by the
+ *    Rust side with the OS CSPRNG and pasted into this source text. They live only in this closure's
+ *    scope: no property of window contains or is derived from them, and Function.prototype.toString
+ *    of any function here shows code, not the secrets (they are declared outside every function).
+ *  - Page -> Rust: the native message handler (webkit.messageHandlers.ipc / chrome.webview) is
+ *    captured and bound at document start, before any page script, so later monkey-patching of
+ *    window.ipc or the handler cannot intercept our messages. Every message carries
+ *    tab id, a per-document random id, a strictly increasing sequence number and the secret; the
+ *    Rust side rejects anything else (wrong secret, replayed or reordered sequence, retired
+ *    document, wrong origin, oversize, rate limit). The page can still call window.ipc.postMessage,
+ *    but every such forgery is dropped.
+ *  - Messages are built from null-prototype objects and the captured JSON.stringify, so
+ *    Object.prototype.toJSON / inherited properties cannot alter what we sign. All UI handlers
+ *    ignore untrusted (script-dispatched) events, so a page cannot "press" Ctrl+S for the user.
+ *  - Rust -> page: the only global is the fixed, non-secret, non-writable, non-configurable
+ *    window.__cc_entry. It ignores every call whose first argument is not the secret or whose
+ *    sequence number is not strictly newer than the last one (it returns nothing and throws
+ *    nothing, so there is no oracle except the theoretical timing of one string comparison of a
+ *    256-bit secret). The secret only travels inside the script text given to evaluate_script,
+ *    which the page cannot read.
+ *
+ * What it does NOT guarantee (residual risk):
+ *  - Confidentiality of what the overlay renders. Data pushed by Rust (tab titles/URLs of ALL tabs,
+ *    library paths, answers) is processed with ordinary built-ins (String.prototype.replace, ...)
+ *    that a hostile page could have patched, so a hostile page can read that data. Never put
+ *    anything in those pushes that you would not show to the page.
+ *  - Availability/integrity of the overlay UI on a hostile page: the page can spoof, hide, remove or
+ *    break the bar (it is DOM in the page's own document).
+ *  - Content: whatever the page shows/reads (text, html) is attacker-controlled by definition; the
+ *    user still decides what to save or ask.
+ *  - If the page executed script BEFORE this one (impossible with initialization scripts, but
+ *    possible on a platform that ignores the document-start guarantee), all bets are off.
+ */
 (() => {
   if (window.top !== window) return;
-  const N = "__NONCE__", T = __TAB__;
-  const post = window.ipc && window.ipc.postMessage.bind(window.ipc);
+  const KO = "__KEYOUT__", KI = "__KEYIN__", T = __TAB__;
+  // Everything the sender needs is captured NOW, before any page script can run.
+  const ST = JSON.stringify, CR = Object.create, OK = Object.keys, DP = Object.defineProperty;
+  const U8 = Uint8Array, getRand = (() => { try { const g = crypto.getRandomValues; const c = crypto; return (a) => g.call(c, a); } catch (e) { return null; } })();
+  const post = (() => {
+    try { const h = window.webkit.messageHandlers.ipc, f = h.postMessage; return f.bind(h); } catch (e) { /* not WebKit */ }
+    try { const h = window.chrome.webview, f = h.postMessage; return f.bind(h); } catch (e) { /* not WebView2 */ }
+    try { const h = window.ipc, f = h.postMessage; return f.bind(h); } catch (e) { return null; }
+  })();
   if (!post) return;
+  // A random id for this document: lets Rust tell a reload from a replay of an old document's messages.
+  const DOC = (() => {
+    const b = new U8(12); let s = "";
+    if (getRand) getRand(b); else for (let i = 0; i < 12; i++) b[i] = (Math.random() * 256) | 0;
+    for (let i = 0; i < 12; i++) s += (b[i] < 16 ? "0" : "") + b[i].toString(16);
+    return s;
+  })();
+  let outSeq = 0, inSeq = 0;
+  const H = CR(null);
+  // The single Rust -> overlay entry point. Its name is public; calling it is useless without KI.
+  DP(window, "__cc_entry", {
+    value: function (k, s, kind, arg) {
+      if (typeof k !== "string" || k !== KI || typeof s !== "number" || !(s > inSeq)) return;
+      inSeq = s;
+      const h = H[kind];
+      if (typeof h === "function") { try { h(arg); } catch (e) { /* keep the bar alive */ } }
+    },
+    writable: false, configurable: false, enumerable: false,
+  });
   const D = {
     en: { hl: "Highlight selection", watch: "Watch this page for changes", hist: "Searchable history (on/off)", sall: "Summarize all tabs", xall: "Extract from all tabs (comma-separated fields)", snap: "Snapshot", diffh: "What changed", asklib: "Ask your whole library: start with ?", save: "Save", ask: "Ask", addr: "Address, or words to search your library", q: "Ask about this page…", think: "Thinking…", newtab: "New tab (Ctrl+T)", sg: "Save all tabs as a library group", aa: "Ask all open tabs", inlib: "In your library", changed: "differs from the saved copy", related: "Related in your library", refresh: "Refresh copy", qall: "Question across all tabs…" },
     ro: { hl: "Evidențiază selecția", watch: "Urmărește schimbările paginii", hist: "Istoric căutabil (pornit/oprit)", sall: "Rezumă toate taburile", xall: "Extrage din toate taburile (câmpuri separate prin virgulă)", snap: "Instantaneu", diffh: "Ce s-a schimbat", asklib: "Întreabă toată biblioteca: începe cu ?", save: "Salvează", ask: "Întreabă", addr: "Adresă sau cuvinte de căutat în bibliotecă", q: "Întreabă despre pagina asta…", think: "Se gândește…", newtab: "Tab nou (Ctrl+T)", sg: "Salvează toate taburile ca grup în bibliotecă", aa: "Întreabă toate taburile deschise", inlib: "În biblioteca ta", changed: "diferă de copia salvată", related: "Înrudite în biblioteca ta", refresh: "Reîmprospătează copia", qall: "Întrebare peste toate taburile…" },
@@ -36,7 +106,11 @@
   const lang = (navigator.language || "en").slice(0, 2);
   const L = Object.assign({}, D.en, X.en, Y.en, D[lang] || {}, X[lang] || {}, Y[lang] || {});
   const web = () => /^https?:$/.test(location.protocol);
-  const send = (o) => post(JSON.stringify(Object.assign({ n: N, t: T }, o)));
+  const send = (o) => {
+    const p = CR(null), ks = OK(o);
+    for (let i = 0; i < ks.length; i++) p[ks[i]] = o[ks[i]];
+    post("cc1." + T + "." + DOC + "." + (++outSeq) + "." + KO + "." + ST(p));
+  };
   const pageHtml = () => { try { return document.documentElement.outerHTML.slice(0, 3000000); } catch (e) { return ""; } };
   const pageText = () => String(getSelection()) || (document.body ? document.body.innerText : "");
   const TRK = /^(utm_|oly_|fbclid$|gclid$|dclid$|msclkid$|mc_eid$|mc_cid$|igshid$|yclid$|_hsenc$|_hsmi$|mkt_tok$|ref_src$|spm$|vero_id$)/i;
@@ -73,8 +147,8 @@
     else if (cmd === "ask_tabs") { show(L.think); send({ cmd, q, task: arguments[2] || "synthesize", color: groupColor }); }
     else if (cmd === "save_tabs") { show("…"); send({ cmd, color: arguments[2] || 0 }); }
   };
-  const hidden = (name, fn) => Object.defineProperty(window, name + N, { enumerable: false, value: fn });
-  hidden("__cc_", (m) => {
+  const hidden = (name, fn) => { H[name] = fn; };
+  hidden("msg", (m) => {
     if (!sh) return;
     if (m.k === "ts") return renderTs(m.x || []);
     if (!m.ok) return show(friendly(m.text), "err");
@@ -84,8 +158,8 @@
     const f = { later: () => (x && x.on ? L.laterOk : L.laterOff), note: () => L.noteok, dlok: () => L.dlOk.replace("{p}", (x && x.path) || ""), trk: () => { prefs.trackers = !!x; return x ? L.trkOn : L.trkOff; }, slept: () => L.slept.replace("{n}", x), dedup: () => L.dedup.replace("{n}", x), save: () => L.saved.replace("{p}", (x && x.path) || ""), hl: () => L.hlok, watch: () => L.watchok, hist: () => (x ? L.histon : L.histoff), tabs: () => L.tabsok.replace("{n}", x) }[m.k];
     if (f) { if (m.k !== "trk") show(""); toast(f()); } else show(m.text, "ok");
   });
-  hidden("__cc_do_", (c, q, k) => act(c, q, k));
-  hidden("__cc_tabs_", (s) => {
+  hidden("do", (a) => act(a[0], a[1], a[2]));
+  hidden("tabs", (s) => {
     if (!sh) return;
     tabsEl.textContent = ""; tabList = s.tabs; activeTab = s.active;
     for (const t of s.tabs) {
@@ -113,7 +187,7 @@
       }
     }
   };
-  hidden("__cc_info_", (i) => {
+  hidden("info", (i) => {
     if (!sh) return; info = i; applyHL(i.highlights); $hist.className = i.history ? "go" : "";
     badge.textContent = ""; badge.style.display = "none";
     if (i.status) {
@@ -365,7 +439,7 @@
     else if (k === "hl") act("highlight");
     else { show(L.think); send({ cmd: "sel", mode: k, sel: t, lang, title: document.title }); }
   };
-  hidden("__cc_boot_", (b) => {
+  hidden("boot", (b) => {
     if (!sh) return;
     mock = !!b.mock; prefs = b.prefs || {}; if (prefs.rd_size) rdSize = +prefs.rd_size || 19; rdTheme = prefs.rd_theme || "";
     if (b.start && !web()) renderStart(b.start);
@@ -439,9 +513,9 @@
     tin.onkeydown = (e) => { if (e.key === "Escape") { e.stopPropagation(); tsClose(); } };
     selm.onmousedown = (e) => e.preventDefault();
     for (const [k, ico, tip] of [["ask", "✨", L.selAsk], ["note", "📝", L.selNote], ["hl", "🖍", L.selHl], ["translate", "🌐", L.selTr], ["explain", "💡", L.selEx]]) { const b = el("button", ico + " " + tip); b.onclick = () => selDo(k); selm.append(b); }
-    addEventListener("mouseup", (e) => { if (e.target !== host) setTimeout(selShow, 12); }, true);
-    addEventListener("keyup", (e) => { if (e.shiftKey && /^Arrow|Home|End/.test(e.key)) setTimeout(selShow, 12); }, true);
-    addEventListener("mousedown", (e) => { if (e.target !== host) { selHide(); closeMenus(); } }, true);
+    addEventListener("mouseup", (e) => { if (e.isTrusted && e.target !== host) setTimeout(selShow, 12); }, true);
+    addEventListener("keyup", (e) => { if (e.isTrusted && e.shiftKey && /^Arrow|Home|End/.test(e.key)) setTimeout(selShow, 12); }, true);
+    addEventListener("mousedown", (e) => { if (e.isTrusted && e.target !== host) { selHide(); closeMenus(); } }, true);
     addEventListener("scroll", selHide, true);
     toastEl.onclick = () => { toastEl.className = ""; };
     urlIn.value = web() ? location.href : ""; urlIn.placeholder = L.addr;
@@ -463,6 +537,7 @@
     document.documentElement.appendChild(host);
     document.documentElement.style.setProperty("margin-top", "78px", "important");
     addEventListener("keydown", (e) => {
+      if (!e.isTrusted) return; // a page script must not be able to "press" our shortcuts
       if (e.key === "Escape") {
         if (tsEl.style.display === "block") { e.preventDefault(); tsClose(); return; }
         if (readerOn()) { e.preventDefault(); readerClose(); return; }
@@ -489,6 +564,7 @@
     }, true);
     // Ctrl/Cmd+click or middle-click on a link: open it in a new tab
     const newTabLink = (e) => {
+      if (!e.isTrusted) return;
       const a = e.target && e.target.closest && e.target.closest("a[href]");
       if (!a || !/^https?:/i.test(a.href)) return;
       if (e.type === "click" ? !(e.ctrlKey || e.metaKey) : e.button !== 1) return;

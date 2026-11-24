@@ -31,6 +31,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Privat von Grund auf** — keine Cloud, keine Telemetrie; Originale werden nur gelesen. 8 Sprachen: EN, RO, FR, IT, ES, PT, DE, HU.
 - **web-grab** — ein kleiner Browser in Rust (Clean-Room, ersetzt Falkon) mit Tabs, der deine Bibliothek kennt: ein Abzeichen, wenn die Seite schon gespeichert ist (und wenn sie sich geändert hat), verwandte Dokumente beim Surfen, Speichern mit einem Klick, Fragen an dein lokales Colibrì zu einer Seite — oder zu allen offenen Tabs, mit Quellenangaben. Ein Befehl und ein Bookmarklet decken andere Browser ab. Außerdem: 🖍 Markierungen, die mit der Seite gespeichert werden, 👁 beobachtete Seiten mit Diff der Änderungen (`cartacolibri webwatch`), HTML-Schnappschuss bei jedem Speichern, optional durchsuchbarer Verlauf (`cartacolibri history on`), 🗂📝📊 Zusammenfassen oder Extrahieren über alle Tabs und `?Frage` in der Adressleiste, um die ganze Bibliothek zu fragen.
 
+## Power-Funktionen
+
+- **Finden** — ein Fortschrittsbalken beim Indizieren; „Meintest du …?“ bei Tippfehlern, mit Vorschlägen, wenn nichts passt; Duplikate aufgelistet und ein klarer Grund für jede übersprungene Datei.
+- **Ordnen** — Tags, ein Stern und eine private Notiz an jedem Dokument; sie überstehen das Neuindizieren. Sieh verwandte Dokumente, was du zuletzt und am häufigsten geöffnet hast, und speichere Suchen als intelligente Sammlungen.
+- **14 Aufgaben** — vergleichen, Zeitleiste, Glossar, Gliederung, Aufgabenliste, FAQ, Lernkarten, Quiz, übersetzen, erklären, Widersprüche, dazu zusammenfassen, extrahieren und synthetisieren. Hake **Zitate prüfen** an, um Sätze zu markieren, die die Quellen nicht stützen, und wähle die Antwortsprache.
+- **Chat** — stelle Folgefragen zu deiner ganzen Bibliothek oder einer Gruppe. Die Antworten nennen ihre Quellen oder sagen ehrlich „in deinen Dokumenten nicht gefunden“, statt zu raten.
+- **Teilen und sichern** — exportiere eine Gruppe, ein Tag oder eine Suche als Markdown, CSV, JSON oder Zip, mit Quellenangaben; eine Statistik-Ansicht mit Diagrammen und Zeitleiste; ein Backup in einer einzigen Datei mit Prüfsummen; Prüfen/Reparieren für den Index.
+- **Importieren** — hole Browser-Lesezeichen, einen Obsidian-Ordner, Zotero/BibTeX, Pocket/Raindrop-CSV oder Evernote-Exporte herein und abonniere RSS/Atom-Feeds (OPML rein und raus): Sie werden zu durchsuchbaren Notizen. E-Mails, Kalender, Untertitel und Notebooks werden ebenfalls indiziert.
+
 ## Schnellstart
 
 Kompiliere sie (oder nimm das portable Zip) und starte die lokale Seite. Für die KI-Aufgaben starte außerdem die Colibrì-Engine mit einem Modell, das in deinen RAM passt (siehe deren Doku):
@@ -53,6 +62,23 @@ cartacolibri synthesize "payment terms" --group Contracts --save --mock
 cartacolibri grab https://example.org/article      # web-grab (command line)
 cartacolibri-browser https://example.org           # web-grab (browser)
 ```
+
+## Weitere Befehle
+
+| Befehl | Was er macht |
+|---|---|
+| `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | die 14 Aufgaben (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` markiert Sätze, deren `[S#]` der Text nicht stützt |
+| `chat [--group G]` | Folgefragen zu deiner Bibliothek; Antworten mit Quellen oder „in deinen Dokumenten nicht gefunden“ |
+| `tag add/rm/list/show`, `star`, `note` | deine eigene Ordnung, bleibt beim Neuindizieren erhalten |
+| `saved add/list/run/rm` | gespeicherte Suchen / intelligente Sammlungen |
+| `recent`, `related PATH` | was du zuletzt geöffnet hast; ähnliche Dokumente |
+| `export --format md\|csv\|json\|zip` | teile eine Gruppe, ein Tag oder eine gespeicherte Suche mit Quellenangaben |
+| `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | Backup in einer Datei mit Prüfsummen; prüfen; wiederherstellen |
+| `verify [--repair]` | prüft den Index; mit `--repair` wird er aus deinen Dateien neu aufgebaut |
+| `stats`, `timeline` | Zahlen zu deiner Bibliothek; Dokumente pro Monat |
+| `import PATH` | Lesezeichen `.html`, Obsidian-Ordner, `.bib`, Pocket/Raindrop `.csv`, Evernote `.enex` |
+| `feeds add/list/rm/poll`, `feeds opml-import/opml-export` | RSS/Atom-Abos, als Notizen gespeichert |
+| `webwatch`, `history` | beobachtete Webseiten mit Diff; optionaler Browserverlauf |
 
 ## Wie alles zusammenspielt
 
@@ -90,6 +116,24 @@ Das portable Zip gibt es für beide, aber Linux ist das am besten getestete Syst
 **Warum „Alpha“?**  
 Weil sie noch jung ist: Der Kern funktioniert und ist getestet, aber nicht auf jedem System, und die automatischen Prüfungen auf GitHub sind noch nicht bestätigt. Rechne mit Ecken und Kanten und sag uns Bescheid.
 
+**Wie überleben Tags, Sterne und Notizen das Neuindizieren?**  
+Sie stehen nicht im Suchindex, sondern in einer kleinen eigenen Datei, `organize.json`, in deinem `<home>`-Ordner, gebunden an den Pfad jedes Dokuments. **Index aktualisieren**, ein vollständiges Neuindizieren und sogar **Prüfen/Reparieren** (das den Index neu aufbaut) fassen sie nicht an. Benennst du eine Datei um oder verschiebst sie, zählt sie als neues Dokument; die Tags bleiben beim alten Pfad.
+
+**Wie sichere ich und stelle wieder her?**  
+Öffne **Statistik** und klicke auf **Backup herunterladen** (Haken setzen, um den Index mitzunehmen), oder führe `cartacolibri backup my.zip` aus. Das ist ein einziges Zip mit Prüfsummen, das deine Tags, Notizen, Gruppen, gespeicherten Suchen und importierten Notizen enthält, nie deine Originaldokumente. `cartacolibri backup-check my.zip` prüft es, `cartacolibri restore my.zip` stellt alles wieder her. Bewahre das Zip nicht nur auf diesem Rechner auf.
+
+**Wie importiere ich Lesezeichen, Obsidian oder Zotero?**  
+Klicke in der Bibliothek auf **Importieren** oder führe `cartacolibri import PFAD` aus. Verstanden werden ein Lesezeichen-Export des Browsers (`.html`), ein Obsidian-Ordner, eine Zotero/BibTeX-Datei `.bib`, `.csv`-Dateien von Pocket oder Raindrop und Evernote-Exporte `.enex`. Jeder Eintrag wird zu einer kleinen Notiz in deiner Bibliothek, die du durchsuchen, taggen und zitieren kannst. Deine Originale werden nur gelesen.
+
+**Wie funktionieren Feeds?**  
+Füge unter **Importieren → Feeds** eine RSS- oder Atom-Adresse ein und klicke auf **Hinzufügen**. Wenn du auf **Jetzt prüfen** klickst (oder `cartacolibri feeds poll` ausführst), werden neue Einträge als Notizen gespeichert und indiziert, sodass du sie durchsuchen und befragen kannst. Nichts läuft von selbst im Hintergrund. Deine Abos kannst du als OPML hinein- und herausholen.
+
+**Was macht „Zitate prüfen“?**  
+Nachdem die KI geantwortet hat, liest CartaColibri jeden Satz noch einmal. Hat ein Satz kein `[S#]`-Zitat oder enthält die zitierte Quelle gar nicht, was der Satz sagt, wird er mit `[unsupported]` markiert. Das ist ein schnelles Sicherheitsnetz, keine Garantie: Öffne bei allem Wichtigen die Quelle.
+
+**Warum wurde eine Webseite abgelehnt?**  
+web-grab ruft nur öffentliche Seiten ab. Adressen auf deinem eigenen Rechner oder in einem privaten Netz (`localhost`, `192.168.x.x`, `10.x.x.x` und Ähnliches) werden abgelehnt, damit keine Webseite es dazu bringen kann, deine internen Dienste zu lesen. Wenn du das wirklich willst, etwa für dein eigenes Intranet, starte CartaColibri mit `CARTACOLIBRI_GRAB_LOCAL=1`.
+
 ## Wenn etwas nicht klappt
 
 Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir, was zu beheben ist.
@@ -106,6 +150,8 @@ Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir,
 | Die Antwort lautet NOT FOUND | Die gewählten Dateien enthalten die Information nicht. Das ist Absicht: Es wird nie geraten. | Prüfe, ob die richtige Gruppe gewählt ist, formuliere die Frage um oder füge der Gruppe die fehlenden Dateien hinzu. |
 | Der web-grab-Browser öffnet sich nicht | Eine Systemkomponente fehlt. | Linux: installiere `libwebkit2gtk-4.1`. Windows: installiere die WebView2-Runtime. Bis dahin funktioniert `cartacolibri grab URL` auch ohne. |
 | Dein eigenes Skript bekommt `403 missing X-Colibri-UI header` | Das ist eine Sicherheitsprüfung, kein Fehler. | Sende den Header `X-Colibri-UI: 1` bei jedem Aufruf von `/carta/*`. |
+| Der Index wirkt kaputt: seltsame Treffer, fehlende Dateien, ein Fehler zur Datenbank | Die Indexdatei wurde beschädigt (etwa durch einen Absturz oder eine volle Festplatte) oder ist nicht mehr im Takt mit deinen Ordnern. | Öffne **Statistik → Prüfen / Reparieren** oder führe `cartacolibri verify --repair` aus. Der Index wird aus deinen Dateien neu aufgebaut; Tags, Notizen und Gruppen bleiben erhalten. |
+| Eine Datei wurde übersprungen, weil sie „zu langsam“ war | Das Lesen dauerte länger als das Zeitlimit (standardmäßig 120 Sekunden), meist bei einem riesigen oder beschädigten PDF oder einem sehr großen Scan. | Erhöhe das Limit, zum Beispiel `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, und klicke dann auf **Index aktualisieren**. Oder teile / exportiere die Datei neu. Der Grund steht unter „Übersprungene Dateien“. |
 
 ## Glossar in einfachen Worten
 
@@ -128,7 +174,11 @@ Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir,
 
 ## Ehrlicher Stand
 
-CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) sind **noch nicht bestätigt**: Die Jobs hängen in der Warteschlange fest. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden.
+CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) sind **noch nicht bestätigt**: Die Jobs hängen in der Warteschlange fest. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden. Das Pre-Release **v0.2.0-alpha.1** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.
+
+## Sicherheit
+
+Du hast eine Sicherheitslücke gefunden? Melde sie bitte privat, wie in [SECURITY.md](../../SECURITY.md) beschrieben; eröffne bitte nicht zuerst ein öffentliches Issue. Wie sich der Server schützt (nur Loopback, Header `X-Colibri-UI`, keine privaten Adressen in web-grab, Originale nur lesend), steht im [docs/threat-model.md](../threat-model.md).
 
 ## Lizenz und Danksagung
 

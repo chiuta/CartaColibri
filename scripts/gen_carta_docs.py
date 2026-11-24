@@ -5,6 +5,7 @@ Languages: en ro fr it es pt de hu — informal address ("tu") everywhere.   Usa
 import html, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import carta_docs_beginner as B
+import carta_docs_power as P
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["en", "ro", "fr", "it", "es", "pt", "de", "hu"]
 NAMES = {"en": "English", "ro": "Română", "fr": "Français", "it": "Italiano", "es": "Español", "pt": "Português", "de": "Deutsch", "hu": "Magyar"}
@@ -177,6 +178,17 @@ def md_beginner(lang):
             "priv": f"## {l('h_priv')}\n\n{priv}\n\n## {l('h_status')}\n\n{l('status')}\n"}
 
 
+def sec_text(lang, sec_url, tm_url):
+    return P.SEC[lang].replace("[{sec}]", f"[SECURITY.md]({sec_url})").replace("[{tm}]", f"[docs/threat-model.md]({tm_url})")
+
+
+def md_power(lang):
+    cards = "\n".join(f"- {c[lang]}" for c in P.POWER)
+    th = P.CLI_TH[lang]
+    rows = "\n".join(f"| {cmd.replace('|', chr(92) + '|')} | {d[lang].replace('|', chr(92) + '|')} |" for cmd, d in P.CLI)
+    return f"## {P.H_POWER[lang]}\n\n{cards}\n", f"## {P.H_CLI[lang]}\n\n| {th[0]} | {th[1]} |\n|---|---|\n{rows}\n"
+
+
 def md_readme(lang, root=False):
     t = lambda k: X[k][lang]
     bg = md_beginner(lang)
@@ -185,6 +197,8 @@ def md_readme(lang, root=False):
                          for l in LANGS) if not root else " · ".join("<b>English</b>" if l == "en" else f"[{NAMES[l]}](docs/cartacolibri/README.{l}.md)" for l in LANGS)
     logo = "assets/cartacolibri-logo.png" if root else "../../assets/cartacolibri-logo.png"
     t_docs = t("docs")
+    power, cli = md_power(lang)
+    sec = f"## {P.H_SEC[lang]}\n\n" + (sec_text(lang, "SECURITY.md", "docs/threat-model.md") if root else sec_text(lang, "../../SECURITY.md", "../threat-model.md")) + "\n"
     if root: t_docs = t_docs.replace("](../cartacolibri.md)", "](docs/cartacolibri.md)").replace("](../../", "](")
     return f"""<p align="center"><img src="{logo}" width="320" alt="CartaColibri — Local AI Library"></p>
 
@@ -203,6 +217,7 @@ def md_readme(lang, root=False):
 - {t('f4')}
 - {t('f5')}
 
+{power}
 ## {t('h_start')}
 
 {t('start1')}
@@ -213,12 +228,14 @@ def md_readme(lang, root=False):
 
 {CLI_CODE}
 
+{cli}
 ## {t('h_layers')}
 
 {t('layers')}
 
 {bg['faq']}
 {bg['priv']}
+{sec}
 ## {t('h_lic')}
 
 {t('lic')}
@@ -244,11 +261,18 @@ def site():
     blocks["trouble"] = {l: [[li(c) for c in r] for r in B.TROUBLE[l]] for l in LANGS}
     blocks["gloss"] = {l: [[li(t), li(d)] for t, d in B.GLOSS[l]] for l in LANGS}
     blocks["priv"] = {l: [li(x) for x in B.PRIV[l]] for l in LANGS}
+    blocks["h_power"] = {l: li(P.H_POWER[l]) for l in LANGS}
+    for i, c in enumerate(P.POWER, 1): blocks[f"p{i}"] = {l: li(c[l]) for l in LANGS}
+    blocks["h_cli"] = {l: li(P.H_CLI[l]) for l in LANGS}
+    blocks["cli_th"] = {l: [li(x) for x in P.CLI_TH[l]] for l in LANGS}
+    blocks["cli"] = {l: [[li(cmd), li(d[l])] for cmd, d in P.CLI] for l in LANGS}
+    blocks["h_sec"] = {l: li(P.H_SEC[l]) for l in LANGS}
+    blocks["sec"] = {l: li(sec_text(l, REPO + "/blob/main/SECURITY.md", REPO + "/blob/main/docs/threat-model.md")) for l in LANGS}
     # `</` inside a script must not end it
     data = json.dumps(blocks, ensure_ascii=False).replace("</", "<\\/")
     names = json.dumps(NAMES, ensure_ascii=False)
     first_code = html.escape(B.FIRST_CODE.strip("`").removeprefix("bash\n").strip("\n"), quote=False)
-    ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_layers', 'layers',
+    ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
            'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -287,6 +311,8 @@ dt{{font-weight:700;margin-top:.8em}}dd{{margin:.1em 0 0;color:var(--mute)}}
 <div class="grid" style="margin-top:16px"><img id="g1" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"><img id="g2" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"><img id="g4" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"></div>
 <p style="margin-top:14px"><a id="tutpdf" class="btn" href="#"></a></p>
 <h2 id="h_what"></h2><div class="grid"><div class="card" id="f1"></div><div class="card" id="f2"></div><div class="card" id="f3"></div><div class="card" id="f4"></div><div class="card" id="f5"></div></div>
+<h2 id="h_power"></h2><div class="grid"><div class="card" id="p1"></div><div class="card" id="p2"></div><div class="card" id="p3"></div><div class="card" id="p4"></div><div class="card" id="p5"></div><div class="card" id="p6"></div></div>
+<div class="grid" style="margin-top:16px"><img id="g5" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"><img id="g6" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"><img id="g7" alt="" style="width:100%;height:auto;border-radius:12px;border:1px solid var(--line)"></div>
 <h2 id="h_layers"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" style="text-align:center;color:var(--mute)"></p>
 <h2 id="h_start"></h2><p id="start1"></p><div class="cb"><pre>git clone https://github.com/chiuta/CartaColibri
 cd CartaColibri
@@ -297,11 +323,13 @@ cartacolibri search "contract*" --ext pdf,docx
 cartacolibri group set Contracts ~/Documents/contracts
 cartacolibri synthesize "payment terms" --group Contracts --save --mock
 cartacolibri grab https://example.org/article
-cartacolibri-browser https://example.org</pre></div></section>
+cartacolibri-browser https://example.org</pre></div>
+<h2 id="h_cli"></h2><div class="tw"><table><thead><tr id="clih"></tr></thead><tbody id="clib"></tbody></table></div></section>
 <section id="faq"><h2 id="h_faq"></h2><div id="faqs"></div>
 <h2 id="h_trouble"></h2><p id="trouble_intro"></p><div class="tw"><table><thead><tr id="thr"></tr></thead><tbody id="tbl"></tbody></table></div>
 <h2 id="h_gloss"></h2><dl id="gloss"></dl></section>
 <section id="privacy"><h2 id="h_priv"></h2><ul id="priv"></ul></section>
+<section id="security"><h2 id="h_sec"></h2><p id="sec"></p></section>
 <section id="download"><h2 id="h_dl"></h2><p><a class="btn a" href="{REPO}/releases" id="dl2"></a><a class="btn" href="{REPO}">GitHub</a></p><p id="dl_sub2"></p>
 <h2 id="h_status"></h2><p class="note" id="status"></p>
 <h2 id="h_lic"></h2><p id="lic"></p></section></main>
@@ -321,10 +349,12 @@ $('steps').innerHTML=[1,2,3].map(i=>'<li>'+D['first'+i][L]+'</li>').join('');
 $('faqs').innerHTML=D.faq[L].map(x=>'<details><summary>'+x[0]+'</summary><p>'+x[1]+'</p></details>').join('');
 $('thr').innerHTML=D.th[L].map(x=>'<th>'+x+'</th>').join('');
 $('tbl').innerHTML=D.trouble[L].map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('');
+$('clih').innerHTML=D.cli_th[L].map(x=>'<th>'+x+'</th>').join('');
+$('clib').innerHTML=D.cli[L].map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('');
 $('gloss').innerHTML=D.gloss[L].map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('');
 $('priv').innerHTML=D.priv[L].map(x=>'<li>'+x+'</li>').join('');
 const tp=$('tutpdf');tp.textContent='📄 '+D.tut[L];tp.href='media/CartaColibri-Tutorial.'+L+'.pdf';
-[['g1',1],['g2',2],['g4',4]].forEach(([id,n])=>$(id).src='img/'+L+'-'+n+'.png');
+[['g1',1],['g2',2],['g4',4],['g5',5],['g6',6],['g7',7]].forEach(([id,n])=>$(id).src='img/'+L+'-'+n+'.png');
 const tr=[...document.querySelectorAll('#vid track')];tr.forEach(t=>t.track.mode=t.srclang===L?'showing':'disabled');$('dl_sub').innerHTML=D.dl_sub[L];$('dl_sub2').innerHTML=D.dl_sub[L];addCopy()}}
 sel.onchange=()=>{{L=sel.value;try{{localStorage.setItem('cc.lang',L)}}catch(e){{}}go()}};go();
 </script></body></html>
@@ -339,6 +369,12 @@ def check_beginner():
         d = getattr(B, name)
         n = len(d["en"])
         bad += [(name, l) for l in LANGS if len(d.get(l, [])) != n]
+    for name in ("FAQ", "TROUBLE"):
+        bad += [(name + "-extra", l) for l in LANGS if len(P.__dict__[name][l]) != len(P.__dict__[name]["en"])]
+    bad += [("POWER", l) for c in P.POWER for l in LANGS if not c.get(l)]
+    bad += [("CLI", l) for _, d in P.CLI for l in LANGS if not d.get(l)]
+    bad += [(n, l) for n, d in (("H_POWER", P.H_POWER), ("H_CLI", P.H_CLI), ("H_SEC", P.H_SEC), ("SEC", P.SEC), ("CLI_TH", P.CLI_TH), ("STATUS_EXTRA", P.STATUS_EXTRA)) for l in LANGS if not d.get(l)]
+    bad += [("SEC-links", l) for l in LANGS if "[{sec}]" not in P.SEC[l] or "[{tm}]" not in P.SEC[l]]
     bad += [("TROUBLE-cols", l) for l in LANGS for r in B.TROUBLE[l] if len(r) != 3]
     if bad: sys.exit(f"beginner texts incomplete: {bad}")
 
@@ -353,7 +389,7 @@ def main():
     open(f"{ROOT}/site-carta/index.html", "w", encoding="utf-8").write(site())
     import shutil
     os.makedirs(f"{ROOT}/site-carta/img", exist_ok=True); os.makedirs(f"{ROOT}/site-carta/media", exist_ok=True)
-    for src, dst in [(f"{ROOT}/docs/cartacolibri/img/{l}-{n}.png", f"{ROOT}/site-carta/img/{l}-{n}.png") for l in LANGS for n in (1, 2, 3, 4)] + \
+    for src, dst in [(f"{ROOT}/docs/cartacolibri/img/{l}-{n}.png", f"{ROOT}/site-carta/img/{l}-{n}.png") for l in LANGS for n in (1, 2, 3, 4, 5, 6, 7)] + \
                     [(f"{ROOT}/docs/cartacolibri/CartaColibri-Tutorial.{l}.pdf", f"{ROOT}/site-carta/media/CartaColibri-Tutorial.{l}.pdf") for l in LANGS]:
         if os.path.exists(src): shutil.copyfile(src, dst)
     for f in ("cartacolibri-logo.png", "cartacolibri-mark.png"):

@@ -9,16 +9,18 @@
 //! * the session (open tabs) is restored next time
 //!
 //! Clean-room, MIT. It reuses no Falkon (GPL-3.0) or other browser code. Nothing leaves your machine
-//! except the page fetches you ask for; the bar talks to the app through a per-run nonce.
+//! except the page fetches you ask for. The bar and the app authenticate each other with per-webview
+//! secrets that never touch page-reachable state (see the header of `overlay.js` for the threat model).
 
 use cartacolibri::carta::{self, Backend, Options};
 use cartacolibri::grab;
 use cartacolibri::library::{Filter, Library, state_dir};
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
 use tao::window::{Window, WindowBuilder};
@@ -30,7 +32,12 @@ const START: &str = r#"<!doctype html><meta charset=utf-8><meta name=color-schem
 <body><noscript>CartaColibri</noscript></body>"#;
 
 enum Ev {
-    Eval(usize, String),
+    /// call the overlay's single authenticated entry point: (tab, kind, argument)
+    Call(usize, &'static str, Value),
+    /// the forge self-test's probe result (what the hostile hooks captured)
+    Probe(String),
+    /// the forge self-test page has finished loading
+    ForgeGo,
     Navigate(usize, String),
     NewTab(Option<String>),
     Close(usize),
@@ -55,8 +62,11 @@ struct Cfg {
     home: Option<String>,
     gateway: String,
     mock: bool,
-    nonce: String,
     selftest: Option<&'static str>,
+    /// per-webview secrets, document epoch, sequence numbers and rate limits (keyed by tab id)
+    auth: Mutex<BTreeMap<usize, Auth>>,
+    /// documents the browser itself offered to add to the library (only those may be downloaded)
+    offered: Mutex<BTreeSet<String>>,
     pages: Mutex<BTreeMap<usize, Page>>,
     /// tab id -> colour label (1..=6) for tab groups
     colors: Mutex<BTreeMap<usize, u8>>,
@@ -74,17 +84,296 @@ struct Tab {
     url: String,
 }
 
-fn nonce() -> String {
-    use sha1::{Digest, Sha1};
-    let mut seed = format!("{:?}{}", std::time::SystemTime::now(), std::process::id());
-    if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
-        use std::io::Read;
-        let mut b = [0u8; 16];
-        if f.read_exact(&mut b).is_ok() {
-            seed.push_str(&hex::encode(b));
+/// `n` random bytes from the operating system's CSPRNG, hex-encoded. Aborts if the OS has none.
+fn rand_hex(n: usize) -> String {
+    let mut b = vec![0u8; n];
+    getrandom::fill(&mut b).expect("the operating system has no random number generator");
+    hex::encode(b)
+}
+
+/// Longest IPC message we even look at (a saved page is at most ~3 M chars of html + its text).
+const MAX_MSG: usize = 24 * 1024 * 1024;
+/// Per tab: at most this many messages (valid or not) per second ...
+const RATE_ALL: usize = 60;
+/// ... and at most this many bytes per second (limits the cost of a flood of forgeries).
+const RATE_BYTES: usize = 64 * 1024 * 1024;
+/// Commands that start real work (disk, network, model): at most this many per 10 s per tab.
+const RATE_HEAVY: usize = 12;
+const HEAVY: &[&str] = &[
+    "save",
+    "later",
+    "note",
+    "highlight",
+    "ask",
+    "ask_tabs",
+    "save_tabs",
+    "sel",
+    "go",
+    "dl",
+];
+/// Commands that may only come from a real http(s) page (they carry page content).
+const WEB_ONLY: &[&str] = &[
+    "save",
+    "later",
+    "later_done",
+    "note",
+    "highlight",
+    "watch",
+    "ask",
+    "sel",
+    "dl",
+    "open_raw",
+];
+const KNOWN: &[&str] = &[
+    "newtab",
+    "reopen",
+    "tour_seen",
+    "close",
+    "activate",
+    "cycle",
+    "tabcolor",
+    "discard",
+    "dedupe",
+    "trackers",
+    "open_raw",
+    "dl",
+    "later",
+    "later_done",
+    "note",
+    "sel",
+    "tsearch",
+    "go",
+    "save",
+    "highlight",
+    "watch",
+    "history",
+    "save_tabs",
+    "ask",
+    "ask_tabs",
+    "ready",
+    "loaded",
+    "pref",
+];
+
+/// Everything we know about one webview's channel with its overlay.
+struct Auth {
+    /// secret the overlay puts in every message
+    key_out: String,
+    /// secret Rust puts in every call to the overlay's entry point
+    key_in: String,
+    /// document epoch of the overlay instance we are talking to, and the last accepted sequence
+    doc: String,
+    last: u64,
+    retired: VecDeque<String>,
+    /// last sequence number we sent to the overlay
+    out_seq: u64,
+    win: Instant,
+    n: usize,
+    bytes: usize,
+    heavy: VecDeque<Instant>,
+}
+
+impl Auth {
+    fn new() -> Auth {
+        Auth {
+            key_out: rand_hex(32),
+            key_in: rand_hex(32),
+            doc: String::new(),
+            last: 0,
+            retired: VecDeque::new(),
+            out_seq: 0,
+            win: Instant::now(),
+            n: 0,
+            bytes: 0,
+            heavy: VecDeque::new(),
         }
     }
-    hex::encode(Sha1::digest(seed.as_bytes()))
+
+    /// Rate limit applied to every message, before any cryptographic work.
+    fn allow(&mut self, now: Instant, len: usize) -> bool {
+        if now.duration_since(self.win) >= Duration::from_secs(1) {
+            (self.win, self.n, self.bytes) = (now, 0, 0);
+        }
+        self.n += 1;
+        self.bytes = self.bytes.saturating_add(len);
+        self.n <= RATE_ALL && self.bytes <= RATE_BYTES
+    }
+
+    fn allow_heavy(&mut self, now: Instant) -> bool {
+        while self
+            .heavy
+            .front()
+            .is_some_and(|t| now.duration_since(*t) > Duration::from_secs(10))
+        {
+            self.heavy.pop_front();
+        }
+        if self.heavy.len() >= RATE_HEAVY {
+            return false;
+        }
+        self.heavy.push_back(now);
+        true
+    }
+
+    /// Accept (doc, seq) only if it is strictly newer than everything seen from this document, or
+    /// the very first message (seq 1) of a document we have not retired yet (a reload).
+    fn accept(&mut self, doc: &str, seq: u64) -> bool {
+        if doc == self.doc {
+            if seq > self.last {
+                self.last = seq;
+                return true;
+            }
+            return false;
+        }
+        if seq == 1 && !self.retired.iter().any(|d| d == doc) {
+            if !self.doc.is_empty() {
+                self.retired.push_back(std::mem::take(&mut self.doc));
+                if self.retired.len() > 64 {
+                    self.retired.pop_front();
+                }
+            }
+            self.doc = doc.to_string();
+            self.last = 1;
+            return true;
+        }
+        false
+    }
+
+    /// Authenticate one raw IPC body (`cc1.<tab>.<doc>.<seq>.<secret>.<json>`) for tab `id`.
+    /// Returns the parsed, size-limited object with `t` forced to `id`, or why it was dropped.
+    fn check(&mut self, id: usize, body: &str, now: Instant) -> Result<Value, &'static str> {
+        if body.len() > MAX_MSG {
+            return Err("oversize");
+        }
+        if !self.allow(now, body.len()) {
+            return Err("rate");
+        }
+        let mut it = body.splitn(6, '.');
+        let (Some("cc1"), Some(t), Some(doc), Some(seq), Some(key), Some(json)) = (
+            it.next(),
+            it.next(),
+            it.next(),
+            it.next(),
+            it.next(),
+            it.next(),
+        ) else {
+            return Err("format");
+        };
+        if t.parse::<usize>().ok() != Some(id)
+            || doc.len() != 24
+            || !doc.bytes().all(|b| b.is_ascii_hexdigit())
+        {
+            return Err("header");
+        }
+        let Ok(seq) = seq.parse::<u64>() else {
+            return Err("header");
+        };
+        if !ct_eq(key.as_bytes(), self.key_out.as_bytes()) {
+            return Err("secret");
+        }
+        if !self.accept(doc, seq) {
+            return Err("replay");
+        }
+        let Ok(mut m) = serde_json::from_str::<Value>(json) else {
+            return Err("json");
+        };
+        let Some(o) = m.as_object_mut() else {
+            return Err("json");
+        };
+        let cmd = o.get("cmd").and_then(Value::as_str).unwrap_or("");
+        if !KNOWN.contains(&cmd) {
+            return Err("command");
+        }
+        if HEAVY.contains(&cmd) && !self.allow_heavy(now) {
+            return Err("rate");
+        }
+        o.insert("t".into(), json!(id));
+        clamp_fields(o);
+        Ok(m)
+    }
+}
+
+/// Constant-time byte comparison.
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).fold(0u8, |d, (x, y)| d | (x ^ y)) == 0
+}
+
+/// Truncate the page-supplied string fields to sane sizes (in characters).
+fn clamp_fields(o: &mut serde_json::Map<String, Value>) {
+    for (k, v) in o.iter_mut() {
+        let cap = match k.as_str() {
+            "text" => 5_000_000,
+            "html" => 3_200_000,
+            "url" => 4096,
+            "title" | "k" | "v" | "lang" | "task" | "mode" => 2000,
+            "q" | "sel" => 20_000,
+            _ => 4096,
+        };
+        if let Value::String(t) = v
+            && t.len() > cap
+        {
+            *t = t.chars().take(cap).collect();
+        }
+    }
+}
+
+/// `scheme://host[:port]` of an http(s) URL (lower-cased), or `None` for anything else.
+fn origin_of(u: &str) -> Option<String> {
+    let (scheme, rest) = u.split_once("://")?;
+    let scheme = scheme.to_ascii_lowercase();
+    if scheme != "http" && scheme != "https" {
+        return None;
+    }
+    let host = rest.split(['/', '?', '#']).next()?;
+    let host = host.rsplit('@').next()?;
+    (!host.is_empty()).then(|| format!("{scheme}://{}", host.to_ascii_lowercase()))
+}
+
+/// Origin policy: `uri` is what the webview reports as the page the message came from.
+/// Commands that carry page content must come from an http(s) page, and the `url` they claim
+/// must be on that same origin.
+fn origin_ok(uri: &str, m: &Value) -> bool {
+    let cmd = m["cmd"].as_str().unwrap_or("");
+    let page = origin_of(uri);
+    if WEB_ONLY.contains(&cmd) && page.is_none() {
+        return false;
+    }
+    match (m["url"].as_str(), &page) {
+        (Some(u), Some(pg))
+            if matches!(
+                cmd,
+                "save" | "later" | "note" | "highlight" | "watch" | "ask"
+            ) =>
+        {
+            origin_of(u).as_deref() == Some(pg.as_str())
+        }
+        _ => true,
+    }
+}
+
+/// Authenticate an IPC request that arrived on tab `id`'s webview. EVERY message is untrusted
+/// until this returns `Some`.
+fn authenticate(c: &Cfg, id: usize, uri: &str, body: &str) -> Option<Value> {
+    let m = {
+        let mut g = c.auth.lock().ok()?;
+        let a = g.get_mut(&id)?;
+        a.check(id, body, Instant::now()).ok()?
+    };
+    origin_ok(uri, &m).then_some(m)
+}
+
+/// The script text that calls tab `tab`'s overlay entry point (one fresh sequence number per call).
+/// Must be called in the order the scripts are evaluated (the event loop does).
+fn entry_js(c: &Cfg, tab: usize, kind: &str, arg: &Value) -> Option<String> {
+    let mut g = c.auth.lock().ok()?;
+    let a = g.get_mut(&tab)?;
+    a.out_seq += 1;
+    Some(format!(
+        "window.__cc_entry&&window.__cc_entry({},{},{},{})",
+        json!(a.key_in),
+        a.out_seq,
+        json!(kind),
+        arg
+    ))
 }
 
 /// Small per-user switches kept next to the library (`browser.json`): tour seen, window size.
@@ -354,12 +643,13 @@ fn reply_k(
     kind: &str,
     x: Value,
 ) {
+    if kind == "dl"
+        && let Some(u) = x["url"].as_str()
+    {
+        c.offered.lock().unwrap().insert(u.to_string());
+    }
     let msg = json!({"ok": ok, "text": text, "k": kind, "x": x});
-    let js = format!(
-        "window[\"__cc_{n}\"]&&window[\"__cc_{n}\"]({msg})",
-        n = c.nonce
-    );
-    let _ = p.send_event(Ev::Eval(tab, js));
+    let _ = p.send_event(Ev::Call(tab, "msg", msg));
 }
 
 fn backend(c: &Cfg) -> Backend {
@@ -500,16 +790,12 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
             } else {
                 json!(null)
             };
-            let js = format!(
-                "window[\"__cc_boot_{n}\"]&&window[\"__cc_boot_{n}\"]({b})",
-                n = c.nonce,
-                b = json!({"tour": tour, "start": start, "mock": c.mock, "prefs": {
-                    "rd_size": prefs_get(c).get("rd_size").cloned().unwrap_or(json!(19)),
-                    "rd_theme": prefs_get(c).get("rd_theme").cloned().unwrap_or(json!("")),
-                    "trackers": c.trackers.load(Ordering::Relaxed),
-                }})
-            );
-            let _ = p.send_event(Ev::Eval(tab, js));
+            let b = json!({"tour": tour, "start": start, "mock": c.mock, "prefs": {
+                "rd_size": prefs_get(c).get("rd_size").cloned().unwrap_or(json!(19)),
+                "rd_theme": prefs_get(c).get("rd_theme").cloned().unwrap_or(json!("")),
+                "trackers": c.trackers.load(Ordering::Relaxed),
+            }});
+            let _ = p.send_event(Ev::Call(tab, "boot", b));
             let _ = p.send_event(Ev::Push);
         }
         "loaded" => {
@@ -547,11 +833,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                 .unwrap_or_default();
             let info =
                 json!({"status": status, "related": rel, "highlights": hl, "history": history});
-            let js = format!(
-                "window[\"__cc_info_{n}\"]&&window[\"__cc_info_{n}\"]({info})",
-                n = c.nonce
-            );
-            let _ = p.send_event(Ev::Eval(tab, js));
+            let _ = p.send_event(Ev::Call(tab, "info", info));
             if let (true, Ok(mut l)) = (history, lib()) {
                 let _ = grab::history_add(&mut l, &page.url, &page.title, &page.text);
             }
@@ -592,10 +874,19 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
         }
         "open_raw" => {
             let u = s("url");
-            if u.starts_with("http") {
+            if u.starts_with("http") && c.offered.lock().unwrap().contains(&u) {
                 c.allow.lock().unwrap().insert(u.clone());
                 let _ = p.send_event(Ev::Navigate(tab, u));
             }
+        }
+        "dl" if !c.offered.lock().unwrap().contains(&s("url")) => {
+            reply(
+                p,
+                c,
+                tab,
+                false,
+                "this document was not offered by the browser".into(),
+            );
         }
         "dl" => match download(c, &s("url")) {
             Ok(path) => reply_k(p, c, tab, true, path.clone(), "dlok", json!({"path": path})),
@@ -865,11 +1156,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                     "hist",
                     json!(on),
                 );
-                let js = format!(
-                    "window[\"__cc_info_{n}\"]&&window[\"__cc_info_{n}\"]({{\"history\":{on}}})",
-                    n = c.nonce
-                );
-                let _ = p.send_event(Ev::Eval(tab, js));
+                let _ = p.send_event(Ev::Call(tab, "info", json!({"history": on})));
             }
         }
         "save_tabs" => match lib().and_then(|mut l| save_tabs(c, &mut l, color_of(m))) {
@@ -955,11 +1242,19 @@ fn make_tab(
     let (c2, p2) = (cfg.clone(), proxy.clone());
     let (p3, p4, p5, p6) = (proxy.clone(), proxy.clone(), proxy.clone(), proxy.clone());
     let (c5, p7, c7) = (cfg.clone(), proxy.clone(), cfg.clone());
+    // a fresh pair of secrets for every webview (also when a sleeping tab wakes up)
+    let (key_out, key_in) = {
+        let a = Auth::new();
+        let k = (a.key_out.clone(), a.key_in.clone());
+        cfg.auth.lock().unwrap().insert(id, a);
+        k
+    };
     let script = OVERLAY
-        .replace("__NONCE__", &cfg.nonce)
+        .replace("__KEYOUT__", &key_out)
+        .replace("__KEYIN__", &key_in)
         .replace("__TAB__", &id.to_string());
     let mut b = WebViewBuilder::new()
-        .with_initialization_script(script)
+        .with_initialization_script_for_main_only(script, true)
         .with_new_window_req_handler(move |u, _| {
             let _ = p3.send_event(Ev::NewTab(Some(u)));
             wry::NewWindowResponse::Deny
@@ -1007,12 +1302,11 @@ fn make_tab(
             false
         })
         .with_ipc_handler(move |req| {
-            let Ok(m) = serde_json::from_str::<Value>(req.body()) else {
+            // EVERY message is untrusted until it proves it knows this webview's secret
+            let uri = req.uri().to_string();
+            let Some(m) = authenticate(&c2, id, &uri, req.body()) else {
                 return;
             };
-            if m["n"].as_str() != Some(c2.nonce.as_str()) {
-                return; // a page script cannot know the per-run nonce
-            }
             let (c, p) = (c2.clone(), p2.clone());
             std::thread::spawn(move || handle(&c, &p, &m));
         });
@@ -1020,17 +1314,23 @@ fn make_tab(
         Some(u) => b.with_url(normalize(u).unwrap_or_else(|| u.to_string())),
         None => b.with_html(START),
     };
-    if let (Some(js), 1) = (cfg.selftest, id) {
-        let nonce = cfg.nonce.clone();
+    if let (Some(mode), 1) = (cfg.selftest, id) {
         b = b.with_on_page_load_handler(move |ev, _| {
             if matches!(ev, wry::PageLoadEvent::Finished) {
-                let _ = p6.send_event(Ev::Eval(
-                    id,
-                    format!(
-                        "setTimeout(()=>window[\"__cc_do_{nonce}\"]{js},{})",
-                        if js.contains("ask_tabs") { 3500 } else { 900 }
-                    ),
-                ));
+                if mode == "forge" {
+                    let _ = p6.send_event(Ev::ForgeGo);
+                    return;
+                }
+                let (args, ms) = match mode {
+                    "tabs" => (json!(["ask_tabs", "colibri"]), 3500),
+                    "ask" => (json!(["ask", "ce sunt colibrii?"]), 900),
+                    _ => (json!(["save"]), 900),
+                };
+                let p = p6.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(ms));
+                    let _ = p.send_event(Ev::Call(id, "do", args));
+                });
             }
         });
     }
@@ -1084,6 +1384,257 @@ fn full_bounds(window: &Window) -> wry::Rect {
     }
 }
 
+/// What the simulated hostile page does (run with `evaluate_script`, i.e. in the page's own JS
+/// world, after the overlay is up — the strongest position a page script can have, since the
+/// overlay captured everything it needs at document start).
+const FORGE_JS: &str = r#"(() => {
+  const P = { tried: 0, hex: [], fns: [], seen: [] };
+  Object.defineProperty(window, "__probe", { value: P, configurable: true });
+  const jo = JSON.stringify, ra = Reflect.apply, sl = Array.prototype.slice;
+  const rec = (t, a) => { try { P.seen.push(t + ":" + ra(sl, a, []).map((x) => typeof x === "string" ? x : jo(x)).join("|").slice(0, 400)); } catch (e) {} };
+  const hook = (o, k, tag) => { try { const f = o[k]; if (typeof f !== "function") return; Object.defineProperty(o, k, { configurable: true, writable: true, value: function () { rec(tag, arguments); return ra(f, this, arguments); } }); } catch (e) {} };
+  // 1. a hostile page patches everything it can to read or rewrite what the overlay sends
+  hook(JSON, "stringify", "JSON.stringify");
+  hook(Function.prototype, "call", "call"); hook(Function.prototype, "apply", "apply"); hook(Function.prototype, "bind", "bind");
+  hook(String.prototype, "concat", "concat"); hook(Object, "assign", "assign"); hook(Object, "keys", "keys");
+  hook(Uint8Array.prototype, "set", "u8set");
+  try { hook(window.webkit.messageHandlers.ipc, "postMessage", "native.postMessage"); } catch (e) {}
+  try { hook(window.chrome.webview, "postMessage", "webview.postMessage"); } catch (e) {}
+  try { Object.defineProperty(Object.prototype, "toJSON", { configurable: true, get() { rec("toJSON", []); return function () { return { cmd: "history" }; }; } }); } catch (e) {}
+  for (const k of ["cmd", "url", "text", "html"]) { try { Object.defineProperty(Object.prototype, k, { configurable: true, get() { return k === "cmd" ? "history" : "POISON"; }, set() {} }); } catch (e) {} }
+  // 2. enumerate window property names
+  for (const n of Object.getOwnPropertyNames(window)) {
+    if (/[0-9a-f]{16,}/i.test(n)) P.hex.push(n);
+    try { if (/cc|nonce|colibri|ipc/i.test(n) && typeof window[n] === "function") P.fns.push(n); } catch (e) {}
+  }
+  const guesses = ["", "0", "1", "null", "undefined", "nonce", "secret", "0".repeat(64), "a".repeat(64), String(Date.now()), "__cc_entry", ...P.hex, ...P.fns];
+  const kinds = ["msg", "do", "tabs", "info", "boot", "__proto__", "constructor", "toString"];
+  const args = [["save"], ["history"], ["ask", "POISON"], { ok: true, text: "x", k: "save" }, { history: true, highlights: ["POISON"] }, null, "x"];
+  // 3. call every cc-looking function with guessed secrets and sequence numbers
+  for (const n of P.fns) {
+    for (const g of guesses) for (const q of [0, 1, 2, 1e6, -1, NaN, "1"]) for (let i = 0; i < kinds.length; i++) {
+      try { window[n](g, q, kinds[i], args[i % args.length]); window[n](); P.tried++; } catch (e) {}
+    }
+  }
+  // 4. forged IPC messages through every door: wry's window.ipc and the native handler
+  const doors = [];
+  try { doors.push((m) => window.ipc.postMessage(m)); } catch (e) {}
+  try { doors.push((m) => window.webkit.messageHandlers.ipc.postMessage(m)); } catch (e) {}
+  try { doors.push((m) => window.chrome.webview.postMessage(m)); } catch (e) {}
+  const cmds = ["save", "history", "watch", "highlight", "ask", "ask_tabs", "save_tabs", "later", "note", "dl", "open_raw", "trackers", "tour_seen", "newtab", "close", "sel", "pref", "go"];
+  const keys = ["", "0", "x".repeat(64), "0".repeat(64), "null"];
+  const docs = ["0".repeat(24), "a".repeat(24), "abcdef0123456789abcdef01", "short", ""];
+  for (const door of doors) {
+    for (const cmd of cmds) {
+      const body = jo({ cmd, url: location.href, title: "POISON", text: "POISON ".repeat(50), html: "<p>POISON</p>", sel: "POISON", q: "POISON", id: 1, n: "x", t: 1 });
+      const legacy = [body, jo({ n: "", t: 1, cmd }), jo({ n: "0".repeat(40), t: 1, cmd, url: location.href, text: "POISON" }), "{}", "[]", "null", "", "cc1", "cc1....."];
+      for (const m of legacy) { try { door(m); P.tried++; } catch (e) {} }
+      for (const k of keys) for (const d of docs) for (const seq of [0, 1, 2, 3, 1e9]) {
+        try { door(["cc1", 1, d, seq, k, body].join(".")); P.tried++; } catch (e) {}
+      }
+      // replay: the same forged message twice
+      const rp = ["cc1", 1, docs[2], 1, keys[1], body].join(".");
+      try { door(rp); door(rp); P.tried += 2; } catch (e) {}
+    }
+  }
+  // 5. script-dispatched ("untrusted") shortcuts and clicks must not trigger Save/Ask/Highlight/new tab
+  for (const k of ["s", "h", "A", "r", "k"]) {
+    for (const t of ["keydown", "keyup"]) { try { window.dispatchEvent(new KeyboardEvent(t, { key: k, ctrlKey: true, shiftKey: k === "A", bubbles: true })); document.dispatchEvent(new KeyboardEvent(t, { key: k, ctrlKey: true, bubbles: true })); P.tried++; } catch (e) {} }
+  }
+  try { const a = document.createElement("a"); a.href = "https://example.invalid/"; a.textContent = "x"; for (const t of ["click", "auxclick"]) a.addEventListener(t, (e) => e.preventDefault()); document.body.appendChild(a); a.dispatchEvent(new MouseEvent("click", { ctrlKey: true, bubbles: true, cancelable: true })); a.dispatchEvent(new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true })); } catch (e) {}
+  P.done = true;
+})()"#;
+
+/// Files (relative path + size) under the library home, ignoring database sidecar files.
+fn snapshot(home: Option<&str>) -> Vec<String> {
+    fn walk(base: &std::path::Path, dir: &std::path::Path, out: &mut Vec<String>) {
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            let rel = p
+                .strip_prefix(base)
+                .unwrap_or(&p)
+                .to_string_lossy()
+                .into_owned();
+            if p.is_dir() {
+                walk(base, &p, out);
+            } else if !(rel.ends_with("-wal")
+                || rel.ends_with("-shm")
+                || rel.ends_with("-journal")
+                || rel.ends_with(".db")
+                || rel.ends_with(".sqlite")
+                || rel.ends_with(".lock"))
+            {
+                out.push(format!(
+                    "{rel}:{}",
+                    e.metadata().map(|m| m.len()).unwrap_or(0)
+                ));
+            }
+        }
+    }
+    let mut v = vec![];
+    if let Ok(h) = state_dir(home) {
+        walk(&h, &h, &mut v);
+        v.push(format!("history={}", grab::history_enabled(&h)));
+    }
+    v.sort();
+    v
+}
+
+/// State machine of `--selftest-forge`.
+#[derive(Default)]
+struct Forge {
+    stage: u8,
+    since: Option<Instant>,
+    before: Vec<String>,
+    after_attack: Vec<String>,
+}
+
+impl Forge {
+    fn go(&mut self) {
+        if self.stage == 0 {
+            self.stage = 1;
+            self.since = Some(Instant::now());
+        }
+    }
+
+    fn fail(&self, why: &str, flow: &mut ControlFlow) {
+        println!("selftest FAILED: {why}");
+        *flow = ControlFlow::ExitWithCode(1);
+    }
+
+    /// Called on every loop iteration; returns true when the event should not be processed further.
+    fn tick(&mut self, cfg: &Cfg, tabs: &[Tab], flow: &mut ControlFlow) -> bool {
+        let Some(t0) = self.since else {
+            return false;
+        };
+        let age = Instant::now().duration_since(t0);
+        let home = cfg.home.as_deref();
+        match self.stage {
+            1 if age > Duration::from_millis(2500) => {
+                // the page and the overlay are up and its own start-up traffic is over
+                self.before = snapshot(home);
+                if let Some(wv) = tabs.first().and_then(|t| t.wv.as_ref()) {
+                    let _ = wv.evaluate_script(FORGE_JS);
+                }
+                self.stage = 2;
+                self.since = Some(Instant::now());
+            }
+            2 if age > Duration::from_millis(4000) => {
+                self.after_attack = snapshot(home);
+                if self.after_attack != self.before || tabs.len() != 1 {
+                    self.fail(
+                        &format!(
+                            "a forged message changed the library/home\n before: {:?}\n after:  {:?}",
+                            self.before, self.after_attack
+                        ),
+                        flow,
+                    );
+                    return true;
+                }
+                // the overlay must still work: a legitimate save
+                let args = json!(["save"]);
+                if let Some(wv) = tabs.first().and_then(|t| t.wv.as_ref())
+                    && let Some(js) = entry_js(cfg, 1, "do", &args)
+                {
+                    let _ = wv.evaluate_script(&js);
+                }
+                self.stage = 3;
+                self.since = Some(Instant::now());
+            }
+            3 if age > Duration::from_secs(20) => {
+                self.fail("the legitimate save never answered", flow);
+                return true;
+            }
+            _ => {}
+        }
+        false
+    }
+
+    /// A reply from the Rust side to the overlay (kind "msg") was produced.
+    fn reply(
+        &mut self,
+        cfg: &Cfg,
+        tabs: &[Tab],
+        proxy: &EventLoopProxy<Ev>,
+        arg: &Value,
+        flow: &mut ControlFlow,
+    ) {
+        if self.stage != 3 {
+            self.fail(
+                &format!("a forged command produced a reply before the legit save: {arg}"),
+                flow,
+            );
+            return;
+        }
+        let ok = arg["ok"] == json!(true) && arg["k"] == json!("save");
+        let now = snapshot(cfg.home.as_deref());
+        if !ok || now == self.after_attack {
+            self.fail(&format!("the legitimate save did not work: {arg}"), flow);
+            return;
+        }
+        self.stage = 4;
+        if let Some(wv) = tabs.first().and_then(|t| t.wv.as_ref()) {
+            let p = proxy.clone();
+            let _ = wv.evaluate_script_with_callback(
+                "(() => { try { delete Object.prototype.toJSON; delete Object.prototype.cmd; delete Object.prototype.url; delete Object.prototype.text; delete Object.prototype.html; } catch (e) {} return JSON.stringify(window.__probe || {}); })()",
+                move |r| {
+                    let _ = p.send_event(Ev::Probe(r));
+                },
+            );
+        }
+    }
+
+    /// The hostile page's own notes: did it ever see a secret or find a secret-named global?
+    fn probe(&mut self, cfg: &Cfg, raw: &str, flow: &mut ControlFlow) {
+        let inner = serde_json::from_str::<Value>(raw).unwrap_or(Value::Null);
+        let p = match &inner {
+            Value::String(s) => serde_json::from_str::<Value>(s).unwrap_or(Value::Null),
+            v => v.clone(),
+        };
+        let g = cfg.auth.lock().unwrap();
+        let a = g.get(&1);
+        let seen = p["seen"].to_string();
+        let leaked = a.is_some_and(|a| {
+            seen.contains(&a.key_out) || seen.contains(&a.key_in) || raw.contains(&a.key_out)
+        });
+        let tried = p["tried"].as_u64().unwrap_or(0);
+        let hex = p["hex"].as_array().map(|v| v.len()).unwrap_or(99);
+        let fns: Vec<String> = p["fns"]
+            .as_array()
+            .map(|v| {
+                v.iter()
+                    .filter_map(|x| x.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let only_entry = fns
+            .iter()
+            .filter(|n| n.contains("cc"))
+            .all(|n| n == "__cc_entry");
+        if p["done"] != json!(true) || tried < 100 {
+            self.fail(
+                &format!("the hostile page did not run to completion (tried={tried})"),
+                flow,
+            );
+        } else if leaked {
+            self.fail("a secret reached page-observable code", flow);
+        } else if hex != 0 || !only_entry {
+            self.fail(
+                &format!("secret-looking globals: hex={hex} fns={fns:?}"),
+                flow,
+            );
+        } else {
+            println!(
+                "selftest ok: {tried} forged calls/messages/events ignored, nothing saved or changed, secrets unseen (globals: {fns:?}), legit save still works"
+            );
+            *flow = ControlFlow::ExitWithCode(0);
+        }
+    }
+}
+
 fn push_tabs(cfg: &Cfg, tabs: &[Tab], active: usize) {
     let colors = cfg.colors.lock().unwrap().clone();
     let mut seen: BTreeMap<String, usize> = BTreeMap::new();
@@ -1097,12 +1648,10 @@ fn push_tabs(cfg: &Cfg, tabs: &[Tab], active: usize) {
         })
         .collect();
     let st = json!({"tabs": list, "active": active});
-    let js = format!(
-        "window[\"__cc_tabs_{n}\"]&&window[\"__cc_tabs_{n}\"]({st})",
-        n = cfg.nonce
-    );
     for t in tabs {
-        if let Some(wv) = &t.wv {
+        if let Some(wv) = &t.wv
+            && let Some(js) = entry_js(cfg, t.id, "tabs", &st)
+        {
             let _ = wv.evaluate_script(&js);
         }
     }
@@ -1158,16 +1707,18 @@ fn main() {
     };
     if flag("--help") || flag("-h") {
         println!(
-            "cartacolibri-browser [URL…] [--home DIR] [--gateway URL] [--mock] [--fresh]\n  --fresh   do not restore the previous tabs\n  keys: Ctrl+S save · Ctrl+Shift+A ask · Ctrl+H highlight · Ctrl+F find · Ctrl+Shift+R reader · Ctrl+Shift+K search tabs · F1 help · Ctrl+Shift+T reopen tab · Esc close panels\n  --selftest-save | --selftest-ask | --selftest-tabs   load the first URL, save it / ask about it (use with --mock), print the result, exit (used by CI)"
+            "cartacolibri-browser [URL…] [--home DIR] [--gateway URL] [--mock] [--fresh]\n  --fresh   do not restore the previous tabs\n  keys: Ctrl+S save · Ctrl+Shift+A ask · Ctrl+H highlight · Ctrl+F find · Ctrl+Shift+R reader · Ctrl+Shift+K search tabs · F1 help · Ctrl+Shift+T reopen tab · Esc close panels\n  --selftest-save | --selftest-ask | --selftest-tabs   load the first URL, save it / ask about it (use with --mock), print the result, exit (used by CI)\n  --selftest-forge   load the first URL, let a simulated hostile page forge IPC messages and call the overlay; passes only if nothing changed and a real save still works"
         );
         return;
     }
     let selftest: Option<&'static str> = if flag("--selftest-tabs") {
-        Some("('ask_tabs','colibri')")
+        Some("tabs")
     } else if flag("--selftest-ask") {
-        Some("('ask','ce sunt colibrii?')")
+        Some("ask")
     } else if flag("--selftest-save") {
-        Some("('save')")
+        Some("save")
+    } else if flag("--selftest-forge") {
+        Some("forge")
     } else {
         None
     };
@@ -1183,8 +1734,9 @@ fn main() {
             .or_else(|| std::env::var("COLI_URL").ok())
             .unwrap_or_else(|| carta::DEFAULT_URL.into()),
         mock: flag("--mock"),
-        nonce: nonce(),
         selftest,
+        auth: Mutex::new(BTreeMap::new()),
+        offered: Mutex::new(BTreeSet::new()),
         pages: Mutex::new(BTreeMap::new()),
         colors: Mutex::new(BTreeMap::new()),
         trackers: AtomicBool::new(false),
@@ -1250,8 +1802,12 @@ fn main() {
     show_only(&tabs, active);
     let mut closed: Vec<String> = vec![];
 
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let mut forge = Forge::default();
     event_loop.run(move |event, _, flow| {
+        if selftest == Some("forge") && forge.tick(&cfg, &tabs, flow) {
+            return;
+        }
         *flow = if selftest.is_some() {
             ControlFlow::WaitUntil(
                 std::time::Instant::now() + std::time::Duration::from_millis(250),
@@ -1260,14 +1816,19 @@ fn main() {
             ControlFlow::Wait
         };
         match event {
-            Event::UserEvent(Ev::Eval(tab, js)) => {
-                if selftest.is_some() && js.contains("\"text\":") {
-                    let ok = js.contains("\"ok\":true") && (tabs.len() < 2 || js.contains("[S2]"));
-                    println!(
-                        "selftest {}: {}",
-                        if ok { "ok" } else { "FAILED" },
-                        js.split("(").last().unwrap_or("")
-                    );
+            Event::UserEvent(Ev::Call(tab, kind, arg)) => {
+                if selftest == Some("forge") {
+                    if kind == "msg" && arg.get("text").is_some() {
+                        forge.reply(&cfg, &tabs, &proxy, &arg, flow);
+                        if matches!(*flow, ControlFlow::ExitWithCode(_)) {
+                            return;
+                        }
+                    }
+                } else if selftest.is_some() && kind == "msg" && arg.get("text").is_some() {
+                    let ok = arg["ok"] == json!(true)
+                        && (tabs.len() < 2
+                            || arg["text"].as_str().is_some_and(|t| t.contains("[S2]")));
+                    println!("selftest {}: {arg}", if ok { "ok" } else { "FAILED" });
                     *flow = ControlFlow::ExitWithCode(if ok { 0 } else { 1 });
                     return;
                 }
@@ -1275,10 +1836,13 @@ fn main() {
                     .iter()
                     .find(|t| t.id == tab)
                     .and_then(|t| t.wv.as_ref())
+                    && let Some(js) = entry_js(&cfg, tab, kind, &arg)
                 {
                     let _ = wv.evaluate_script(&js);
                 }
             }
+            Event::UserEvent(Ev::ForgeGo) => forge.go(),
+            Event::UserEvent(Ev::Probe(raw)) => forge.probe(&cfg, &raw, flow),
             Event::UserEvent(Ev::Navigate(tab, u)) => {
                 if let Some(wv) = tabs
                     .iter()
@@ -1422,7 +1986,7 @@ fn main() {
                 }
             }
             Event::NewEvents(StartCause::ResumeTimeReached { .. })
-                if selftest.is_some() && std::time::Instant::now() > deadline =>
+                if selftest.is_some() && Instant::now() > deadline =>
             {
                 eprintln!("selftest FAILED: timeout");
                 *flow = ControlFlow::ExitWithCode(2);
@@ -1453,4 +2017,184 @@ fn main() {
             _ => {}
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn msg(a: &Auth, doc: &str, seq: u64, key: &str, body: &str) -> String {
+        let _ = a;
+        format!("cc1.1.{doc}.{seq}.{key}.{body}")
+    }
+    const DOC: &str = "0123456789abcdef01234567";
+    const DOC2: &str = "76543210fedcba9876543210";
+
+    #[test]
+    fn rejects_forgeries_and_replays() {
+        let mut a = Auth::new();
+        let k = a.key_out.clone();
+        let t = Instant::now();
+        let ok = msg(&a, DOC, 1, &k, r#"{"cmd":"history"}"#);
+        assert!(a.check(1, &ok, t).is_ok());
+        assert_eq!(a.check(1, &ok, t), Err("replay")); // replay
+        assert_eq!(
+            a.check(
+                1,
+                &msg(&a, DOC, 2, &"0".repeat(64), "{\"cmd\":\"save\"}"),
+                t
+            ),
+            Err("secret")
+        );
+        assert_eq!(
+            a.check(1, &msg(&a, DOC, 2, "", "{\"cmd\":\"save\"}"), t),
+            Err("secret")
+        );
+        assert_eq!(
+            a.check(1, &format!("{{\"n\":\"{k}\",\"t\":1,\"cmd\":\"save\"}}"), t),
+            Err("format")
+        );
+        assert_eq!(
+            a.check(2, &msg(&a, DOC, 3, &k, "{\"cmd\":\"save\"}"), t),
+            Err("header")
+        ); // other tab
+        assert_eq!(
+            a.check(1, &msg(&a, DOC, 3, &k, "{\"cmd\":\"rm -rf\"}"), t),
+            Err("command")
+        );
+        assert!(
+            a.check(
+                1,
+                &msg(&a, DOC, 4, &k, "{\"cmd\":\"save\",\"text\":\"x\"}"),
+                t
+            )
+            .is_ok()
+        );
+        // an older sequence number of the same document is a replay too
+        assert_eq!(
+            a.check(1, &msg(&a, DOC, 3, &k, "{\"cmd\":\"save\"}"), t),
+            Err("replay")
+        );
+    }
+
+    #[test]
+    fn reload_starts_a_new_document_and_retires_the_old() {
+        let mut a = Auth::new();
+        let k = a.key_out.clone();
+        let t = Instant::now();
+        assert!(
+            a.check(1, &msg(&a, DOC, 1, &k, "{\"cmd\":\"ready\"}"), t)
+                .is_ok()
+        );
+        assert!(
+            a.check(1, &msg(&a, DOC, 2, &k, "{\"cmd\":\"ready\"}"), t)
+                .is_ok()
+        );
+        assert!(
+            a.check(1, &msg(&a, DOC2, 1, &k, "{\"cmd\":\"ready\"}"), t)
+                .is_ok()
+        );
+        // the old document can no longer speak, nor can its seq 1 be replayed
+        assert_eq!(
+            a.check(1, &msg(&a, DOC, 3, &k, "{\"cmd\":\"ready\"}"), t),
+            Err("replay")
+        );
+        assert_eq!(
+            a.check(1, &msg(&a, DOC, 1, &k, "{\"cmd\":\"ready\"}"), t),
+            Err("replay")
+        );
+        // a new document that does not start at 1 is refused
+        assert_eq!(
+            a.check(
+                1,
+                &msg(&a, "ffffffffffffffffffffffff", 7, &k, "{\"cmd\":\"ready\"}"),
+                t
+            ),
+            Err("replay")
+        );
+    }
+
+    #[test]
+    fn rate_limits_and_size() {
+        let mut a = Auth::new();
+        let k = a.key_out.clone();
+        let t = Instant::now();
+        let mut n = 0;
+        for i in 1..=200u64 {
+            if a.check(1, &msg(&a, DOC, i, &k, "{\"cmd\":\"ready\"}"), t)
+                .is_ok()
+            {
+                n += 1;
+            }
+        }
+        assert_eq!(n, RATE_ALL);
+        // the window slides
+        let t2 = t + Duration::from_secs(2);
+        assert!(
+            a.check(1, &msg(&a, DOC, 500, &k, "{\"cmd\":\"ready\"}"), t2)
+                .is_ok()
+        );
+        // heavy commands: at most RATE_HEAVY per 10 s
+        let mut a = Auth::new();
+        let k = a.key_out.clone();
+        let mut n = 0;
+        for i in 1..=30u64 {
+            let t = t + Duration::from_millis(i * 100); // 10/s: under RATE_ALL
+            if a.check(1, &msg(&a, DOC, i, &k, "{\"cmd\":\"ask\",\"q\":\"x\"}"), t)
+                .is_ok()
+            {
+                n += 1;
+            }
+        }
+        assert_eq!(n, RATE_HEAVY);
+        let big = format!("cc1.1.{DOC}.1.{k}.{}", "x".repeat(MAX_MSG));
+        assert_eq!(Auth::new().check(1, &big, t), Err("oversize"));
+    }
+
+    #[test]
+    fn fields_are_clamped() {
+        let mut a = Auth::new();
+        let k = a.key_out.clone();
+        let body = format!(
+            "{{\"cmd\":\"save\",\"title\":\"{}\",\"url\":\"http://a/\"}}",
+            "é".repeat(50_000)
+        );
+        let m = a
+            .check(1, &msg(&a, DOC, 1, &k, &body), Instant::now())
+            .unwrap();
+        assert_eq!(m["title"].as_str().unwrap().chars().count(), 2000);
+        assert_eq!(m["t"], json!(1));
+    }
+
+    #[test]
+    fn origin_policy() {
+        let save = json!({"cmd":"save","url":"https://a.example/x?y"});
+        assert!(origin_ok("https://a.example/page", &save));
+        assert!(origin_ok(
+            "https://A.example:443/",
+            &json!({"cmd":"history"})
+        ));
+        assert!(!origin_ok("https://evil.example/", &save)); // claims another site's url
+        assert!(!origin_ok("about:blank", &save)); // content commands need a web page
+        assert!(!origin_ok("file:///etc/passwd", &save));
+        assert!(!origin_ok(
+            "about:blank",
+            &json!({"cmd":"dl","url":"http://a/"})
+        ));
+        assert!(origin_ok("about:blank", &json!({"cmd":"ready"})));
+        assert_eq!(
+            origin_of("http://user:pw@Host:81/p").as_deref(),
+            Some("http://host:81")
+        );
+        assert_eq!(origin_of("javascript:alert(1)"), None);
+    }
+
+    #[test]
+    fn secrets_are_random_and_hex() {
+        let (a, b) = (Auth::new(), Auth::new());
+        assert_eq!(a.key_out.len(), 64);
+        assert!(a.key_out.bytes().all(|c| c.is_ascii_hexdigit()));
+        assert_ne!(a.key_out, b.key_out);
+        assert_ne!(a.key_out, a.key_in);
+    }
 }

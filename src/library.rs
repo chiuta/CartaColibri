@@ -221,6 +221,9 @@ fn is_glob(s: &str) -> bool {
 fn init_db(home: &Path) -> Res<Connection> {
     let db = Connection::open(home.join("index.sqlite")).map_err(e)?;
     db.busy_timeout(Duration::from_secs(30)).map_err(e)?;
+    // WAL: readers (the web UI) never wait for the indexer's writes. Falls back silently on
+    // file systems that cannot do it.
+    let _ = db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
     db.execute_batch(
         "CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY);
          CREATE TABLE IF NOT EXISTS docs(id INTEGER PRIMARY KEY, root TEXT, path TEXT UNIQUE, ext TEXT,
@@ -454,8 +457,22 @@ impl Library {
                     }
                     Self::walk(&path, out, probs, seen_dirs, depth + 1);
                 }
-            } else {
+            } else if ft.is_file() {
                 out.push(path);
+            } else {
+                // Pipes, sockets and device nodes are never opened (reading a FIFO would block
+                // forever); a link is kept only if it points at an ordinary file.
+                let regular =
+                    ft.is_symlink() && std::fs::metadata(&path).is_ok_and(|m| m.is_file());
+                if regular {
+                    out.push(path);
+                } else if !ft.is_symlink() {
+                    probs.push((
+                        path.to_string_lossy().into_owned(),
+                        "This is not an ordinary file (a device, pipe or socket), so it was skipped."
+                            .into(),
+                    ));
+                }
             }
         }
     }
@@ -578,6 +595,17 @@ impl Library {
                         continue;
                     }
                 };
+                if !md.is_file() {
+                    st.skipped += 1;
+                    pr.skipped += 1;
+                    note(
+                        &tx,
+                        &ps,
+                        "This is not an ordinary file (a device, pipe or socket), so it was skipped.",
+                    )?;
+                    progress(&pr);
+                    continue;
+                }
                 if md.len() > MAX_FILE_BYTES {
                     st.skipped += 1;
                     pr.skipped += 1;
@@ -615,8 +643,22 @@ impl Library {
                 }
                 let mut empty = false;
                 let res: Res<bool> = (|| {
-                    let raw = std::fs::read(&p)
-                        .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
+                    let raw = {
+                        use std::io::Read;
+                        let f = std::fs::File::open(&p)
+                            .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
+                        let mut buf = Vec::new();
+                        f.take(MAX_FILE_BYTES + 1)
+                            .read_to_end(&mut buf)
+                            .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
+                        if buf.len() as u64 > MAX_FILE_BYTES {
+                            return Err(format!(
+                                "Skipped: the file is very large (the limit is {} MB).",
+                                MAX_FILE_BYTES >> 20
+                            ));
+                        }
+                        buf
+                    };
                     let sha = hex::encode(<sha1::Sha1 as sha1::Digest>::digest(&raw));
                     if let Some((id, _, _, old)) = &row
                         && *old == sha
