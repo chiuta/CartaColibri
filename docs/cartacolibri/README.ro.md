@@ -47,6 +47,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Chat cu întrebări separate** — Bifează „Fiecare întrebare separat” și chatul uită întrebările anterioare: fiecare răspuns vine doar din documentele tale, cu sursele lui.
 - **Server MCP pentru alte aplicații AI** — `cartacolibri mcp` lasă alte aplicații AI să-ți caute în bibliotecă, să citească un document și să pună întrebări despre el prin Model Context Protocol. E doar în citire, rulează pe calculatorul tău și ajunge doar la documentele returnate de căutare.
 - **Rezumat cu ce e nou** — `cartacolibri digest NUME` reia o căutare salvată și raportează doar documentele apărute de la ultima rulare. Adaugă `--every 60` ca să se repete din oră în oră, `--out raport.md` ca să adauge într-un fișier și `--summarize` pentru un scurt rezumat de la AI-ul tău local.
+- **Afli cât de mult poți avea încredere într-un răspuns** — Fiecare răspuns din chat arată acum un scor „Susținere în surse”: cât din fiecare propoziție se găsește cu adevărat în sursele citate, cu propozițiile de verificat și numerele care nu apar în nicio sursă.
+- **Compară două documente și vezi toate numele și numerele** — Bifează două documente și apasă „Compară 2” ca să vezi, propoziție cu propoziție, ce diferă între două versiuni. „Nume și numere” listează toate emailurile, linkurile, sumele, datele și telefoanele din bibliotecă și unde apar. În linia de comandă: `compare` și `entities`.
 
 ## Noutăți în 0.2.0-alpha.2
 

@@ -740,6 +740,53 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 json!({"query": qs, "hits": fr.hits, "corrected": fr.corrected, "suggestions": fr.suggestions, "expanded": extra, "facets": {"ext": by_ext}})
             }
         }
+        ("GET", "entities") => {
+            let kind = r
+                .query
+                .get("kind")
+                .map(String::as_str)
+                .filter(|k| !k.is_empty());
+            if kind.is_some_and(|k| !crate::insight::KINDS.contains(&k)) {
+                return Err((400, "kind must be email, url, money, date or phone".into()));
+            }
+            let docs: Vec<(String, String)> = lib
+                .documents(
+                    r.query
+                        .get("group")
+                        .map(String::as_str)
+                        .filter(|g| !g.is_empty()),
+                )
+                .map_err(bad)?
+                .into_iter()
+                .map(|d| (d.path, lib.text_of(d.id)))
+                .collect();
+            let idx = crate::insight::entity_index(&docs, kind);
+            let mut rows: Vec<Value> = idx
+                .into_iter()
+                .map(|((k, v), p)| json!({"kind": k, "value": v, "count": p.len(), "docs": p}))
+                .collect();
+            rows.sort_by_key(|x| std::cmp::Reverse(x["count"].as_u64().unwrap_or(0)));
+            rows.truncate(500);
+            json!({"entities": rows})
+        }
+        ("GET", "compare") => {
+            let get = |k: &str| -> Result<(String, String), (u16, String)> {
+                let id: i64 = r
+                    .query
+                    .get(k)
+                    .and_then(|v| v.parse().ok())
+                    .ok_or((400, format!("missing document id '{k}'")))?;
+                let d = lib
+                    .docs_by_id(&[id])
+                    .into_iter()
+                    .next()
+                    .ok_or((404, "that document is not in the library".to_string()))?;
+                Ok((d.path, lib.text_of(id)))
+            };
+            let (pa, ta) = get("a")?;
+            let (pb, tb) = get("b")?;
+            json!({"a": pa, "b": pb, "compare": crate::insight::compare(&ta, &tb)})
+        }
         ("GET", "duplicates") => {
             let by: HashMap<String, (i64, i64)> = lib
                 .documents(None)
@@ -1095,7 +1142,13 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                     (400, m)
                 }
             })?;
-            json!({"answer": rep.answer, "found": rep.found, "note": rep.note, "usage": carta::take_usage().as_ref().map(carta::usage_json),
+            let gsrc: Vec<(String, String)> = rep
+                .sources
+                .iter()
+                .map(|x| (x.label.clone(), x.passage.clone()))
+                .collect();
+            let grounding = crate::insight::grounding(&rep.answer, &gsrc);
+            json!({"answer": rep.answer, "found": rep.found, "note": rep.note, "grounding": grounding, "usage": carta::take_usage().as_ref().map(carta::usage_json),
                 "sources": rep.sources.iter().map(|x| json!({"label": x.label, "path": x.path, "passage": x.passage})).collect::<Vec<_>>()})
         }
         ("POST", "chat/reset") => {

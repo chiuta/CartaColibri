@@ -700,3 +700,32 @@ fn query_mode_chat_inline_filters_and_smart_flag() {
     assert_eq!(sm["hits"].as_array().map_or(0, Vec::len), n_all);
     assert_eq!(sm["expanded"].as_array().map_or(99, Vec::len), 0);
 }
+
+#[test]
+fn grounding_entities_and_compare_routes() {
+    let (s, ids) = indexed();
+    let val = |r: Resp| -> Value { serde_json::from_slice(&r.body).unwrap_or(Value::Null) };
+    // every chat answer now carries a grounding report
+    let c = post(
+        &s,
+        "/carta/chat",
+        json!({"sid": "g-1", "q": "What are the payment terms?", "mock": true, "mode": "query"}),
+    );
+    assert_eq!(c.code, 200, "{}", c.text());
+    let g = &c.json()["grounding"];
+    assert!(g["score"].as_u64().is_some() && g["claims"].is_array());
+    // entities: a clean error for an unknown kind, a list otherwise
+    assert_eq!(get(&s, "/carta/entities?kind=nope").code, 400);
+    let e = val(get(&s, "/carta/entities?kind=email"));
+    assert!(e["entities"].is_array());
+    // compare two indexed documents
+    let idv: Vec<i64> = ids.values().copied().collect();
+    assert!(idv.len() >= 2);
+    let cmp = val(get(
+        &s,
+        &format!("/carta/compare?a={}&b={}", idv[0], idv[1]),
+    ));
+    assert!(cmp["compare"]["similarity"].as_u64().is_some());
+    assert_eq!(get(&s, "/carta/compare?a=1").code, 400);
+    assert_eq!(get(&s, "/carta/compare?a=1&b=999999").code, 404);
+}

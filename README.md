@@ -47,6 +47,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Single-question chat** — Tick “Each question on its own” and the chat forgets earlier questions: every answer comes only from your documents, with its sources.
 - **An MCP server for other AI apps** — `cartacolibri mcp` lets other AI applications search your library, read a document and ask questions about it through the Model Context Protocol. It is read-only, runs on your computer and only reaches documents that search has returned.
 - **A digest of what is new** — `cartacolibri digest NAME` re-runs a saved search and reports only the documents that appeared since last time. Add `--every 60` to repeat hourly, `--out report.md` to append to a file and `--summarize` to get a short summary from your local AI.
+- **Know how far to trust an answer** — Every chat answer now shows a “Grounding” score: how much of each sentence is really found in the sources it cites, with sentences to double-check and numbers that appear in no source.
+- **Compare two documents, and see every name and number** — Tick two documents and press “Compare 2” to see, sentence by sentence, what differs between two versions. “Names & numbers” lists every email, link, money amount, date and phone number across your library, and where it appears. On the command line: `compare` and `entities`.
 
 ## New in 0.2.0-alpha.2
 

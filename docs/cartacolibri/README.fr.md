@@ -47,6 +47,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Chat question par question** — Coche « Chaque question à part » et le chat oublie les questions précédentes : chaque réponse vient uniquement de tes documents, avec ses sources.
 - **Un serveur MCP pour d’autres applications d’IA** — `cartacolibri mcp` permet à d’autres applications d’IA de chercher dans ta bibliothèque, de lire un document et de l’interroger via le Model Context Protocol. Il est en lecture seule, tourne sur ton ordinateur et n’atteint que les documents renvoyés par la recherche.
 - **Un récapitulatif des nouveautés** — `cartacolibri digest NOM` relance une recherche enregistrée et ne signale que les documents apparus depuis la dernière fois. Ajoute `--every 60` pour répéter toutes les heures, `--out rapport.md` pour ajouter à un fichier et `--summarize` pour un court résumé par ton IA locale.
+- **Savoir jusqu’où se fier à une réponse** — Chaque réponse du chat affiche désormais un score « Ancrage dans les sources » : la part de chaque phrase réellement retrouvée dans les sources citées, avec les phrases à revérifier et les nombres absents de toute source.
+- **Compare deux documents et vois tous les noms et nombres** — Coche deux documents et appuie sur « Comparer 2 » pour voir, phrase par phrase, ce qui diffère entre deux versions. « Noms et nombres » liste tous les e-mails, liens, montants, dates et téléphones de ta bibliothèque, et où ils apparaissent. En ligne de commande : `compare` et `entities`.
 
 ## Nouveautés de la 0.2.0-alpha.2
 

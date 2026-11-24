@@ -13,6 +13,7 @@ pub mod extract;
 pub mod feeds;
 pub mod grab;
 pub mod import;
+pub mod insight;
 pub mod library;
 pub mod mcp;
 pub mod organize;

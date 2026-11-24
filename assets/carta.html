@@ -176,7 +176,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
     <div class="body">
       <div class="bar"><button class="btn sm" id="sideToggle" aria-expanded="false" data-i="side_toggle"></button><b id="libCount"></b><span class="muted" id="libStats"></span><span class="flex1"></span>
         <button class="linkbtn" id="dupBtn" hidden></button>
-        <select id="libTag" data-al="f_tag"></select><label><input type="checkbox" id="libStar"> <span data-i="f_starred"></span></label><button class="btn sm" id="expLib" data-i="export"></button></div>
+        <select id="libTag" data-al="f_tag"></select><label><input type="checkbox" id="libStar"> <span data-i="f_starred"></span></label><button class="btn sm" id="expLib" data-i="export"></button><button class="btn sm" id="cmpBtn" data-i="cmp_btn"></button><button class="btn sm" id="entBtn" data-i="ent_btn"></button></div>
       <div class="strip" id="strip" hidden></div>
       <div class="scroll"><table id="libTable"><thead><tr><th><input type="checkbox" id="libAll" data-al="select_all"></th><th data-i="name"></th><th class="c-type" data-i="type"></th><th class="n c-size" data-i="size"></th><th class="c-path" data-i="path"></th><th><span class="vh" data-i="view"></span></th></tr></thead><tbody id="libRows"></tbody></table>
         <div class="empty" id="libEmpty">
@@ -269,6 +269,10 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   </aside></div></div>
 
 <!-- first-run welcome wizard -->
+<div class="modal" id="insDlg"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="insTitle">
+  <h2 id="insTitle"></h2><div id="insBody" style="max-height:60vh;overflow:auto"></div>
+  <div class="row" style="margin-top:12px"><select id="insKind" hidden></select><button class="btn" id="insX" type="button" data-i="close"></button></div>
+</div></div>
 <div class="modal" id="gwDlg"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="gwTitle">
   <h2 id="gwTitle" data-i="gw_cfg"></h2><p class="muted" data-i="gw_hint"></p>
   <input id="gwUrl" type="url" inputmode="url" maxlength="200" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:8000" data-al="gw_cfg" style="width:100%">
@@ -428,6 +432,20 @@ sm_label:{en:'Smart search (adds related words)',ro:'Căutare inteligentă (adau
 sm_also:{en:'Also searched:',ro:'Am căutat și:',fr:'Aussi cherché :',it:'Cercato anche:',es:'También se buscó:',pt:'Também pesquisado:',de:'Auch gesucht:',hu:'Még kerestem:'},
 f_hint:{en:'Filters in the box: ext:pdf  path:contracts  size:>1mb  after:2025-01  re:INV-\\d+',ro:'Filtre în căsuță: ext:pdf  path:contracte  size:>1mb  after:2025-01  re:FACT-\\d+',fr:'Filtres dans la zone : ext:pdf  path:contrats  size:>1mb  after:2025-01  re:FAC-\\d+',it:'Filtri nella casella: ext:pdf  path:contratti  size:>1mb  after:2025-01  re:FATT-\\d+',es:'Filtros en la casilla: ext:pdf  path:contratos  size:>1mb  after:2025-01  re:FAC-\\d+',pt:'Filtros na caixa: ext:pdf  path:contratos  size:>1mb  after:2025-01  re:FAT-\\d+',de:'Filter im Suchfeld: ext:pdf  path:vertraege  size:>1mb  after:2025-01  re:RE-\\d+',hu:'Szűrők a mezőben: ext:pdf  path:szerzodesek  size:>1mb  after:2025-01  re:SZ-\\d+'},
 ch_one:{en:'Each question on its own (no memory of earlier ones)',ro:'Fiecare întrebare separat (fără memoria celor anterioare)',fr:'Chaque question à part (sans mémoire des précédentes)',it:'Ogni domanda a sé (senza memoria delle precedenti)',es:'Cada pregunta por separado (sin memoria de las anteriores)',pt:'Cada pergunta à parte (sem memória das anteriores)',de:'Jede Frage einzeln (ohne Erinnerung an frühere)',hu:'Minden kérdés külön (előzőkre nem emlékezik)'},
+cmp_btn:{en:'Compare 2',ro:'Compară 2',fr:'Comparer 2',it:'Confronta 2',es:'Comparar 2',pt:'Comparar 2',de:'2 vergleichen',hu:'2 összehasonlítása'},
+cmp_need2:{en:'Tick exactly two documents to compare.',ro:'Bifează exact două documente de comparat.',fr:'Coche exactement deux documents à comparer.',it:'Spunta esattamente due documenti da confrontare.',es:'Marca exactamente dos documentos para comparar.',pt:'Marca exatamente dois documentos para comparar.',de:'Hake genau zwei Dokumente zum Vergleichen an.',hu:'Jelölj be pontosan két dokumentumot az összehasonlításhoz.'},
+cmp_title:{en:'{n}% alike',ro:'{n}% asemănătoare',fr:'{n}% semblables',it:'{n}% simili',es:'{n}% parecidos',pt:'{n}% parecidos',de:'{n}% ähnlich',hu:'{n}% egyezés'},
+cmp_only:{en:'Only in',ro:'Doar în',fr:'Seulement dans',it:'Solo in',es:'Solo en',pt:'Só em',de:'Nur in',hu:'Csak itt:'},
+ent_btn:{en:'Names & numbers',ro:'Nume și numere',fr:'Noms et nombres',it:'Nomi e numeri',es:'Nombres y números',pt:'Nomes e números',de:'Namen & Zahlen',hu:'Nevek és számok'},
+ent_all:{en:'All kinds',ro:'Toate felurile',fr:'Tous types',it:'Tutti i tipi',es:'Todos los tipos',pt:'Todos os tipos',de:'Alle Arten',hu:'Minden fajta'},
+ent_kind:{en:'Kind',ro:'Fel',fr:'Type',it:'Tipo',es:'Tipo',pt:'Tipo',de:'Art',hu:'Fajta'},
+ent_value:{en:'Value',ro:'Valoare',fr:'Valeur',it:'Valore',es:'Valor',pt:'Valor',de:'Wert',hu:'Érték'},
+ent_docs:{en:'Documents',ro:'Documente',fr:'Documents',it:'Documenti',es:'Documentos',pt:'Documentos',de:'Dokumente',hu:'Dokumentumok'},
+ent_none:{en:'Nothing found: emails, links, money, dates and phone numbers show up here.',ro:'Nu am găsit nimic: aici apar emailuri, linkuri, sume, date și telefoane.',fr:'Rien trouvé : e-mails, liens, montants, dates et téléphones apparaissent ici.',it:'Niente trovato: qui compaiono e-mail, link, importi, date e telefoni.',es:'No hay nada: aquí aparecen correos, enlaces, importes, fechas y teléfonos.',pt:'Nada encontrado: aqui aparecem e-mails, links, valores, datas e telefones.',de:'Nichts gefunden: Hier erscheinen E-Mails, Links, Beträge, Daten und Telefonnummern.',hu:'Nincs találat: itt jelennek meg az e-mailek, linkek, összegek, dátumok és telefonszámok.'},
+gnd_line:{en:'Grounding {n}%',ro:'Susținere în surse {n}%',fr:'Ancrage dans les sources {n}%',it:'Aderenza alle fonti {n}%',es:'Respaldo en las fuentes {n}%',pt:'Respaldo nas fontes {n}%',de:'Belegt durch Quellen {n}%',hu:'Forrásokkal alátámasztva {n}%'},
+gnd_weak:{en:'{n} sentence(s) to double-check',ro:'{n} propoziții de verificat',fr:'{n} phrase(s) à revérifier',it:'{n} frasi da ricontrollare',es:'{n} frases por revisar',pt:'{n} frases a rever',de:'{n} Satz/Sätze zum Nachprüfen',hu:'{n} mondat ellenőrzendő'},
+gnd_nums:{en:'number not in the sources',ro:'număr care nu e în surse',fr:'nombre absent des sources',it:'numero assente dalle fonti',es:'número que no está en las fuentes',pt:'número que não está nas fontes',de:'Zahl steht nicht in den Quellen',hu:'a szám nincs a forrásokban'},
+gnd_ok:{en:'Every sentence is backed by the sources.',ro:'Fiecare propoziție e susținută de surse.',fr:'Chaque phrase est appuyée par les sources.',it:'Ogni frase è sostenuta dalle fonti.',es:'Cada frase está respaldada por las fuentes.',pt:'Cada frase está apoiada pelas fontes.',de:'Jeder Satz ist durch die Quellen belegt.',hu:'Minden mondatot alátámasztanak a források.'},
 gw_none:{en:'No engine found on this computer. Start Colibri Companion or `coli serve`, then try again.',ro:'Nu am găsit niciun motor pe acest calculator. Pornește Colibri Companion sau `coli serve` și încearcă din nou.',fr:'Aucun moteur trouvé sur cet ordinateur. Lance Colibri Companion ou `coli serve`, puis réessaie.',it:'Nessun motore trovato su questo computer. Avvia Colibri Companion o `coli serve` e riprova.',es:'No se encontró ningún motor en este ordenador. Inicia Colibri Companion o `coli serve` y vuelve a intentarlo.',pt:'Não encontrei nenhum motor neste computador. Inicia o Colibri Companion ou `coli serve` e tenta de novo.',de:'Keine Engine auf diesem Rechner gefunden. Starte Colibri Companion oder `coli serve` und versuche es erneut.',hu:'Nem találtam motort ezen a gépen. Indítsd el a Colibri Companiont vagy a `coli serve`-et, majd próbáld újra.'},
 gw_use:{en:'Use',ro:'Folosește',fr:'Utiliser',it:'Usa',es:'Usar',pt:'Usar',de:'Nutzen',hu:'Használd'},
 gw_auto:{en:'found automatically',ro:'găsit automat',fr:'trouvé automatiquement',it:'trovato automaticamente',es:'encontrado automáticamente',pt:'encontrado automaticamente',de:'automatisch gefunden',hu:'automatikusan megtalálva'},
@@ -964,6 +982,8 @@ function renderBot(w,j){const mb=w.querySelector('.mb');
   const cited=j.sources.filter(x=>new RegExp('\\b'+String(x.label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(j.answer)),list=cited.length?cited:j.sources;
   let h=(j.note?`<p class="muted">${esc(j.note)}</p>`:'')+md(j.answer);
   if(list.length)h+=`<div class="srcs"><h4>${T('chat_src')}</h4>${list.map(x=>`<div class="src" data-sid="${esc(x.label)}"><b class="cite">[${esc(x.label)}]</b><span class="nm" title="${esc(x.path)}">${esc(base(x.path))}</span><button class="btn sm" data-op="${esc(x.path)}">${T('open_source')}</button><details><summary>${T('chat_passage')}</summary><div class="snip">${esc(x.passage)}</div></details></div>`).join('')}</div>`;
+  const g=j.grounding;if(g&&g.claims&&g.claims.length){const weak=g.claims.filter(c=>c.status!=='supported'||c.unmatched_numbers.length);
+    h+=`<details class="gnd"><summary class="muted">${esc(F('gnd_line',{n:g.score}))}${weak.length?' — '+esc(F('gnd_weak',{n:weak.length})):''}</summary>${weak.map(c=>`<div class="snip">${esc(c.sentence)}${c.unmatched_numbers.length?` <b>(${esc(T('gnd_nums'))}: ${esc(c.unmatched_numbers.join(', '))})</b>`:''}</div>`).join('')||`<div class="snip">${esc(T('gnd_ok'))}</div>`}</details>`}
   mb.innerHTML=h;showUsage(mb,j.usage);w.scrollIntoView({block:'end'})}
 async function chatSend(){const q=$('#chatIn').value.trim();if(!q)return;$('#chatIn').value='';addMsg('u',q);const w=addMsg('b',null,true);$('#chatSend').disabled=true;
   const again=()=>{w.remove();$('#chatIn').value=q;chatSend()};
@@ -1145,6 +1165,15 @@ addEventListener('keydown',e=>{
   else if(k==='?'){e.preventDefault();top&&top.el.id==='kb'?closeM($('#kb')):openM($('#kb'),'#kbClose')}});
 /* AI engine address: saved on the server, wins over COLI_URL */
 $('#gwCfg').onclick=async()=>{try{const j=await api('settings');$('#gwUrl').value=j.gateway_url||''}catch(e){$('#gwUrl').value=''}$('#gwMsg').textContent='';openM($('#gwDlg'),'#gwUrl')};
+/* ---- insight: compare two documents, entities ---- */
+function insOpen(title,html){$('#insTitle').textContent=title;$('#insBody').innerHTML=html;$('#insKind').hidden=true;openM($('#insDlg'))}
+$('#insX').onclick=()=>closeM($('#insDlg'));
+$('#cmpBtn').onclick=async()=>{const ids=[...S.selLib];if(ids.length!==2){toast(T('cmp_need2'),1);return}
+  try{const r=await api('compare?a='+ids[0]+'&b='+ids[1]),c=r.compare,li=a=>a.length?'<ul>'+a.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'<p class="muted">—</p>';
+    insOpen(F('cmp_title',{n:c.similarity}),`<h3>${esc(T('cmp_only'))} ${esc(base(r.a))}</h3>${li(c.only_in_a)}<h3>${esc(T('cmp_only'))} ${esc(base(r.b))}</h3>${li(c.only_in_b)}`)}catch(e){fail(e)}};
+async function entLoad(){const k=$('#insKind').value;try{const r=await api('entities'+(k?'?kind='+k:'')),rows=r.entities;
+  $('#insBody').innerHTML=rows.length?`<table><tr><th>${esc(T('ent_kind'))}</th><th>${esc(T('ent_value'))}</th><th>${esc(T('ent_docs'))}</th></tr>${rows.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.value)}</td><td title="${esc(x.docs.join('\n'))}">${x.count}</td></tr>`).join('')}</table>`:`<p class="muted">${esc(T('ent_none'))}</p>`}catch(e){fail(e)}}
+$('#entBtn').onclick=()=>{const sel=$('#insKind');sel.innerHTML=['','email','url','money','date','phone'].map(k=>`<option value="${k}">${k||T('ent_all')}</option>`).join('');insOpen(T('ent_btn'),'');sel.hidden=false;sel.onchange=entLoad;entLoad()};
 $('#gwX').onclick=()=>closeM($('#gwDlg'));
 async function gwApply(u){const m=$('#gwMsg');try{await api('settings','POST',{gateway_url:u})}catch(e){m.textContent=T('gw_bad');return}await health();m.textContent=T(S.gw?'gw_saved_ok':'gw_saved_off')}
 $('#gwSave').onclick=()=>gwApply($('#gwUrl').value.trim());

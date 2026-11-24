@@ -101,6 +101,22 @@ enum Cmd {
         #[arg(long)]
         mock: bool,
     },
+    /// emails, links, money amounts, dates and phone numbers mentioned in your documents
+    Entities {
+        #[arg(long, value_parser = ["email", "url", "money", "date", "phone"])]
+        kind: Option<String>,
+        #[arg(long)]
+        group: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// compare two documents sentence by sentence
+    Compare {
+        a: String,
+        b: String,
+        #[arg(long)]
+        json: bool,
+    },
     /// guided start: pick a folder, index it, open the web UI
     Start {
         /// folder with your documents (asked interactively when omitted in a terminal)
@@ -699,6 +715,60 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                     Some(m) => std::thread::sleep(Duration::from_secs(m * 60)),
                     None => break,
                 }
+            }
+        }
+        Cmd::Entities { kind, group, json } => {
+            let docs: Vec<(String, String)> = lib
+                .documents(group.as_deref())?
+                .into_iter()
+                .map(|d| (d.path, lib.text_of(d.id)))
+                .collect();
+            let idx = cartacolibri::insight::entity_index(&docs, kind.as_deref());
+            if json {
+                let v: Vec<_> = idx
+                    .iter()
+                    .map(|((k, v), p)| serde_json::json!({"kind": k, "value": v, "docs": p}))
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&v).unwrap());
+            } else if idx.is_empty() {
+                println!("no entities found");
+            }
+            if !json {
+                for ((k, v), p) in &idx {
+                    println!(
+                        "{k:<6} {v}   ({} doc{})",
+                        p.len(),
+                        if p.len() == 1 { "" } else { "s" }
+                    );
+                }
+            }
+        }
+        Cmd::Compare { a, b, json } => {
+            let find = |name: &str| -> Result<(String, String), String> {
+                let n = name.to_lowercase();
+                let docs = lib.documents(None)?;
+                let d = docs
+                    .iter()
+                    .find(|d| d.path.to_lowercase() == n)
+                    .or_else(|| docs.iter().find(|d| d.path.to_lowercase().ends_with(&n)))
+                    .ok_or(format!("no document matching '{name}' in the library"))?;
+                Ok((d.path.clone(), lib.text_of(d.id)))
+            };
+            let ((pa, ta), (pb, tb)) = (find(&a)?, find(&b)?);
+            let c = cartacolibri::insight::compare(&ta, &tb);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&c).unwrap());
+            } else {
+                println!(
+                    "{}% alike — {} shared sentence(s)\n",
+                    c.similarity, c.shared
+                );
+                c.only_in_a
+                    .iter()
+                    .for_each(|s| println!("- only in {pa}: {s}"));
+                c.only_in_b
+                    .iter()
+                    .for_each(|s| println!("+ only in {pb}: {s}"));
             }
         }
         Cmd::Watch { interval } => {

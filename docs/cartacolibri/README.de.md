@@ -47,6 +47,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Chat mit Einzelfragen** — Hake „Jede Frage einzeln“ an, und der Chat vergisst frühere Fragen: Jede Antwort stammt nur aus deinen Dokumenten, mit ihren Quellen.
 - **Ein MCP-Server für andere KI-Apps** — `cartacolibri mcp` lässt andere KI-Anwendungen über das Model Context Protocol in deiner Bibliothek suchen, ein Dokument lesen und Fragen dazu stellen. Er ist nur lesend, läuft auf deinem Rechner und erreicht nur Dokumente, die die Suche geliefert hat.
 - **Eine Zusammenfassung des Neuen** — `cartacolibri digest NAME` führt eine gespeicherte Suche erneut aus und meldet nur die Dokumente, die seit dem letzten Mal hinzugekommen sind. Mit `--every 60` wiederholt es stündlich, mit `--out bericht.md` hängt es an eine Datei an, mit `--summarize` liefert deine lokale KI eine kurze Zusammenfassung.
+- **Wissen, wie weit du einer Antwort trauen kannst** — Jede Chat-Antwort zeigt jetzt einen Wert „Belegt durch Quellen“: wie viel jedes Satzes tatsächlich in den zitierten Quellen steht, mit den Sätzen zum Nachprüfen und Zahlen, die in keiner Quelle vorkommen.
+- **Zwei Dokumente vergleichen und alle Namen und Zahlen sehen** — Hake zwei Dokumente an und drücke „2 vergleichen“, um Satz für Satz zu sehen, was sich zwischen zwei Fassungen unterscheidet. „Namen & Zahlen“ listet alle E-Mails, Links, Beträge, Daten und Telefonnummern deiner Bibliothek und wo sie vorkommen. In der Kommandozeile: `compare` und `entities`.
 
 ## Neu in 0.2.0-alpha.2
 

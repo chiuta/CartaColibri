@@ -300,7 +300,7 @@ def site():
     names = json.dumps(NAMES, ensure_ascii=False)
     first_code = html.escape(B.FIRST_CODE.strip("`").removeprefix("bash\n").strip("\n"), quote=False)
     ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
-           'h_new4', 'n4w1', 'n4w2', 'n4w3', 'n4w4', 'n4w5', 'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
+           'h_new4', 'n4w1', 'n4w2', 'n4w3', 'n4w4', 'n4w5', 'n4w6', 'n4w7', 'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     import site_template as T
     for _n, _st in A2.STEPS.items():
         T.NEW[f"t{_n}"] = dict(_st["tab"]); T.NEW[f"c{_n}"] = dict(_st["cap"])

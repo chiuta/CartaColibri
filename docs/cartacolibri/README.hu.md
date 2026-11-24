@@ -47,6 +47,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Egykérdéses csevegés** — Jelöld be a „Minden kérdés külön” négyzetet, és a csevegés elfelejti a korábbi kérdéseket: minden válasz csak a dokumentumaidból származik, forrásokkal.
 - **MCP-szerver más MI-alkalmazásoknak** — A `cartacolibri mcp` lehetővé teszi, hogy más MI-alkalmazások a Model Context Protocolon át keressenek a könyvtáradban, elolvassanak egy dokumentumot és kérdezzenek róla. Csak olvasható, a gépeden fut, és csak a keresés által visszaadott dokumentumokat éri el.
 - **Összefoglaló az újdonságokról** — A `cartacolibri digest NÉV` újra lefuttat egy mentett keresést, és csak az utolsó futás óta megjelent dokumentumokat jelzi. A `--every 60` óránként ismétli, az `--out jelentes.md` fájlhoz fűz, a `--summarize` pedig rövid összefoglalót kér a helyi MI-től.
+- **Tudd, mennyire bízhatsz egy válaszban** — Minden csevegésválasz mostantól „Forrásokkal alátámasztva” pontszámot mutat: az egyes mondatok mekkora része található meg valóban az idézett forrásokban, az ellenőrzendő mondatokkal és a sehol sem szereplő számokkal.
+- **Hasonlíts össze két dokumentumot, és lásd az összes nevet és számot** — Jelölj be két dokumentumot, és nyomd meg a „2 összehasonlítása” gombot: mondatonként látod, mi tér el két változat között. A „Nevek és számok” felsorolja a könyvtár összes e-mailjét, linkjét, összegét, dátumát és telefonszámát, és hogy hol szerepelnek. Parancssorban: `compare` és `entities`.
 
 ## Újdonságok a 0.2.0-alpha.2-ben
 
