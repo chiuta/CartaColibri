@@ -75,3 +75,9 @@ Web-grab refuses loopback / private addresses unless `CARTACOLIBRI_GRAB_LOCAL=1`
 - **Grounding of answers:** every `POST /carta/chat` reply has `grounding` = `{score 0-100, claims[{sentence, cited, support, status supported|partial|weak, unmatched_numbers}]}`. It is a lexical check (stems of content words against the cited passages, all passages when a sentence cites nothing), not a proof; unmatched numbers lower the score.
 - **Entities:** `GET /carta/entities?kind=email|url|money|date|phone[&group=NAME]`, CLI `cartacolibri entities [--kind K] [--group G] [--json]`: what your documents mention and in which documents.
 - **Compare:** `GET /carta/compare?a=ID&b=ID`, CLI `cartacolibri compare A B [--json]` (a path or its ending): similarity % plus sentences found only in one of them.
+- **Conflicts:** `GET /carta/conflicts[?group=]`, CLI `conflicts` — sentence pairs from different documents that share at least four content words (Jaccard ≥ 0.5) but carry different numbers. Candidates to check, not verdicts.
+- **Topic map:** `GET /carta/topics`, CLI `topics` — documents grouped by shared TF-IDF top terms.
+- **What's new:** `GET /carta/changes?since=YYYY-MM-DD`, CLI `changes --since` — documents modified since a date (file modification time).
+- **Fact-check:** `POST /carta/factcheck {"text"}`, CLI `factcheck FILE|-` — each sentence of your text is searched in the library and judged `supported` / `numbers differ` / `partial` / `not found` against the best evidence sentence.
+- **Dossier:** `GET /carta/dossier?q=TERM`, CLI `dossier TERM` — passages per document, plus dates and amounts found in them.
+- **MCP:** new tools `factcheck`, `dossier`, `conflicts` (all read-only).

@@ -49,6 +49,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Rezumat cu ce e nou** — `cartacolibri digest NUME` reia o căutare salvată și raportează doar documentele apărute de la ultima rulare. Adaugă `--every 60` ca să se repete din oră în oră, `--out raport.md` ca să adauge într-un fișier și `--summarize` pentru un scurt rezumat de la AI-ul tău local.
 - **Afli cât de mult poți avea încredere într-un răspuns** — Fiecare răspuns din chat arată acum un scor „Susținere în surse”: cât din fiecare propoziție se găsește cu adevărat în sursele citate, cu propozițiile de verificat și numerele care nu apar în nicio sursă.
 - **Compară două documente și vezi toate numele și numerele** — Bifează două documente și apasă „Compară 2” ca să vezi, propoziție cu propoziție, ce diferă între două versiuni. „Nume și numere” listează toate emailurile, linkurile, sumele, datele și telefoanele din bibliotecă și unde apar. În linia de comandă: `compare` și `entities`.
+- **Găsești contradicții, vezi harta subiectelor, urmărești ce s-a schimbat** — „Contradicții” listează propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550). „Harta subiectelor” grupează documentele după ce tratează. „Ce e nou” arată ce s-a schimbat de la o dată. În linia de comandă: `conflicts`, `topics`, `changes --since`.
+- **Verifici textul tău față de bibliotecă** — Lipește o ciornă în „Verifică textul meu” și fiecare propoziție e marcată: susținută, parțial, numerele diferă sau negăsită, cu cea mai bună dovadă din documentele tale. „Dosar” adună tot ce spune biblioteca despre un nume sau termen, cu datele și sumele lui. Alte aplicații AI le primesc pe ambele prin serverul MCP.
 
 ## Noutăți în 0.2.0-alpha.2
 

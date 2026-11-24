@@ -729,3 +729,30 @@ fn grounding_entities_and_compare_routes() {
     assert_eq!(get(&s, "/carta/compare?a=1").code, 400);
     assert_eq!(get(&s, "/carta/compare?a=1&b=999999").code, 404);
 }
+
+#[test]
+fn conflicts_topics_dossier_changes_factcheck_routes() {
+    let (s, _ids) = indexed();
+    assert!(get(&s, "/carta/conflicts").json()["conflicts"].is_array());
+    assert!(get(&s, "/carta/topics").json()["topics"].is_array());
+    let d = get(&s, "/carta/dossier?q=payment").json();
+    assert!(d["docs"].as_array().is_some_and(|a| !a.is_empty()));
+    assert_eq!(get(&s, "/carta/dossier?q=").code, 400);
+    assert_eq!(get(&s, "/carta/changes").code, 400);
+    assert!(
+        get(&s, "/carta/changes?since=2000").json()["changes"]
+            .as_array()
+            .is_some_and(|a| a.len() >= 3)
+    );
+    let f = post(
+        &s,
+        "/carta/factcheck",
+        json!({"text": "The payment terms are thirty days after the invoice date."}),
+    );
+    assert_eq!(f.code, 200, "{}", f.text());
+    assert_eq!(f.json()["claims"][0]["status"], "supported");
+    assert_eq!(
+        post(&s, "/carta/factcheck", json!({"text": "  "})).code,
+        400
+    );
+}

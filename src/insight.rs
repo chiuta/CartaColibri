@@ -254,3 +254,393 @@ pub fn compare(a: &str, b: &str) -> Compare {
         shared,
     }
 }
+
+// ------------------------------------------------------------------ possible conflicts
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Conflict {
+    pub a_path: String,
+    pub a_sentence: String,
+    pub b_path: String,
+    pub b_sentence: String,
+    /// numbers only in A, numbers only in B
+    pub a_only: Vec<String>,
+    pub b_only: Vec<String>,
+}
+
+fn sentence_list(t: &str) -> Vec<String> {
+    norm_sentences(t).into_iter().map(|x| x.1).collect()
+}
+
+/// Sentences of two different documents that say nearly the same thing but with different
+/// numbers or dates (e.g. "rent is 500" vs "rent is 550"). A heuristic: it finds *candidates*.
+pub fn conflicts(docs: &[(String, String)]) -> Vec<Conflict> {
+    let mut sents: Vec<(usize, String, BTreeSet<String>, BTreeSet<String>)> = vec![];
+    for (di, (_, text)) in docs.iter().enumerate().take(200) {
+        for s in sentence_list(text).into_iter().take(600) {
+            let w = words(&s);
+            let n: BTreeSet<String> = numbers(&s).into_iter().collect();
+            if w.len() >= 4 && !n.is_empty() {
+                sents.push((di, s, w, n));
+            }
+        }
+    }
+    let mut index: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+    for (i, (_, _, w, _)) in sents.iter().enumerate() {
+        for x in w {
+            index.entry(x.as_str()).or_default().push(i);
+        }
+    }
+    let mut out: Vec<Conflict> = vec![];
+    let mut done: BTreeSet<(usize, usize)> = BTreeSet::new();
+    for (i, (da, sa, wa, na)) in sents.iter().enumerate() {
+        let mut cand: BTreeMap<usize, usize> = BTreeMap::new();
+        for x in wa {
+            if let Some(v) = index.get(x.as_str()) {
+                if v.len() > 300 {
+                    continue; // a word that is everywhere says nothing
+                }
+                for &j in v {
+                    if j > i && sents[j].0 != *da {
+                        *cand.entry(j).or_default() += 1;
+                    }
+                }
+            }
+        }
+        for (j, shared) in cand {
+            let (db, sb, wb, nb) = &sents[j];
+            let union = wa.union(wb).count();
+            if shared < 4 || (shared as f64 / union as f64) < 0.5 || na == nb {
+                continue;
+            }
+            if !done.insert((i, j)) {
+                continue;
+            }
+            out.push(Conflict {
+                a_path: docs[*da].0.clone(),
+                a_sentence: sa.clone(),
+                b_path: docs[*db].0.clone(),
+                b_sentence: sb.clone(),
+                a_only: na.difference(nb).cloned().collect(),
+                b_only: nb.difference(na).cloned().collect(),
+            });
+            if out.len() >= 100 {
+                return out;
+            }
+        }
+    }
+    out
+}
+
+// ------------------------------------------------------------------ topic map
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Topic {
+    pub terms: Vec<String>,
+    pub docs: Vec<String>,
+}
+
+fn find(p: &mut [usize], x: usize) -> usize {
+    let mut r = x;
+    while p[r] != r {
+        r = p[r];
+    }
+    let mut c = x;
+    while p[c] != r {
+        let n = p[c];
+        p[c] = r;
+        c = n;
+    }
+    r
+}
+
+/// Groups documents that share their most characteristic words (TF-IDF top terms).
+pub fn topics(docs: &[(String, String)]) -> Vec<Topic> {
+    let n = docs.len();
+    if n < 2 {
+        return vec![];
+    }
+    // stem -> a readable original word, per-document term frequency
+    let mut shown: BTreeMap<String, String> = BTreeMap::new();
+    let mut tf: Vec<BTreeMap<String, f64>> = vec![];
+    let mut df: BTreeMap<String, usize> = BTreeMap::new();
+    for (_, text) in docs {
+        let mut m: BTreeMap<String, f64> = BTreeMap::new();
+        for w in text
+            .to_lowercase()
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|w| w.chars().count() >= 5 && !w.chars().any(|c| c.is_ascii_digit()))
+        {
+            let st = stem(w);
+            shown.entry(st.clone()).or_insert_with(|| w.to_string());
+            *m.entry(st).or_default() += 1.0;
+        }
+        for k in m.keys() {
+            *df.entry(k.clone()).or_default() += 1;
+        }
+        tf.push(m);
+    }
+    let top: Vec<Vec<String>> = tf
+        .iter()
+        .map(|m| {
+            let mut v: Vec<(String, f64)> = m
+                .iter()
+                .filter(|(k, _)| df[*k] < n.max(2) && df[*k] * 2 <= n.max(2) + 1)
+                .map(|(k, c)| (k.clone(), (1.0 + c.ln()) * (n as f64 / df[k] as f64).ln()))
+                .collect();
+            v.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            v.into_iter().take(8).map(|x| x.0).collect()
+        })
+        .collect();
+    let mut p: Vec<usize> = (0..n).collect();
+    for i in 0..n {
+        for j in i + 1..n {
+            if top[i].iter().filter(|t| top[j].contains(t)).count() >= 2 {
+                let (a, b) = (find(&mut p, i), find(&mut p, j));
+                p[a] = b;
+            }
+        }
+    }
+    let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for i in 0..n {
+        let r = find(&mut p, i);
+        groups.entry(r).or_default().push(i);
+    }
+    let mut out: Vec<Topic> = groups
+        .into_values()
+        .filter(|g| g.len() >= 2)
+        .map(|g| {
+            let mut count: BTreeMap<&String, usize> = BTreeMap::new();
+            for &i in &g {
+                for t in &top[i] {
+                    *count.entry(t).or_default() += 1;
+                }
+            }
+            let mut c: Vec<_> = count.into_iter().collect();
+            c.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+            Topic {
+                terms: c
+                    .into_iter()
+                    .take(4)
+                    .map(|(k, _)| shown[k].clone())
+                    .collect(),
+                docs: g.iter().map(|&i| docs[i].0.clone()).collect(),
+            }
+        })
+        .collect();
+    out.sort_by_key(|t| std::cmp::Reverse(t.docs.len()));
+    out
+}
+
+// ------------------------------------------------------------------ fact-check a draft
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Checked {
+    pub sentence: String,
+    pub status: &'static str,
+    pub support: f64,
+    pub source: Option<String>,
+    pub evidence: Option<String>,
+    /// numbers in the sentence that the best evidence does not contain
+    pub unmatched_numbers: Vec<String>,
+}
+
+pub fn claim_sentences(text: &str) -> Vec<String> {
+    sentences(text).into_iter().take(60).collect()
+}
+
+/// The sentence of `text` that best supports `claim`: `(support 0..1, sentence)`.
+pub fn best_evidence(claim: &str, text: &str) -> Option<(f64, String)> {
+    let mine = words(claim);
+    if mine.is_empty() {
+        return None;
+    }
+    sentence_list(text)
+        .into_iter()
+        .map(|s| {
+            let w = words(&s);
+            (
+                mine.iter().filter(|x| w.contains(*x)).count() as f64 / mine.len() as f64,
+                s,
+            )
+        })
+        .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+}
+
+pub fn judge(claim: &str, support: f64, evidence: &str) -> (&'static str, Vec<String>) {
+    let ev: BTreeSet<String> = numbers(evidence).into_iter().collect();
+    let un: Vec<String> = numbers(claim)
+        .into_iter()
+        .filter(|n| !ev.contains(n))
+        .collect();
+    let st = if support >= 0.6 && un.is_empty() {
+        "supported"
+    } else if support >= 0.6 {
+        "numbers differ"
+    } else if support >= 0.3 {
+        "partial"
+    } else {
+        "not found"
+    };
+    (st, un)
+}
+
+// ------------------------------------------------------------------ on top of a library
+
+use crate::library::{Filter, Library};
+
+fn or_query(text: &str) -> String {
+    let mut w: Vec<String> = text
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.chars().count() >= 4)
+        .map(|w| w.to_lowercase())
+        .collect();
+    w.sort_by_key(|x| std::cmp::Reverse(x.chars().count()));
+    w.dedup();
+    w.truncate(8);
+    w.join(" OR ")
+}
+
+/// Checks every sentence of `text` (your own draft) against what your library says.
+pub fn factcheck(lib: &Library, text: &str) -> Result<Vec<Checked>, String> {
+    let mut out = vec![];
+    for claim in claim_sentences(text) {
+        let q = or_query(&claim);
+        let hits = if q.is_empty() {
+            vec![]
+        } else {
+            lib.search(
+                &q,
+                &Filter {
+                    limit: Some(4),
+                    ..Default::default()
+                },
+            )
+            .unwrap_or_default()
+        };
+        let mut best: Option<(f64, String, String)> = None;
+        for h in hits {
+            if let Some((sup, ev)) = best_evidence(&claim, &lib.text_of(h.id))
+                && best.as_ref().is_none_or(|b| sup > b.0)
+            {
+                best = Some((sup, h.path.clone(), ev));
+            }
+        }
+        out.push(match best {
+            Some((sup, path, ev)) => {
+                let (status, un) = judge(&claim, sup, &ev);
+                Checked {
+                    sentence: claim,
+                    status,
+                    support: (sup * 100.0).round() / 100.0,
+                    source: Some(path),
+                    evidence: Some(ev),
+                    unmatched_numbers: un,
+                }
+            }
+            None => Checked {
+                sentence: claim,
+                status: "not found",
+                support: 0.0,
+                source: None,
+                evidence: None,
+                unmatched_numbers: vec![],
+            },
+        });
+    }
+    Ok(out)
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct DossierDoc {
+    pub path: String,
+    pub passages: Vec<String>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Dossier {
+    pub term: String,
+    pub docs: Vec<DossierDoc>,
+    pub dates: Vec<String>,
+    pub money: Vec<String>,
+}
+
+/// Everything your library says about one term, document by document, with the dates and amounts
+/// found in those passages.
+pub fn dossier(lib: &Library, term: &str) -> Result<Dossier, String> {
+    let term = term.trim();
+    if term.is_empty() {
+        return Err("empty query".into());
+    }
+    let hits = lib.search(
+        term,
+        &Filter {
+            limit: Some(30),
+            ..Default::default()
+        },
+    )?;
+    let needles: Vec<String> = term
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.chars().count() >= 3)
+        .map(|w| w.to_lowercase())
+        .collect();
+    let (mut dates, mut money) = (BTreeSet::new(), BTreeSet::new());
+    let mut docs = vec![];
+    for h in hits {
+        let text = lib.text_of(h.id);
+        let passages: Vec<String> = sentence_list(&text)
+            .into_iter()
+            .filter(|s| {
+                let l = s.to_lowercase();
+                needles.iter().any(|n| l.contains(n.as_str()))
+            })
+            .take(3)
+            .collect();
+        for p in &passages {
+            for e in entities(p) {
+                match e.kind {
+                    "date" => dates.insert(e.value),
+                    "money" => money.insert(e.value),
+                    _ => false,
+                };
+            }
+        }
+        if !passages.is_empty() {
+            docs.push(DossierDoc {
+                path: h.path,
+                passages,
+            });
+        }
+    }
+    Ok(Dossier {
+        term: term.to_string(),
+        docs,
+        dates: dates.into_iter().collect(),
+        money: money.into_iter().collect(),
+    })
+}
+
+/// Documents modified at or after `since` (Unix seconds), newest first.
+pub fn changes(
+    lib: &Library,
+    since: i64,
+    limit: usize,
+) -> Result<Vec<crate::library::Doc>, String> {
+    let mut d: Vec<_> = lib
+        .documents(None)?
+        .into_iter()
+        .filter(|d| d.mtime >= since)
+        .collect();
+    d.sort_by_key(|d| std::cmp::Reverse(d.mtime));
+    d.truncate(limit);
+    Ok(d)
+}
+
+/// All library texts as `(path, text)`, for the whole-library analyses.
+pub fn library_texts(lib: &Library, group: Option<&str>) -> Result<Vec<(String, String)>, String> {
+    Ok(lib
+        .documents(group)?
+        .into_iter()
+        .map(|d| (d.path, lib.text_of(d.id)))
+        .collect())
+}

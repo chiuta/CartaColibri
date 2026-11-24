@@ -49,6 +49,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Un riepilogo delle novità** — `cartacolibri digest NOME` rilancia una ricerca salvata e segnala solo i documenti comparsi dall’ultima volta. Aggiungi `--every 60` per ripetere ogni ora, `--out rapporto.md` per accodare a un file e `--summarize` per un breve riassunto della tua IA locale.
 - **Sapere quanto fidarsi di una risposta** — Ogni risposta della chat mostra ora un punteggio «Aderenza alle fonti»: quanta parte di ogni frase si trova davvero nelle fonti citate, con le frasi da ricontrollare e i numeri che non compaiono in nessuna fonte.
 - **Confronta due documenti e vedi tutti i nomi e i numeri** — Spunta due documenti e premi «Confronta 2» per vedere, frase per frase, cosa differisce tra due versioni. «Nomi e numeri» elenca tutte le e-mail, i link, gli importi, le date e i telefoni della tua biblioteca e dove compaiono. Da riga di comando: `compare` ed `entities`.
+- **Individua le contraddizioni, vedi la mappa dei temi, segui cosa è cambiato** — «Contraddizioni» elenca frasi di documenti diversi uguali tranne un numero o una data (500 contro 550). «Mappa dei temi» raggruppa i documenti per argomento. «Novità» elenca cosa è cambiato da una data. Da riga di comando: `conflicts`, `topics`, `changes --since`.
+- **Verifica il tuo testo rispetto alla biblioteca** — Incolla una bozza in «Verifica il mio testo» e ogni frase è segnata come confermata, in parte, numeri diversi o non trovata, con la migliore prova dai tuoi documenti. «Dossier» raccoglie tutto ciò che la biblioteca dice di un nome o termine, con date e importi. Le altre app di IA li ottengono tramite il server MCP.
 
 ## Novità della 0.2.0-alpha.2
 

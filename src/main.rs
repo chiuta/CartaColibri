@@ -117,6 +117,37 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// pairs of sentences in different documents that agree except for their numbers or dates
+    Conflicts {
+        #[arg(long)]
+        group: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// group the library by what the documents are about
+    Topics {
+        #[arg(long)]
+        json: bool,
+    },
+    /// everything the library says about a term: passages per document, dates and amounts
+    Dossier {
+        term: String,
+        #[arg(long)]
+        json: bool,
+    },
+    /// documents modified since a date (YYYY, YYYY-MM or YYYY-MM-DD)
+    Changes {
+        #[arg(long)]
+        since: String,
+        #[arg(long)]
+        json: bool,
+    },
+    /// check a text of yours against the library, sentence by sentence ("-" reads stdin)
+    Factcheck {
+        file: String,
+        #[arg(long)]
+        json: bool,
+    },
     /// guided start: pick a folder, index it, open the web UI
     Start {
         /// folder with your documents (asked interactively when omitted in a terminal)
@@ -769,6 +800,99 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                 c.only_in_b
                     .iter()
                     .for_each(|s| println!("+ only in {pb}: {s}"));
+            }
+        }
+        Cmd::Conflicts { group, json } => {
+            let docs = cartacolibri::insight::library_texts(&lib, group.as_deref())?;
+            let c = cartacolibri::insight::conflicts(&docs);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&c).unwrap());
+            } else if c.is_empty() {
+                println!("no conflicting numbers found");
+            }
+            if !json {
+                for x in c {
+                    println!(
+                        "{} ({}) vs {} ({})\n  A: {}\n  B: {}\n",
+                        x.a_path,
+                        x.a_only.join(", "),
+                        x.b_path,
+                        x.b_only.join(", "),
+                        x.a_sentence,
+                        x.b_sentence
+                    );
+                }
+            }
+        }
+        Cmd::Topics { json } => {
+            let docs = cartacolibri::insight::library_texts(&lib, None)?;
+            let t = cartacolibri::insight::topics(&docs);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&t).unwrap());
+            } else if t.is_empty() {
+                println!("no groups of related documents yet");
+            }
+            if !json {
+                for x in t {
+                    println!("{} ({} documents)", x.terms.join(", "), x.docs.len());
+                    x.docs.iter().for_each(|d| println!("    {d}"));
+                }
+            }
+        }
+        Cmd::Dossier { term, json } => {
+            let d = cartacolibri::insight::dossier(&lib, &term)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&d).unwrap());
+            } else {
+                for x in &d.docs {
+                    println!("{}", x.path);
+                    x.passages.iter().for_each(|p| println!("    - {p}"));
+                }
+                if !d.dates.is_empty() {
+                    println!("dates: {}", d.dates.join(", "));
+                }
+                if !d.money.is_empty() {
+                    println!("amounts: {}", d.money.join(", "));
+                }
+                if d.docs.is_empty() {
+                    println!("nothing about '{}' in the library", d.term);
+                }
+            }
+        }
+        Cmd::Changes { since, json } => {
+            let t = cartacolibri::library::parse_date(&since)
+                .ok_or("give --since as YYYY, YYYY-MM or YYYY-MM-DD")?;
+            let c = cartacolibri::insight::changes(&lib, t, 200)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&c).unwrap());
+            } else {
+                for d in &c {
+                    println!("{:>7} KB  {}", d.size / 1024, d.path);
+                }
+                if c.is_empty() {
+                    println!("nothing modified since {since}");
+                }
+            }
+        }
+        Cmd::Factcheck { file, json } => {
+            let text = if file == "-" {
+                let mut b = String::new();
+                std::io::Read::read_to_string(&mut std::io::stdin(), &mut b)
+                    .map_err(|e| e.to_string())?;
+                b
+            } else {
+                std::fs::read_to_string(&file).map_err(|e| format!("cannot read {file}: {e}"))?
+            };
+            let c = cartacolibri::insight::factcheck(&lib, &text)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&c).unwrap());
+            } else {
+                for x in c {
+                    println!("[{}] {}", x.status, x.sentence);
+                    if let (Some(s), Some(e)) = (&x.source, &x.evidence) {
+                        println!("      {s}: {e}");
+                    }
+                }
             }
         }
         Cmd::Watch { interval } => {

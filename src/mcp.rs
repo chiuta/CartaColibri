@@ -18,7 +18,13 @@ fn tools() -> Value {
       {"name": "list_groups", "description": "The named groups of documents (a group is a saved search scope) with their sizes.",
        "inputSchema": {"type": "object", "properties": {}}},
       {"name": "ask", "description": "Ask the local AI a question about the library (optionally one group). The answer cites its sources as [S1], [S2]…",
-       "inputSchema": {"type": "object", "properties": {"question": {"type": "string"}, "group": {"type": "string"}}, "required": ["question"]}}
+       "inputSchema": {"type": "object", "properties": {"question": {"type": "string"}, "group": {"type": "string"}}, "required": ["question"]}},
+      {"name": "factcheck", "description": "Check a draft text against the library: every sentence is marked supported, partial, numbers differ or not found, with the best evidence sentence and its document.",
+       "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}},
+      {"name": "dossier", "description": "Everything the library says about one term: passages per document plus the dates and amounts found in them.",
+       "inputSchema": {"type": "object", "properties": {"term": {"type": "string"}}, "required": ["term"]}},
+      {"name": "conflicts", "description": "Pairs of sentences in different documents that agree except for their numbers or dates (candidates to check, not verdicts).",
+       "inputSchema": {"type": "object", "properties": {}}}
     ])
 }
 
@@ -59,6 +65,47 @@ fn call(lib: &Library, be: &Backend, name: &str, a: &Value) -> Value {
                 ),
             }
         }
+        "factcheck" => {
+            let t = a["text"].as_str().unwrap_or("");
+            if t.trim().is_empty() || t.chars().count() > 20_000 {
+                return err_result("give 'text' of up to 20000 characters");
+            }
+            match crate::insight::factcheck(lib, t) {
+                Err(e) => err_result(&e),
+                Ok(c) => text_result(
+                    c.iter()
+                        .map(|x| {
+                            format!(
+                                "[{}] {}\n  {}",
+                                x.status,
+                                x.sentence,
+                                match (&x.source, &x.evidence) {
+                                    (Some(s), Some(e)) => format!("{s}: {e}"),
+                                    _ => "no evidence in the library".into(),
+                                }
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+            }
+        }
+        "dossier" => match crate::insight::dossier(lib, a["term"].as_str().unwrap_or("")) {
+            Err(e) => err_result(&e),
+            Ok(d) if d.docs.is_empty() => text_result("nothing about that term".into()),
+            Ok(d) => text_result(serde_json::to_string_pretty(&d).unwrap()),
+        },
+        "conflicts" => match crate::insight::library_texts(lib, None) {
+            Err(e) => err_result(&e),
+            Ok(docs) => {
+                let c = crate::insight::conflicts(&docs);
+                if c.is_empty() {
+                    text_result("no conflicting numbers found".into())
+                } else {
+                    text_result(serde_json::to_string_pretty(&c).unwrap())
+                }
+            }
+        },
         "read_document" => {
             let Some(id) = a["id"].as_i64() else {
                 return err_result("missing 'id'");

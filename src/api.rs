@@ -787,6 +787,39 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             let (pb, tb) = get("b")?;
             json!({"a": pa, "b": pb, "compare": crate::insight::compare(&ta, &tb)})
         }
+        ("GET", "conflicts") => {
+            let group = r
+                .query
+                .get("group")
+                .map(String::as_str)
+                .filter(|g| !g.is_empty());
+            let docs = crate::insight::library_texts(&lib, group).map_err(bad)?;
+            json!({"conflicts": crate::insight::conflicts(&docs)})
+        }
+        ("GET", "topics") => {
+            let docs = crate::insight::library_texts(&lib, None).map_err(bad)?;
+            json!({"topics": crate::insight::topics(&docs)})
+        }
+        ("GET", "dossier") => {
+            let q = r.query.get("q").map(String::as_str).unwrap_or("");
+            serde_json::to_value(crate::insight::dossier(&lib, q).map_err(bad)?).unwrap()
+        }
+        ("GET", "changes") => {
+            let since = r
+                .query
+                .get("since")
+                .and_then(|v| crate::library::parse_date(v))
+                .ok_or((400, "give since=YYYY-MM-DD (or YYYY-MM, YYYY)".to_string()))?;
+            json!({"changes": crate::insight::changes(&lib, since, 200).map_err(bad)?})
+        }
+        ("POST", "factcheck") => {
+            let j = jbody(r.body).map_err(bad)?;
+            let t = s(&j, "text").map_err(bad)?;
+            if t.trim().is_empty() || t.chars().count() > 20_000 {
+                return Err((400, "give a text of up to 20000 characters".into()));
+            }
+            json!({"claims": crate::insight::factcheck(&lib, t).map_err(bad)?})
+        }
         ("GET", "duplicates") => {
             let by: HashMap<String, (i64, i64)> = lib
                 .documents(None)

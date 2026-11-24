@@ -79,7 +79,27 @@ fn protocol_and_tools() {
             .iter()
             .map(|t| t["name"].as_str().unwrap().to_string())
             .collect();
-    assert_eq!(names, ["search", "read_document", "list_groups", "ask"]);
+    assert_eq!(
+        names,
+        [
+            "search",
+            "read_document",
+            "list_groups",
+            "ask",
+            "factcheck",
+            "dossier",
+            "conflicts"
+        ]
+    );
+    let (fc, err) = tool(
+        &l,
+        "factcheck",
+        json!({"text": "The rent is paid monthly in advance by the tenant."}),
+    );
+    assert!(!err && fc.starts_with('['), "{fc}");
+    assert!(tool(&l, "factcheck", json!({"text": " "})).1);
+    assert!(tool(&l, "dossier", json!({"term": ""})).1);
+    assert!(!tool(&l, "conflicts", json!({})).1);
 
     // search -> read by the id it returned; inline filters work
     let (s, err) = tool(&l, "search", json!({"query": "rent"}));

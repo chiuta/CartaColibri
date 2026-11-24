@@ -49,6 +49,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **A digest of what is new** — `cartacolibri digest NAME` re-runs a saved search and reports only the documents that appeared since last time. Add `--every 60` to repeat hourly, `--out report.md` to append to a file and `--summarize` to get a short summary from your local AI.
 - **Know how far to trust an answer** — Every chat answer now shows a “Grounding” score: how much of each sentence is really found in the sources it cites, with sentences to double-check and numbers that appear in no source.
 - **Compare two documents, and see every name and number** — Tick two documents and press “Compare 2” to see, sentence by sentence, what differs between two versions. “Names & numbers” lists every email, link, money amount, date and phone number across your library, and where it appears. On the command line: `compare` and `entities`.
+- **Spot contradictions, see the map of topics, track what changed** — “Conflicts” lists sentences in different documents that agree except for a number or a date (500 vs 550). “Topic map” groups your documents by what they are about. “What's new” lists what changed since a date. On the command line: `conflicts`, `topics`, `changes --since`.
+- **Fact-check your own text against your library** — Paste a draft into “Fact-check my text” and every sentence is marked supported, partly supported, numbers differ or not found, with the best evidence from your documents. “Dossier” gathers everything your library says about a name or term, with its dates and amounts. Other AI apps get both through the MCP server.
 
 ## New in 0.2.0-alpha.2
 

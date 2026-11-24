@@ -49,6 +49,8 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Um resumo das novidades** — `cartacolibri digest NOME` repete uma pesquisa guardada e indica só os documentos que apareceram desde a última vez. Acrescenta `--every 60` para repetir de hora a hora, `--out relatorio.md` para juntar a um ficheiro e `--summarize` para um resumo curto da tua IA local.
 - **Saber quanto confiar numa resposta** — Cada resposta do chat mostra agora uma pontuação «Respaldo nas fontes»: quanto de cada frase se encontra mesmo nas fontes citadas, com as frases a rever e os números que não aparecem em nenhuma fonte.
 - **Compara dois documentos e vê todos os nomes e números** — Marca dois documentos e carrega em «Comparar 2» para ver, frase a frase, o que difere entre duas versões. «Nomes e números» lista todos os e-mails, links, valores, datas e telefones da tua biblioteca e onde aparecem. Na linha de comandos: `compare` e `entities`.
+- **Deteta contradições, vê o mapa de temas, acompanha o que mudou** — «Contradições» lista frases de documentos diferentes iguais exceto num número ou data (500 contra 550). «Mapa de temas» agrupa os teus documentos por assunto. «Novidades» lista o que mudou desde uma data. Na linha de comandos: `conflicts`, `topics`, `changes --since`.
+- **Verifica o teu próprio texto face à biblioteca** — Cola um rascunho em «Verificar o meu texto» e cada frase fica marcada como confirmada, em parte, números diferentes ou não encontrada, com a melhor prova dos teus documentos. «Dossiê» reúne tudo o que a tua biblioteca diz de um nome ou termo, com as suas datas e valores. Outras apps de IA acedem a ambos pelo servidor MCP.
 
 ## Novidades da 0.2.0-alpha.2
 
