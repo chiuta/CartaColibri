@@ -718,12 +718,15 @@ fn tempdir() -> std::io::Result<std::path::PathBuf> {
             std::process::id(),
             hex::encode(r)
         ));
-        let mut b = std::fs::DirBuilder::new();
         #[cfg(unix)]
-        {
+        let b = {
             use std::os::unix::fs::DirBuilderExt;
+            let mut b = std::fs::DirBuilder::new();
             b.mode(0o700);
-        }
+            b
+        };
+        #[cfg(not(unix))]
+        let b = std::fs::DirBuilder::new();
         match b.create(&p) {
             Ok(()) => return Ok(p),
             Err(e) => last = Some(e),
