@@ -279,13 +279,8 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
             (Method::Get, "/carta-logo.png") => respond(r, 200, "image/png", LOGO.to_vec(), &[]),
             (Method::Get, "/carta-mark.png") => respond(r, 200, "image/png", MARK.to_vec(), &[]),
             (Method::Get, "/health") => {
-                let up = crate::carta::Backend::gateway(&backend, None).alive();
-                json(
-                    r,
-                    if up { 200 } else { 503 },
-                    serde_json::json!({"gateway": up}),
-                    &[],
-                )
+                let (up, v) = crate::api::engine_health(home.as_deref(), &backend);
+                json(r, if up { 200 } else { 503 }, v, &[])
             }
             _ => json(r, 404, serde_json::json!({"error": "not found"}), &[]),
         };

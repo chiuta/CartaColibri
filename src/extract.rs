@@ -1053,22 +1053,18 @@ fn extract_inner(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
         return r;
     }
     let mut text = decode(&raw);
-    match ext {
-        ".html" | ".htm" => text = html_to_text(&text),
-        ".rtf" => {
-            static A: OnceLock<Regex> = OnceLock::new();
-            static B: OnceLock<Regex> = OnceLock::new();
-            text = re(&A, r"\\'([0-9a-fA-F]{2})")
-                .replace_all(&text, |c: &regex::Captures| {
-                    let byte = u8::from_str_radix(&c[1], 16).unwrap_or(b'?');
-                    encoding_rs::WINDOWS_1250.decode(&[byte]).0.into_owned()
-                })
-                .into_owned();
-            text = re(&B, r"\\[a-z]+-?\d* ?|[{}]")
-                .replace_all(&text, "")
-                .into_owned();
-        }
-        _ => {}
+    if ext == ".rtf" {
+        static A: OnceLock<Regex> = OnceLock::new();
+        static B: OnceLock<Regex> = OnceLock::new();
+        text = re(&A, r"\\'([0-9a-fA-F]{2})")
+            .replace_all(&text, |c: &regex::Captures| {
+                let byte = u8::from_str_radix(&c[1], 16).unwrap_or(b'?');
+                encoding_rs::WINDOWS_1250.decode(&[byte]).0.into_owned()
+            })
+            .into_owned();
+        text = re(&B, r"\\[a-z]+-?\d* ?|[{}]")
+            .replace_all(&text, "")
+            .into_owned();
     }
     Ok(vec![(String::new(), text)])
 }
@@ -1134,6 +1130,8 @@ const ZIP_TEXT_EXT: &[&str] = &[
     ".adoc",
     ".html",
     ".htm",
+    ".mhtml",
+    ".mht",
     ".csv",
     ".tsv",
     ".json",
@@ -1170,6 +1168,8 @@ pub fn text_parts(ext: &str, raw: &[u8]) -> Option<Res<Parts>> {
 fn text_parts_inner(ext: &str, raw: &[u8]) -> Option<Res<Parts>> {
     let one = |t: String| Some(Ok(vec![(String::new(), cap(t))]));
     match ext {
+        ".html" | ".htm" => one(html_doc_text(raw)),
+        ".mhtml" | ".mht" => one(mhtml_text(raw)),
         ".eml" => one(eml_text(&decode(raw))),
         ".mbox" => Some(Ok(mbox_parts(&decode(raw)))),
         ".ics" => one(ics_text(&decode(raw))),
@@ -1199,6 +1199,187 @@ fn text_parts_inner(ext: &str, raw: &[u8]) -> Option<Res<Parts>> {
         ".tex" => one(tex_text(&decode(raw))),
         _ => None,
     }
+}
+
+// ---- HTML documents and MHTML (RFC 2557) archives
+
+/// Charset named by a `<meta>` tag in the first 4 KB of an HTML document.
+fn meta_charset(raw: &[u8]) -> Option<String> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let head = String::from_utf8_lossy(&raw[..raw.len().min(4096)]);
+    re(&R, r#"(?i)charset\s*=\s*["']?([A-Za-z0-9_\-:.]+)"#)
+        .captures(&head)
+        .map(|c| c[1].to_string())
+}
+
+/// Decode bytes with an explicit charset, a BOM, or a `<meta charset>`; UTF-8 / Windows-1250 otherwise.
+fn decode_html(raw: &[u8], charset: Option<&str>) -> String {
+    let bom = raw.starts_with(&[0xff, 0xfe])
+        || raw.starts_with(&[0xfe, 0xff])
+        || raw.starts_with(&[0xef, 0xbb, 0xbf]);
+    if !bom && std::str::from_utf8(raw).is_err() {
+        let label = charset.map(String::from).or_else(|| meta_charset(raw));
+        if let Some(l) = label
+            && let Some(enc) = encoding_rs::Encoding::for_label(l.trim().as_bytes())
+        {
+            return enc.decode(raw).0.into_owned();
+        }
+    }
+    decode(raw)
+}
+
+fn html_doc_text(raw: &[u8]) -> String {
+    cap(html_to_text(&decode_html(raw, None)))
+}
+
+/// Most MIME parts, nesting levels and decoded bytes read from one MHTML file.
+const MHT_MAX_PARTS: usize = 5000;
+const MHT_MAX_DEPTH: usize = 6;
+const MHT_MAX_DECODED: usize = 64 * 1024 * 1024;
+
+struct MhtBudget {
+    parts: usize,
+    decoded: usize,
+    out: String,
+}
+
+/// Header block (unfolded, lower-cased names) and body of one MIME entity, without copying the body.
+fn mime_split(b: &[u8]) -> (Headers, &[u8]) {
+    let lim = b.len().min(256 * 1024);
+    let mut end = None;
+    let mut i = 0;
+    // blank line = end of headers; a body-less entity starting with a blank line has no headers
+    while i < lim {
+        let nl = match b[i..lim].iter().position(|&c| c == b'\n') {
+            Some(p) => i + p,
+            None => break,
+        };
+        let line = &b[i..nl];
+        if line.is_empty() || line == b"\r" {
+            end = Some((i, nl + 1));
+            break;
+        }
+        i = nl + 1;
+    }
+    let (hend, bstart) = end.unwrap_or((lim.min(b.len()), b.len()));
+    let mut hs: Headers = Vec::new();
+    for line in String::from_utf8_lossy(&b[..hend]).lines().take(500) {
+        if line.starts_with([' ', '\t']) {
+            if let Some(last) = hs.last_mut()
+                && last.1.len() < 8192
+            {
+                last.1.push(' ');
+                last.1.push_str(line.trim());
+            }
+        } else if let Some((k, v)) = line.split_once(':') {
+            hs.push((k.trim().to_lowercase(), v.trim().to_string()));
+        }
+    }
+    (hs, &b[bstart.min(b.len())..])
+}
+
+/// Splits a multipart body on `--boundary` lines in one linear pass.
+fn mime_sections<'a>(body: &'a [u8], boundary: &str) -> Vec<&'a [u8]> {
+    let delim = format!("--{boundary}");
+    let d = delim.as_bytes();
+    let mut out = Vec::new();
+    let (mut start, mut pos) = (None::<usize>, 0usize);
+    while pos <= body.len() {
+        let nl = body[pos..]
+            .iter()
+            .position(|&c| c == b'\n')
+            .map_or(body.len(), |p| pos + p);
+        let line = &body[pos..nl];
+        if line.starts_with(d) {
+            let rest = &line[d.len()..];
+            if !(rest.is_empty()
+                || rest.starts_with(b"--")
+                || matches!(rest[0], b' ' | b'\t' | b'\r'))
+            {
+                pos = nl + 1; // a longer, different boundary that merely starts the same
+                continue;
+            }
+            if let Some(s) = start {
+                out.push(&body[s..pos]);
+                if out.len() >= MHT_MAX_PARTS {
+                    return out;
+                }
+            }
+            if rest.starts_with(b"--") {
+                return out; // closing delimiter
+            }
+            start = Some((nl + 1).min(body.len()));
+        }
+        pos = nl + 1;
+    }
+    // missing closing delimiter: keep the tail
+    if let Some(s) = start {
+        out.push(&body[s..]);
+    }
+    out
+}
+
+fn mht_walk(raw: &[u8], depth: usize, bud: &mut MhtBudget) {
+    if bud.parts >= MHT_MAX_PARTS || bud.out.len() >= MAX_OUT || bud.decoded >= MHT_MAX_DECODED {
+        return;
+    }
+    bud.parts += 1;
+    let (h, body) = mime_split(raw);
+    let ctype = hget(&h, "content-type");
+    let lc = ctype.to_lowercase();
+    if lc.starts_with("multipart/") {
+        if depth < MHT_MAX_DEPTH
+            && let Some(b) =
+                header_param(ctype, "boundary").filter(|b| !b.is_empty() && b.len() < 200)
+        {
+            for s in mime_sections(body, &b) {
+                mht_walk(s, depth + 1, bud);
+            }
+        }
+        return;
+    }
+    let is_html = lc.starts_with("text/html") || lc.starts_with("application/xhtml");
+    if !(is_html || lc.starts_with("text/plain")) {
+        return;
+    }
+    let body = &body[..body.len().min(48 * 1024 * 1024)];
+    bud.decoded = bud.decoded.saturating_add(body.len());
+    let enc = hget(&h, "content-transfer-encoding").to_lowercase();
+    let bytes: std::borrow::Cow<[u8]> = match enc.trim() {
+        "base64" => b64_decode(&String::from_utf8_lossy(body)).into(),
+        "quoted-printable" => qp_decode(&String::from_utf8_lossy(body), false).into(),
+        _ => body.into(),
+    };
+    let cs = header_param(ctype, "charset");
+    let text = decode_html(&bytes, cs.as_deref());
+    let text = if is_html { html_to_text(&text) } else { text };
+    if !text.trim().is_empty() {
+        bud.out.push_str(text.trim());
+        bud.out.push_str("\n\n");
+    }
+}
+
+/// Text of an MHTML / MHT web archive: main page and frames decoded (base64, quoted-printable,
+/// charsets), scripts/styles dropped, subject kept as the title. Bounded in parts, depth and bytes.
+fn mhtml_text(raw: &[u8]) -> String {
+    let (h, _) = mime_split(raw);
+    let mut bud = MhtBudget {
+        parts: 0,
+        decoded: 0,
+        out: String::new(),
+    };
+    let title = mime_words(hget(&h, "subject"));
+    let url = hget(&h, "snapshot-content-location");
+    mht_walk(raw, 0, &mut bud);
+    let mut out = String::new();
+    if !title.trim().is_empty() {
+        out.push_str(&format!("# {}\n\n", title.trim()));
+    }
+    if !url.is_empty() {
+        out.push_str(&format!("Source: {url}\n\n"));
+    }
+    out.push_str(bud.out.trim());
+    cap(out)
 }
 
 // ---- base64 / quoted-printable / RFC 2047
@@ -1869,14 +2050,7 @@ fn zip_walk<R: Read + std::io::Seek>(
             Some(r) => r.ok(),
             None => {
                 let t = decode(&buf);
-                Some(vec![(
-                    String::new(),
-                    if ext == ".html" || ext == ".htm" {
-                        html_to_text(&t)
-                    } else {
-                        t
-                    },
-                )])
+                Some(vec![(String::new(), t)])
             }
         };
         for (loc, t) in r.unwrap_or_default() {

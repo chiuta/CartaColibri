@@ -312,7 +312,14 @@ fn document_cannot_close_the_sources_block_or_forge_a_source() {
         &mut |_| {},
     )
     .unwrap();
-    let reqs = seen.lock().unwrap().clone();
+    // the client also asks the engine for its model list (GET, no body): only completion requests matter here
+    let reqs: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r.trim_start().starts_with('{'))
+        .cloned()
+        .collect();
     assert!(!reqs.is_empty());
     for r in &reqs {
         let v: serde_json::Value = serde_json::from_str(r).unwrap();

@@ -39,6 +39,8 @@ pub const DEFAULT_EXT: &[&str] = &[
     ".zip",
     ".html",
     ".htm",
+    ".mhtml",
+    ".mht",
     ".rtf",
     ".docx",
     ".odt",

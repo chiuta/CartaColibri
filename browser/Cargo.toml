@@ -16,3 +16,7 @@ serde_json = "1"
 hex = "0.4"
 ureq = "3"
 getrandom = "0.3"
+
+[target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
+gtk = "0.18"
+webkit2gtk = "2.0"

@@ -49,6 +49,8 @@ enum Ev {
     Push,
     Discard(Option<usize>),
     Dedupe,
+    /// print this tab to a PDF file (tab, target file in the library's web-grab folder)
+    Pdf(usize, std::path::PathBuf),
 }
 
 #[derive(Clone, Default)]
@@ -207,6 +209,8 @@ const HEAVY: &[&str] = &[
     "sel",
     "go",
     "dl",
+    "grab",
+    "pdf",
 ];
 /// Commands that may only come from a real http(s) page (they carry page content).
 const WEB_ONLY: &[&str] = &[
@@ -221,6 +225,8 @@ const WEB_ONLY: &[&str] = &[
     "dl",
     "open_raw",
     "related",
+    "grab",
+    "pdf",
 ];
 const KNOWN: &[&str] = &[
     "newtab",
@@ -248,6 +254,8 @@ const KNOWN: &[&str] = &[
     "save_tabs",
     "ask",
     "ask_tabs",
+    "grab",
+    "pdf",
     "ready",
     "loaded",
     "pref",
@@ -440,7 +448,7 @@ fn origin_ok(uri: &str, m: &Value) -> bool {
         (Some(u), Some(pg))
             if matches!(
                 cmd,
-                "save" | "later" | "note" | "highlight" | "watch" | "ask"
+                "save" | "later" | "note" | "highlight" | "watch" | "ask" | "grab" | "pdf"
             ) =>
         {
             origin_of(u).as_deref() == Some(pg.as_str())
@@ -973,6 +981,7 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                 "rd_size": prefs_get(c).get("rd_size").cloned().unwrap_or(json!(19)),
                 "rd_theme": prefs_get(c).get("rd_theme").cloned().unwrap_or(json!("")),
                 "trackers": c.trackers.load(Ordering::Relaxed),
+                "pdfNative": PDF_NATIVE,
             }});
             let _ = p.send_event(Ev::Call(tab, "boot", b));
             let _ = p.send_event(Ev::Push);
@@ -1296,6 +1305,43 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                 Err(e) => reply(p, c, tab, false, e),
             }
         }
+        "grab" => {
+            let url = clean_url(&s("url"));
+            let fmt = s("fmt");
+            if !is_http(&url) || !["html", "mhtml"].contains(&fmt.as_str()) {
+                return reply(p, c, tab, false, "cannot grab this page".into());
+            }
+            // the page as the user sees it (scripts run, logged in) when the bar sent it, else a fresh fetch;
+            // either way every sub-resource goes through the SSRF-guarded downloader
+            let r = lib().and_then(|mut l| match m["html"].as_str().filter(|h| !h.is_empty()) {
+                Some(h) => grab::save_page_html(&mut l, &url, h, &fmt),
+                None => grab::save_page(&mut l, &url, &fmt),
+            });
+            match r {
+                Ok(v) => reply_k(
+                    p,
+                    c,
+                    tab,
+                    true,
+                    format!("✔ {}", v["path"].as_str().unwrap_or("")),
+                    "gok",
+                    json!({"path": v["path"], "fmt": fmt, "kb": v["bytes"].as_u64().unwrap_or(0) / 1024}),
+                ),
+                Err(e) => reply(p, c, tab, false, e),
+            }
+        }
+        "pdf" => {
+            let url = clean_url(&s("url"));
+            if !is_http(&url) {
+                return reply(p, c, tab, false, "cannot print this page".into());
+            }
+            match lib().and_then(|l| grab::pdf_target(&l, &url, &s("title"))) {
+                Ok(path) => {
+                    let _ = p.send_event(Ev::Pdf(tab, path));
+                }
+                Err(e) => reply(p, c, tab, false, e),
+            }
+        }
         "highlight" => {
             let url = clean_url(&s("url"));
             let r = lib().and_then(|mut l| {
@@ -1591,6 +1637,8 @@ fn make_tab(
                 let (args, ms) = match mode {
                     "tabs" => (json!(["ask_tabs", "colibri"]), 3500),
                     "ask" => (json!(["ask", "ce sunt colibrii?"]), 900),
+                    "grab" => (json!(["grab", "mhtml"]), 900),
+                    "pdf" => (json!(["pdf"]), 900),
                     _ => (json!(["save"]), 900),
                 };
                 let p = p6.clone();
@@ -1907,6 +1955,114 @@ impl Forge {
     }
 }
 
+/// True where the webview can write a PDF file by itself (WebKitGTK); elsewhere the print dialog opens.
+const PDF_NATIVE: bool = cfg!(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+));
+
+/// Tells the bar the PDF is in the library: indexes the new file, then replies.
+fn pdf_done(cfg: &Arc<Cfg>, proxy: &EventLoopProxy<Ev>, tab: usize, path: std::path::PathBuf) {
+    let (cfg, proxy) = (cfg.clone(), proxy.clone());
+    std::thread::spawn(move || {
+        let r =
+            Library::open(cfg.home.as_deref(), false).and_then(|mut l| grab::index_grabs(&mut l));
+        match r {
+            Ok(_) => reply_k(
+                &proxy,
+                &cfg,
+                tab,
+                true,
+                format!("✔ {}", path.display()),
+                "pdfok",
+                json!({"path": path}),
+            ),
+            Err(e) => reply(&proxy, &cfg, tab, false, e),
+        }
+    });
+}
+
+/// Print the tab to `path` as PDF. WebKitGTK: a silent print job to a file. Windows (WebView2) and
+/// macOS (WKWebView): wry 0.57 only offers the print dialog, so the user picks "Save as PDF" there.
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+fn print_pdf(
+    cfg: &Arc<Cfg>,
+    proxy: &EventLoopProxy<Ev>,
+    tab: usize,
+    wv: &WebView,
+    path: std::path::PathBuf,
+) {
+    use gtk::gio::prelude::FileExt;
+    use webkit2gtk::PrintOperationExt;
+    use wry::WebViewExtUnix;
+    let op = webkit2gtk::PrintOperation::new(&wv.webview());
+    let st = gtk::PrintSettings::new();
+    st.set_printer("Print to File");
+    st.set("output-file-format", Some("pdf"));
+    st.set(
+        "output-uri",
+        Some(gtk::gio::File::for_path(&path).uri().as_str()),
+    );
+    op.set_print_settings(&st);
+    let failed = std::rc::Rc::new(std::cell::Cell::new(None::<String>));
+    let (f2, c2, p2, path2) = (failed.clone(), cfg.clone(), proxy.clone(), path.clone());
+    op.connect_failed(move |_, e| f2.set(Some(e.to_string())));
+    let finished = std::cell::Cell::new(true);
+    op.connect_finished(move |_| {
+        if !finished.replace(false) {
+            return;
+        }
+        match failed.take() {
+            Some(e) => {
+                let _ = std::fs::remove_file(&path2);
+                reply(&p2, &c2, tab, false, format!("PDF failed: {e}"));
+            }
+            None => pdf_done(&c2, &p2, tab, path2.clone()),
+        }
+    });
+    op.print();
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+)))]
+fn print_pdf(
+    cfg: &Arc<Cfg>,
+    proxy: &EventLoopProxy<Ev>,
+    tab: usize,
+    wv: &WebView,
+    path: std::path::PathBuf,
+) {
+    // the empty placeholder is not a PDF: remove it, the user saves the real file from the dialog
+    let dir = path.parent().map(|d| d.to_path_buf()).unwrap_or_default();
+    let _ = std::fs::remove_file(&path);
+    match wv.print() {
+        Ok(()) => reply_k(
+            proxy,
+            cfg,
+            tab,
+            true,
+            format!("print window → {}", dir.display()),
+            "pdfdlg",
+            json!({"dir": dir}),
+        ),
+        Err(e) => reply(proxy, cfg, tab, false, format!("print failed: {e}")),
+    }
+}
+
 fn push_tabs(cfg: &Cfg, tabs: &[Tab], active: usize) {
     let colors = cfg.colors.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let mut seen: BTreeMap<String, usize> = BTreeMap::new();
@@ -1985,7 +2141,7 @@ fn main() {
     };
     if flag("--help") || flag("-h") {
         println!(
-            "cartacolibri-browser [URL…] [--home DIR] [--gateway URL] [--mock] [--fresh]\n  --fresh   do not restore the previous tabs\n  keys: Ctrl+S save · Ctrl+Shift+A ask · Ctrl+H highlight · Ctrl+F find · Ctrl+Shift+R reader · Ctrl+Shift+K search tabs · F1 help · Ctrl+Shift+T reopen tab · Esc close panels\n  --selftest-save | --selftest-ask | --selftest-tabs   load the first URL, save it / ask about it (use with --mock), print the result, exit (used by CI)\n  --selftest-forge   load the first URL, let a simulated hostile page forge IPC messages and call the overlay; passes only if nothing changed and a real save still works"
+            "cartacolibri-browser [URL…] [--home DIR] [--gateway URL] [--mock] [--fresh]\n  --fresh   do not restore the previous tabs\n  keys: Ctrl+S save · Ctrl+Shift+A ask · Ctrl+H highlight · Ctrl+F find · Ctrl+Shift+R reader · Ctrl+Shift+K search tabs · F1 help · Ctrl+Shift+T reopen tab · Esc close panels\n  --selftest-save | --selftest-ask | --selftest-tabs   load the first URL, save it / ask about it (use with --mock), print the result, exit (used by CI)\n  --selftest-grab | --selftest-pdf   load the first URL, grab it as .mhtml / print it to PDF (set CARTACOLIBRI_GRAB_LOCAL=1 for a loopback page), print the result, exit\n  --selftest-forge   load the first URL, let a simulated hostile page forge IPC messages and call the overlay; passes only if nothing changed and a real save still works"
         );
         return;
     }
@@ -1997,6 +2153,10 @@ fn main() {
         Some("save")
     } else if flag("--selftest-forge") {
         Some("forge")
+    } else if flag("--selftest-grab") {
+        Some("grab")
+    } else if flag("--selftest-pdf") {
+        Some("pdf")
     } else {
         None
     };
@@ -2144,6 +2304,18 @@ fn main() {
                 }
             }
             Event::UserEvent(Ev::Push) => push_tabs(&cfg, &tabs, active),
+            Event::UserEvent(Ev::Pdf(tab, path)) => {
+                match tabs
+                    .iter()
+                    .find(|t| t.id == tab)
+                    .and_then(|t| t.wv.as_ref())
+                {
+                    Some(wv) => print_pdf(&cfg, &proxy, tab, wv, path),
+                    None => {
+                        let _ = std::fs::remove_file(&path);
+                    }
+                }
+            }
             Event::UserEvent(Ev::Discard(which)) => {
                 let mut n = 0;
                 for t in tabs.iter_mut() {

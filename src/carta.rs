@@ -118,6 +118,17 @@ pub struct Backend {
     pub model: Option<String>,
     pub timeout: Duration,
     pub max_tokens: u32,
+    /// Optional bearer key (env COLI_API_KEY); never logged.
+    pub api_key: Option<String>,
+}
+
+/// Accepts `http://host:8000`, `http://host:8000/` and `http://host:8000/v1` alike.
+pub fn normalize_base(u: &str) -> String {
+    let mut b = u.trim().trim_end_matches('/');
+    if let Some(x) = b.strip_suffix("/v1") {
+        b = x.trim_end_matches('/');
+    }
+    b.to_string()
 }
 
 impl Backend {
@@ -126,10 +137,13 @@ impl Backend {
             mock: false,
             retries: 1,
             fallback_mock: false,
-            url: url.trim_end_matches('/').to_string(),
+            url: normalize_base(url),
             model,
             timeout: Duration::from_secs(1800),
             max_tokens: 1200,
+            api_key: std::env::var("COLI_API_KEY")
+                .ok()
+                .filter(|k| !k.trim().is_empty()),
         }
     }
     pub fn mock() -> Backend {
@@ -141,6 +155,7 @@ impl Backend {
             model: None,
             timeout: Duration::from_secs(1),
             max_tokens: 0,
+            api_key: None,
         }
     }
 
@@ -154,6 +169,8 @@ impl Backend {
         if self.mock {
             return Ok(mock(user));
         }
+        // one local model, one request at a time: parallel calls would only slow each other down
+        let _turn = GATE.lock().unwrap_or_else(|e| e.into_inner());
         let mut last = String::new();
         for attempt in 0..=self.retries {
             if attempt > 0 {
@@ -175,19 +192,34 @@ impl Backend {
         }
         let fail = |e: String| {
             format!(
-                "no answer from the Colibrì gateway at {} ({e}). Start it with `coli web --model DIR` (or `coli serve`), or use --mock.",
+                "no answer from the Colibrì engine at {} ({e}). Start it with `coli serve --model DIR` (or open Colibri Companion), or use --mock.",
                 redact_url(&self.url)
             )
         };
-        let agent: ureq::Agent = ureq::Agent::config_builder()
-            .timeout_global(Some(self.timeout))
-            .http_status_as_error(true)
-            .build()
-            .into();
-        let mut resp = agent
-            .post(&format!("{}/v1/chat/completions", self.url))
-            .send_json(&body)
-            .map_err(|e| fail(e.to_string()))?;
+        // the engine wants a model id: use the chosen one, else the first one it reports
+        let model = self
+            .model
+            .clone()
+            .or_else(|| self.models().into_iter().next());
+        if let Some(m) = &model {
+            body["model"] = json!(m);
+        }
+        let agent = self.agent(self.timeout, true);
+        let t0 = std::time::Instant::now();
+        let mut req = agent.post(&format!("{}/v1/chat/completions", self.url));
+        if let Some(k) = &self.api_key {
+            req = req.header("Authorization", &format!("Bearer {k}"));
+        }
+        let mut resp = req.send_json(&body).map_err(|e| {
+            let t = e.to_string();
+            fail(if t.contains("401") || t.contains("403") {
+                "it needs an API key: set COLI_API_KEY".to_string()
+            } else if t.contains("404") && model.is_none() {
+                "http status: 404 — no model is loaded; load one in the engine".to_string()
+            } else {
+                t
+            })
+        })?;
         let v: Value = resp
             .body_mut()
             .read_json()
@@ -199,19 +231,194 @@ impl Backend {
         if t.is_empty() {
             return Err(fail("the model returned an empty answer".into()));
         }
+        let secs = t0.elapsed().as_secs_f64();
+        let (pt, ct) = (
+            v["usage"]["prompt_tokens"].as_u64().unwrap_or(0),
+            v["usage"]["completion_tokens"].as_u64().unwrap_or(0),
+        );
+        *LAST_USAGE.lock().unwrap_or_else(|e| e.into_inner()) = Some(Usage {
+            prompt: pt,
+            completion: ct,
+            secs,
+            model: model.unwrap_or_default(),
+        });
         Ok(t)
     }
 
+    fn agent(&self, t: Duration, status_error: bool) -> ureq::Agent {
+        ureq::Agent::config_builder()
+            .timeout_global(Some(t))
+            .http_status_as_error(status_error)
+            .build()
+            .into()
+    }
+
+    /// Model ids the engine reports (`GET /v1/models`); empty when unreachable.
+    pub fn models(&self) -> Vec<String> {
+        if self.mock {
+            return vec![];
+        }
+        let mut r = self
+            .agent(Duration::from_secs(3), true)
+            .get(&format!("{}/v1/models", self.url));
+        if let Some(k) = &self.api_key {
+            r = r.header("Authorization", &format!("Bearer {k}"));
+        }
+        let Ok(mut resp) = r.call() else {
+            return vec![];
+        };
+        let Ok(v) = resp.body_mut().read_json::<Value>() else {
+            return vec![];
+        };
+        v["data"]
+            .as_array()
+            .or_else(|| v["models"].as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|m| m["id"].as_str().or_else(|| m["name"].as_str()))
+                    .map(|s| s.chars().take(200).collect::<String>())
+                    .take(50)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// True when an OpenAI-compatible engine answers: `/v1/models` (a 401/403 also means "there, but needs a key"),
+    /// or a plain `/health`. A random web server that merely owns the port does not count.
     pub fn alive(&self) -> bool {
         if self.mock {
             return true;
         }
-        let agent: ureq::Agent = ureq::Agent::config_builder()
-            .timeout_global(Some(Duration::from_secs(3)))
-            .build()
-            .into();
-        agent.get(&format!("{}/health", self.url)).call().is_ok()
+        let a = self.agent(Duration::from_secs(3), false);
+        // (status, body is JSON)
+        let probe = |p: &str| -> (u16, bool) {
+            match a.get(&format!("{}{p}", self.url)).call() {
+                Ok(mut r) => {
+                    let st = r.status().as_u16();
+                    let ok = r.body_mut().read_json::<Value>().is_ok();
+                    (st, ok)
+                }
+                Err(_) => (0, false),
+            }
+        };
+        let (st, json_ok) = probe("/v1/models");
+        if matches!(st, 401 | 403) || (st == 200 && json_ok) {
+            return true;
+        }
+        let (st, json_ok) = probe("/health");
+        st == 200 && json_ok
     }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Usage {
+    pub prompt: u64,
+    pub completion: u64,
+    pub secs: f64,
+    pub model: String,
+}
+
+static GATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static LAST_USAGE: std::sync::Mutex<Option<Usage>> = std::sync::Mutex::new(None);
+
+/// Token use of the most recent completion (taken once; the UI shows it under the answer).
+pub fn take_usage() -> Option<Usage> {
+    LAST_USAGE.lock().unwrap_or_else(|e| e.into_inner()).take()
+}
+
+pub fn usage_json(u: &Usage) -> Value {
+    let tps = if u.secs > 0.0 {
+        u.completion as f64 / u.secs
+    } else {
+        0.0
+    };
+    json!({"prompt": u.prompt, "completion": u.completion, "secs": (u.secs * 10.0).round() / 10.0,
+           "tps": (tps * 10.0).round() / 10.0, "model": u.model})
+}
+
+/// An engine found on this machine.
+#[derive(Clone, Debug)]
+pub struct Found {
+    pub url: String,
+    pub models: Vec<String>,
+}
+
+/// Where Colibri Companion (or any launcher) may publish the running engine: `{"url": "...", "model": "..."}`.
+pub fn discovery_files() -> Vec<std::path::PathBuf> {
+    let mut v = vec![];
+    if let Some(p) = std::env::var_os("COLIBRI_ENDPOINT_FILE") {
+        v.push(p.into());
+    }
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(std::path::PathBuf::from);
+    if let Some(d) = std::env::var_os("APPDATA").map(std::path::PathBuf::from) {
+        v.push(d.join("colibri-companion").join("endpoint.json"));
+    }
+    if let Some(h) = home {
+        v.push(
+            h.join(".config")
+                .join("colibri-companion")
+                .join("endpoint.json"),
+        );
+        v.push(h.join("Library/Application Support/colibri-companion/endpoint.json"));
+        v.push(h.join(".colibri").join("endpoint.json"));
+    }
+    v
+}
+
+/// Looks for a running engine: the launcher's discovery file first, then the usual local ports.
+/// Loopback only. Each probe is short and they run in parallel.
+pub fn detect() -> Vec<Found> {
+    let mut cands: Vec<String> = vec![];
+    for f in discovery_files() {
+        if let Ok(b) = std::fs::read(&f)
+            && b.len() < 4096
+            && let Ok(j) = serde_json::from_slice::<Value>(&b)
+            && let Some(u) = j["url"].as_str()
+            && is_loopback_http(u)
+        {
+            cands.push(normalize_base(u));
+        }
+    }
+    for port in [8000, 8080, 11434, 1234, 8001, 5000] {
+        cands.push(format!("http://127.0.0.1:{port}"));
+    }
+    let mut seen = std::collections::HashSet::new();
+    cands.retain(|c| seen.insert(c.clone()));
+    let hs: Vec<_> = cands
+        .into_iter()
+        .map(|u| {
+            std::thread::spawn(move || {
+                let b = Backend::gateway(&u, None);
+                let a = b.agent(Duration::from_millis(1200), false);
+                let ok = a
+                    .get(&format!("{u}/v1/models"))
+                    .call()
+                    .map(|r| matches!(r.status().as_u16(), 200 | 401 | 403))
+                    .unwrap_or(false);
+                ok.then(|| Found {
+                    models: b.models(),
+                    url: u,
+                })
+            })
+        })
+        .collect();
+    hs.into_iter()
+        .filter_map(|h| h.join().ok().flatten())
+        .collect()
+}
+
+fn is_loopback_http(u: &str) -> bool {
+    let Ok(uri) = u.parse::<ureq::http::Uri>() else {
+        return false;
+    };
+    matches!(uri.scheme_str(), Some("http"))
+        && matches!(
+            uri.host(),
+            Some("127.0.0.1" | "localhost" | "[::1]" | "::1")
+        )
+        && !uri.authority().is_some_and(|a| a.as_str().contains('@'))
 }
 
 /// Deterministic stand-in: the first informative sentence of each line, in order.

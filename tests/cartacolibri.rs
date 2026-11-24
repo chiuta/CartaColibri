@@ -432,7 +432,7 @@ fn gateway_down_is_a_clean_error() {
         &mut |_| {},
     )
     .unwrap_err();
-    assert!(err.contains("no answer from the Colibrì gateway"), "{err}");
+    assert!(err.contains("no answer from the Colibrì"), "{err}");
 }
 
 fn call(

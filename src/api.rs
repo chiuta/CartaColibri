@@ -387,7 +387,50 @@ pub fn saved_gateway(home: Option<&str>) -> Option<String> {
 
 /// The address to use: the one saved in the UI wins over the command line / `COLI_URL` default.
 pub fn effective_gateway(home: Option<&str>, default: &str) -> String {
-    saved_gateway(home).unwrap_or_else(|| default.to_string())
+    saved_gateway(home)
+        .or_else(|| AUTO.lock().unwrap_or_else(|e| e.into_inner()).clone())
+        .unwrap_or_else(|| default.to_string())
+}
+
+/// An engine found by itself on this machine (loopback only); lives only as long as the program runs
+/// and never overrides an address the person saved.
+static AUTO: Mutex<Option<String>> = Mutex::new(None);
+static LAST_SCAN: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+
+/// Health of the engine at `current`, finding one by itself when nothing was configured.
+pub fn engine_health(home: Option<&str>, current: &str) -> (bool, Value) {
+    let b = carta::Backend::gateway(current, None);
+    if b.alive() {
+        let auto = AUTO.lock().unwrap_or_else(|e| e.into_inner()).as_deref() == Some(current);
+        return (
+            true,
+            json!({"gateway": true, "auto": auto, "url": carta::redact_url(current), "model": b.models().into_iter().next()}),
+        );
+    }
+    {
+        let mut a = AUTO.lock().unwrap_or_else(|e| e.into_inner());
+        if a.as_deref() == Some(current) {
+            *a = None;
+        }
+    }
+    if saved_gateway(home).is_none() {
+        let due = {
+            let mut l = LAST_SCAN.lock().unwrap_or_else(|e| e.into_inner());
+            let due = l.is_none_or(|t| t.elapsed() > std::time::Duration::from_secs(10));
+            if due {
+                *l = Some(std::time::Instant::now());
+            }
+            due
+        };
+        if due && let Some(f) = carta::detect().into_iter().next() {
+            *AUTO.lock().unwrap_or_else(|e| e.into_inner()) = Some(f.url.clone());
+            return (
+                true,
+                json!({"gateway": true, "auto": true, "url": f.url, "model": f.models.first()}),
+            );
+        }
+    }
+    (false, json!({"gateway": false}))
 }
 
 /// http(s) only, a host, no credentials, no control characters. Loopback and LAN are allowed on purpose:
@@ -499,6 +542,12 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             let url = url.as_str();
             if j["title"].as_str().is_some_and(|t| t.chars().count() > 500) {
                 return Err((400, "that title is too long".into()));
+            }
+            if let Some(fmt) = j["fmt"].as_str() {
+                if !matches!(fmt, "html" | "mhtml") {
+                    return Err((400, "fmt must be html or mhtml".into()));
+                }
+                return grab::save_page(&mut lib, url, fmt).map_err(|m| (502, m));
             }
             match j["text"].as_str() {
                 Some(t) => {
@@ -638,7 +687,7 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             } else {
                 None
             };
-            json!({"text": text, "saved": saved})
+            json!({"text": text, "saved": saved, "usage": carta::take_usage().as_ref().map(carta::usage_json)})
         }
         ("GET", "tasks") => json!({"tasks": carta::TASKS}),
         ("GET", "find") => {
@@ -787,6 +836,13 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 .take(n)
                 .collect();
             json!({"recent": recent, "most": most})
+        }
+        ("GET", "engine") => {
+            let found: Vec<Value> = carta::detect()
+                .into_iter()
+                .map(|f| json!({"url": f.url, "models": f.models}))
+                .collect();
+            json!({"found": found, "effective": carta::redact_url(r.backend_url)})
         }
         ("GET", "settings") => json!({
             "gateway_url": saved_gateway(Some(&lib.home.to_string_lossy())).unwrap_or_default(),
@@ -997,7 +1053,7 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                     (400, m)
                 }
             })?;
-            json!({"answer": rep.answer, "found": rep.found, "note": rep.note,
+            json!({"answer": rep.answer, "found": rep.found, "note": rep.note, "usage": carta::take_usage().as_ref().map(carta::usage_json),
                 "sources": rep.sources.iter().map(|x| json!({"label": x.label, "path": x.path, "passage": x.passage})).collect::<Vec<_>>()})
         }
         ("POST", "chat/reset") => {
