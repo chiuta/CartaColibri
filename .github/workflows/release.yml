@@ -51,7 +51,7 @@ jobs:
         run: |
           T="$(mktemp -d)"; unzip -q dist/CartaColibriPortable-*-linux-x86_64.zip -d "$T"
           CARTACOLIBRI_PORT=18765 PATH="$T:$PATH" "$T/CartaColibriPortable/cartacolibri.sh"
-          curl -fsS http://127.0.0.1:18765/ | head -c 200
+          code="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18765/)"; echo "HTTP $code"; test "$code" = 200
           test -d "$T/CartaColibriPortable/Data/cartacolibri"
           CARTACOLIBRI_PORT=18765 "$T/CartaColibriPortable/cartacolibri.sh" stop
       - uses: actions/upload-artifact@v4
