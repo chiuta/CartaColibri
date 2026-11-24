@@ -42,10 +42,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Újdonságok a 0.2.0-alpha.4-ben
 
-- **Szűrők közvetlenül a keresőmezőben** — Írd a szavaid mellé: `ext:pdf`, `path:szerzodesek` vagy `size:>1mb`, és a találatok szűkülnek. Működnek a weboldalon, a parancssorban és az API-n keresztül.
+- **Szűrők közvetlenül a keresőmezőben** — Írd a szavaid mellé: `ext:pdf`, `path:szerzodesek`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` vagy `re:SZ-\d+` (reguláris kifejezés), és a találatok szűkülnek. Működnek a weboldalon, a parancssorban és az API-n keresztül.
 - **Okos keresés** — Jelöld be az „Okos keresés” négyzetet, és a helyi MI hozzáad néhány szinonimát és rokon szót (egyszerű OR-ként, így a pontos találatok maradnak elöl). A hozzáadott szavak a mező alatt látszanak. Futó motor nélkül a szokásos keresést kapod.
 - **Egykérdéses csevegés** — Jelöld be a „Minden kérdés külön” négyzetet, és a csevegés elfelejti a korábbi kérdéseket: minden válasz csak a dokumentumaidból származik, forrásokkal.
 - **MCP-szerver más MI-alkalmazásoknak** — A `cartacolibri mcp` lehetővé teszi, hogy más MI-alkalmazások a Model Context Protocolon át keressenek a könyvtáradban, elolvassanak egy dokumentumot és kérdezzenek róla. Csak olvasható, a gépeden fut, és csak a keresés által visszaadott dokumentumokat éri el.
+- **Összefoglaló az újdonságokról** — A `cartacolibri digest NÉV` újra lefuttat egy mentett keresést, és csak az utolsó futás óta megjelent dokumentumokat jelzi. A `--every 60` óránként ismétli, az `--out jelentes.md` fájlhoz fűz, a `--summarize` pedig rövid összefoglalót kér a helyi MI-től.
 
 ## Újdonságok a 0.2.0-alpha.2-ben
 

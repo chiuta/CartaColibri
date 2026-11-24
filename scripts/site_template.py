@@ -255,7 +255,7 @@ footer{border-top:1px solid var(--line);padding:30px 5vw 50px;text-align:center;
 <div class="rv"><h2 id="h_layers" style="margin-top:1.6em"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" class="center sub"></p></div></section>
 
 <section class="sec" id="new4"><div class="rv"><h2 id="h_new4"></h2></div>
-<div class="grid rv" id="nw4grid"><div class="card p" id="n4w1"></div><div class="card p" id="n4w2"></div><div class="card p" id="n4w3"></div><div class="card p" id="n4w4"></div></div></section>
+<div class="grid rv" id="nw4grid"><div class="card p" id="n4w1"></div><div class="card p" id="n4w2"></div><div class="card p" id="n4w3"></div><div class="card p" id="n4w4"></div><div class="card p" id="n4w5"></div></div></section>
 
 <section class="sec" id="new"><div class="rv"><h2 id="h_new"></h2></div>
 <div class="grid rv" id="nwgrid"><div class="card p" id="nw1"></div><div class="card p" id="nw2"></div><div class="card p" id="nw3"></div><div class="card p" id="nw4"></div><div class="card p" id="nw5"></div><div class="card p" id="nw6"></div></div></section>

@@ -42,10 +42,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Nouveautés de la 0.2.0-alpha.4
 
-- **Des filtres directement dans la zone de recherche** — Écris `ext:pdf`, `path:contrats` ou `size:>1mb` à côté de tes mots et les résultats se resserrent. Ils marchent dans la page web, en ligne de commande et via l’API.
+- **Des filtres directement dans la zone de recherche** — Écris `ext:pdf`, `path:contrats`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` ou `re:FAC-\d+` (expression régulière) à côté de tes mots et les résultats se resserrent. Ils marchent dans la page web, en ligne de commande et via l’API.
 - **Recherche intelligente** — Coche « Recherche intelligente » et ton IA locale ajoute quelques synonymes et mots proches (en simple OR : les correspondances exactes restent en tête). Les mots ajoutés s’affichent sous la zone. Sans moteur en marche, tu obtiens simplement la recherche normale.
 - **Chat question par question** — Coche « Chaque question à part » et le chat oublie les questions précédentes : chaque réponse vient uniquement de tes documents, avec ses sources.
 - **Un serveur MCP pour d’autres applications d’IA** — `cartacolibri mcp` permet à d’autres applications d’IA de chercher dans ta bibliothèque, de lire un document et de l’interroger via le Model Context Protocol. Il est en lecture seule, tourne sur ton ordinateur et n’atteint que les documents renvoyés par la recherche.
+- **Un récapitulatif des nouveautés** — `cartacolibri digest NOM` relance une recherche enregistrée et ne signale que les documents apparus depuis la dernière fois. Ajoute `--every 60` pour répéter toutes les heures, `--out rapport.md` pour ajouter à un fichier et `--summarize` pour un court résumé par ton IA locale.
 
 ## Nouveautés de la 0.2.0-alpha.2
 

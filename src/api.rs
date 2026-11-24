@@ -222,6 +222,9 @@ fn filter_of(q: &HashMap<String, String>) -> Filter {
         path_like: q.get("path").cloned().filter(|p| !p.is_empty()),
         group: q.get("group").cloned().filter(|p| !p.is_empty()),
         limit: None,
+        after: q.get("after").and_then(|v| crate::library::parse_date(v)),
+        before: q.get("before").and_then(|v| crate::library::parse_date(v)),
+        regex: q.get("re").cloned().filter(|p| !p.is_empty()),
     }
 }
 
@@ -588,6 +591,15 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                 path_like: r.query.get("path").cloned().filter(|p| !p.is_empty()),
                 group: r.query.get("group").cloned().filter(|p| !p.is_empty()),
                 limit: None,
+                after: r
+                    .query
+                    .get("after")
+                    .and_then(|v| crate::library::parse_date(v)),
+                before: r
+                    .query
+                    .get("before")
+                    .and_then(|v| crate::library::parse_date(v)),
+                regex: r.query.get("re").cloned().filter(|p| !p.is_empty()),
             };
             serde_json::to_value(
                 lib.search(r.query.get("q").map(String::as_str).unwrap_or(""), &f)
@@ -721,7 +733,11 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                     format!("{qs} OR {}", extra.join(" OR "))
                 };
                 let fr = lib.search_friendly(&wide, &f).map_err(bad)?;
-                json!({"query": qs, "hits": fr.hits, "corrected": fr.corrected, "suggestions": fr.suggestions, "expanded": extra})
+                let mut by_ext: std::collections::BTreeMap<&str, usize> = Default::default();
+                for h in &fr.hits {
+                    *by_ext.entry(h.ext.as_str()).or_default() += 1;
+                }
+                json!({"query": qs, "hits": fr.hits, "corrected": fr.corrected, "suggestions": fr.suggestions, "expanded": extra, "facets": {"ext": by_ext}})
             }
         }
         ("GET", "duplicates") => {

@@ -7,6 +7,7 @@
 
 pub mod api;
 pub mod carta;
+pub mod digest;
 pub mod doctor;
 pub mod extract;
 pub mod feeds;

@@ -39,3 +39,24 @@ fn smart_search_fails_quietly() {
     assert!(carta::expand_query(&Backend::mock(), "contract").is_empty());
     assert!(carta::expand_query(&dead, "   ").is_empty());
 }
+
+#[test]
+fn date_and_regex_filters_in_the_query_box() {
+    use cartacolibri::library::{Filter, parse_date, parse_inline};
+    assert_eq!(parse_date("1970-01-02"), Some(86400));
+    assert_eq!(parse_date("2000-03-01"), Some(951868800));
+    assert_eq!(parse_date("2025"), parse_date("2025-01-01"));
+    assert_eq!(parse_date("2025-13-01"), None);
+    let (rest, f) = parse_inline(
+        "invoice after:2024-06 before:2025 re:INV-\\d+",
+        &Filter::default(),
+    );
+    assert_eq!(rest, "invoice");
+    assert_eq!(f.after, parse_date("2024-06-01"));
+    assert_eq!(f.before, parse_date("2025-01-01"));
+    assert_eq!(f.regex.as_deref(), Some("INV-\\d+"));
+    // an unparsable date stays in the query as a plain word
+    let (rest, f) = parse_inline("after:soon", &Filter::default());
+    assert_eq!(rest, "after:soon");
+    assert!(f.after.is_none());
+}

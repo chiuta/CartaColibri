@@ -790,3 +790,18 @@ fn inline_filters_in_the_query_box() {
         .unwrap();
     assert!(fr.hits.is_empty());
 }
+
+#[test]
+fn date_and_regex_filters_narrow_real_hits() {
+    let fx = fixture();
+    let lib = ing(&fx);
+    // files were just created: "after" a past year keeps them, "before" it drops them
+    assert_eq!(s(&lib, "lunii after:2000 ext:txt"), vec!["contract.txt"]);
+    assert!(s(&lib, "lunii before:2000").is_empty());
+    assert!(s(&lib, "lunii after:2999").is_empty());
+    // the regular expression must match the passage that matched the words
+    assert_eq!(s(&lib, "lunii re:lun\\w+ ext:txt"), vec!["contract.txt"]);
+    assert!(s(&lib, "lunii re:zzzzqqq").is_empty());
+    // a broken expression is a clean error, not a crash
+    assert!(lib.search("lunii re:(((", &Filter::default()).is_err());
+}

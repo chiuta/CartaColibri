@@ -42,10 +42,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Noutăți în 0.2.0-alpha.4
 
-- **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte` sau `size:>1mb` lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
+- **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` sau `re:FACT-\d+` (expresie regulată) lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
 - **Căutare inteligentă** — Bifează „Căutare inteligentă” și AI-ul tău local adaugă câteva sinonime și cuvinte înrudite (ca un simplu OR, deci potrivirile exacte rămân primele). Cuvintele în plus apar sub căsuță. Fără motor pornit primești pur și simplu căutarea normală.
 - **Chat cu întrebări separate** — Bifează „Fiecare întrebare separat” și chatul uită întrebările anterioare: fiecare răspuns vine doar din documentele tale, cu sursele lui.
 - **Server MCP pentru alte aplicații AI** — `cartacolibri mcp` lasă alte aplicații AI să-ți caute în bibliotecă, să citească un document și să pună întrebări despre el prin Model Context Protocol. E doar în citire, rulează pe calculatorul tău și ajunge doar la documentele returnate de căutare.
+- **Rezumat cu ce e nou** — `cartacolibri digest NUME` reia o căutare salvată și raportează doar documentele apărute de la ultima rulare. Adaugă `--every 60` ca să se repete din oră în oră, `--out raport.md` ca să adauge într-un fișier și `--summarize` pentru un scurt rezumat de la AI-ul tău local.
 
 ## Noutăți în 0.2.0-alpha.2
 

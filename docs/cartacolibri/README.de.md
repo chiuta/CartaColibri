@@ -42,10 +42,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Neu in 0.2.0-alpha.4
 
-- **Filter direkt im Suchfeld** — Tippe `ext:pdf`, `path:vertraege` oder `size:>1mb` neben deine Wörter, und die Treffer werden eingegrenzt. Sie funktionieren auf der Webseite, in der Kommandozeile und über die API.
+- **Filter direkt im Suchfeld** — Tippe `ext:pdf`, `path:vertraege`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` oder `re:RE-\d+` (regulärer Ausdruck) neben deine Wörter, und die Treffer werden eingegrenzt. Sie funktionieren auf der Webseite, in der Kommandozeile und über die API.
 - **Intelligente Suche** — Hake „Intelligente Suche“ an, und deine lokale KI ergänzt ein paar Synonyme und verwandte Wörter (als einfaches OR, exakte Treffer stehen also weiter vorn). Die zusätzlichen Wörter erscheinen unter dem Feld. Ohne laufende Engine bekommst du die normale Suche.
 - **Chat mit Einzelfragen** — Hake „Jede Frage einzeln“ an, und der Chat vergisst frühere Fragen: Jede Antwort stammt nur aus deinen Dokumenten, mit ihren Quellen.
 - **Ein MCP-Server für andere KI-Apps** — `cartacolibri mcp` lässt andere KI-Anwendungen über das Model Context Protocol in deiner Bibliothek suchen, ein Dokument lesen und Fragen dazu stellen. Er ist nur lesend, läuft auf deinem Rechner und erreicht nur Dokumente, die die Suche geliefert hat.
+- **Eine Zusammenfassung des Neuen** — `cartacolibri digest NAME` führt eine gespeicherte Suche erneut aus und meldet nur die Dokumente, die seit dem letzten Mal hinzugekommen sind. Mit `--every 60` wiederholt es stündlich, mit `--out bericht.md` hängt es an eine Datei an, mit `--summarize` liefert deine lokale KI eine kurze Zusammenfassung.
 
 ## Neu in 0.2.0-alpha.2
 

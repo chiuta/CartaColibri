@@ -42,10 +42,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Novidades da 0.2.0-alpha.4
 
-- **Filtros diretamente na caixa de pesquisa** — Escreve `ext:pdf`, `path:contratos` ou `size:>1mb` junto às tuas palavras e os resultados estreitam-se. Funcionam na página web, na linha de comandos e através da API.
+- **Filtros diretamente na caixa de pesquisa** — Escreve `ext:pdf`, `path:contratos`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` ou `re:FAT-\d+` (expressão regular) junto às tuas palavras e os resultados estreitam-se. Funcionam na página web, na linha de comandos e através da API.
 - **Pesquisa inteligente** — Marca «Pesquisa inteligente» e a tua IA local acrescenta alguns sinónimos e palavras afins (como um simples OR: as correspondências exatas continuam à frente). As palavras acrescentadas aparecem debaixo da caixa. Sem motor ligado recebes a pesquisa normal.
 - **Chat de pergunta única** — Marca «Cada pergunta à parte» e o chat esquece as perguntas anteriores: cada resposta vem só dos teus documentos, com as suas fontes.
 - **Um servidor MCP para outras apps de IA** — `cartacolibri mcp` permite que outras aplicações de IA pesquisem na tua biblioteca, leiam um documento e façam perguntas sobre ele através do Model Context Protocol. É só de leitura, corre no teu computador e só chega aos documentos devolvidos pela pesquisa.
+- **Um resumo das novidades** — `cartacolibri digest NOME` repete uma pesquisa guardada e indica só os documentos que apareceram desde a última vez. Acrescenta `--every 60` para repetir de hora a hora, `--out relatorio.md` para juntar a um ficheiro e `--summarize` para um resumo curto da tua IA local.
 
 ## Novidades da 0.2.0-alpha.2
 

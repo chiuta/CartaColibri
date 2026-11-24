@@ -462,6 +462,7 @@ pub fn saved_run(lib: &Library, name: &str) -> Res<Vec<Hit>> {
         path_like: s.path_like.clone(),
         group: s.group.clone(),
         limit: s.limit,
+        ..Default::default()
     };
     search_tagged(lib, &s.query, &f, s.tag.as_deref(), s.starred_only)
 }

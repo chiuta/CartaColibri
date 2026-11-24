@@ -98,6 +98,8 @@ pub struct Doc {
     pub size: i64,
     pub chars: i64,
     pub pages: i64,
+    /// last modification, seconds since the Unix epoch
+    pub mtime: i64,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -167,6 +169,12 @@ pub struct Filter {
     pub path_like: Option<String>,
     pub group: Option<String>,
     pub limit: Option<usize>,
+    /// only documents modified at or after this time (Unix seconds)
+    pub after: Option<i64>,
+    /// only documents modified before this time (Unix seconds)
+    pub before: Option<i64>,
+    /// keep only hits whose matching passage matches this regular expression
+    pub regex: Option<String>,
 }
 
 pub fn state_dir(path: Option<&str>) -> Res<PathBuf> {
@@ -267,6 +275,23 @@ pub fn parse_inline(query: &str, f: &Filter) -> (String, Filter) {
                 f.path_like = Some(v.trim_matches('"').to_string());
                 continue;
             }
+        } else if let Some(v) = low
+            .strip_prefix("after:")
+            .or_else(|| low.strip_prefix("before:"))
+        {
+            if let Some(t) = parse_date(v) {
+                if low.starts_with("after:") {
+                    f.after = Some(t);
+                } else {
+                    f.before = Some(t);
+                }
+                continue;
+            }
+        } else if let Some(v) = tok.get(3..).filter(|_| low.starts_with("re:")) {
+            if !v.is_empty() {
+                f.regex = Some(v.trim_matches('"').to_string());
+                continue;
+            }
         } else if let Some(v) = low.strip_prefix("size:") {
             let (op, num) = v.split_at(
                 v.chars()
@@ -299,6 +324,28 @@ pub fn parse_inline(query: &str, f: &Filter) -> (String, Filter) {
         rest.push(tok);
     }
     (rest.join(" "), f)
+}
+
+/// `YYYY`, `YYYY-MM` or `YYYY-MM-DD` -> Unix seconds at 00:00 UTC.
+pub fn parse_date(v: &str) -> Option<i64> {
+    let mut it = v.split('-');
+    let y: i64 = it.next()?.parse().ok()?;
+    let m: i64 = it.next().map_or(Some(1), |x| x.parse().ok())?;
+    let d: i64 = it.next().map_or(Some(1), |x| x.parse().ok())?;
+    if it.next().is_some()
+        || !(1..=9999).contains(&y)
+        || !(1..=12).contains(&m)
+        || !(1..=31).contains(&d)
+    {
+        return None;
+    }
+    // days from civil (Howard Hinnant)
+    let y2 = if m <= 2 { y - 1 } else { y };
+    let era = y2.div_euclid(400);
+    let yoe = y2 - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    Some((era * 146097 + doe - 719468) * 86400)
 }
 
 fn clip(q: &str) -> &str {
@@ -926,7 +973,7 @@ impl Library {
     fn all_docs(&self) -> Vec<Doc> {
         let Ok(mut q) = self
             .db
-            .prepare("SELECT id,root,path,ext,size,chars,pages FROM docs ORDER BY path")
+            .prepare("SELECT id,root,path,ext,size,chars,pages,COALESCE(mtime_ns,0)/1000000000 FROM docs ORDER BY path")
         else {
             return vec![];
         };
@@ -939,6 +986,7 @@ impl Library {
                 size: r.get(4)?,
                 chars: r.get(5)?,
                 pages: r.get(6)?,
+                mtime: r.get(7)?,
             })
         }) else {
             return vec![];
@@ -1115,6 +1163,16 @@ impl Library {
                 best.push(r);
             }
         }
+        let re = match f.regex.as_deref() {
+            Some(p) => Some(
+                regex::RegexBuilder::new(p)
+                    .size_limit(1 << 20)
+                    .case_insensitive(true)
+                    .build()
+                    .map_err(|x| format!("bad regular expression: {x}"))?,
+            ),
+            None => None,
+        };
         let docs: HashMap<i64, Doc> = self.all_docs().into_iter().map(|d| (d.id, d)).collect();
         let mut out: Vec<Hit> = vec![];
         for (did, loc, text, score) in best {
@@ -1126,6 +1184,12 @@ impl Library {
                 continue;
             }
             if f.min_size.is_some_and(|m| d.size < m) || f.max_size.is_some_and(|m| d.size > m) {
+                continue;
+            }
+            if f.after.is_some_and(|t| d.mtime < t) || f.before.is_some_and(|t| d.mtime >= t) {
+                continue;
+            }
+            if re.as_ref().is_some_and(|r| !r.is_match(&text)) {
                 continue;
             }
             if f.path_like

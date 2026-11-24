@@ -80,6 +80,27 @@ enum Cmd {
         #[arg(long)]
         mock: bool,
     },
+    /// report what is new for a saved search since the last run (optionally on a schedule)
+    Digest {
+        /// name of a saved search (see `saved list`)
+        name: String,
+        /// append the report to this Markdown file instead of printing it
+        #[arg(long)]
+        out: Option<String>,
+        /// let the local engine summarize the new documents
+        #[arg(long)]
+        summarize: bool,
+        /// repeat every N minutes (re-indexes the folders first); omit to run once
+        #[arg(long, value_parser = parse_positive)]
+        every: Option<u64>,
+        /// on the first run, report everything that already matches
+        #[arg(long)]
+        all: bool,
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
+        url: String,
+        #[arg(long)]
+        mock: bool,
+    },
     /// guided start: pick a folder, index it, open the web UI
     Start {
         /// folder with your documents (asked interactively when omitted in a terminal)
@@ -640,6 +661,46 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                 p["reason"].as_str().unwrap_or("")
             )
         }),
+        Cmd::Digest {
+            name,
+            out,
+            summarize,
+            every,
+            all,
+            url,
+            mock,
+        } => {
+            let be = if mock {
+                carta::Backend::mock()
+            } else {
+                carta::Backend::gateway(&url, None)
+            };
+            loop {
+                if every.is_some() {
+                    let _ = lib.update(None, &mut |_| {});
+                }
+                match cartacolibri::digest::run_once(&lib, &name, summarize.then_some(&be), all)? {
+                    Some(md) => match &out {
+                        Some(f) => {
+                            use std::io::Write;
+                            let mut fh = std::fs::OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open(f)
+                                .map_err(|e| e.to_string())?;
+                            writeln!(fh, "{md}").map_err(|e| e.to_string())?;
+                            println!("{name}: new documents appended to {f}");
+                        }
+                        None => println!("{md}"),
+                    },
+                    None => println!("{name}: nothing new"),
+                }
+                match every {
+                    Some(m) => std::thread::sleep(Duration::from_secs(m * 60)),
+                    None => break,
+                }
+            }
+        }
         Cmd::Watch { interval } => {
             println!(
                 "watching {} folder(s) every {interval}s — Ctrl+C to stop",
@@ -687,6 +748,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                 path_like: path,
                 group,
                 limit: Some(limit),
+                ..Default::default()
             };
             let hits = lib.search(&query, &f)?;
             if json {
