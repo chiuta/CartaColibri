@@ -18,7 +18,7 @@ use cartacolibri::library::{Filter, Library, state_dir};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io::Read;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tao::event::{Event, StartCause, WindowEvent};
@@ -74,6 +74,19 @@ struct Cfg {
     trackers: AtomicBool,
     /// documents the user chose to open in the webview anyway
     allow: Mutex<BTreeSet<String>>,
+    /// recent page-opened tabs (popup spam limiter)
+    popups: Mutex<VecDeque<Instant>>,
+}
+
+/// Cap on remembered offered/allowed document URLs (a page can make us "offer" unboundedly many).
+const MAX_OFFERED: usize = 256;
+
+fn remember(set: &Mutex<BTreeSet<String>>, u: &str) {
+    let mut g = set.lock().unwrap_or_else(|e| e.into_inner());
+    if g.len() >= MAX_OFFERED {
+        g.clear();
+    }
+    g.insert(u.to_string());
 }
 
 struct Tab {
@@ -89,6 +102,90 @@ fn rand_hex(n: usize) -> String {
     let mut b = vec![0u8; n];
     getrandom::fill(&mut b).expect("the operating system has no random number generator");
     hex::encode(b)
+}
+
+/// Longest URL the browser will navigate to, keep in a tab or restore.
+const MAX_URL: usize = 16 * 1024;
+/// Most tabs open at once (popup / `newtab` flood protection).
+const MAX_TABS: usize = 64;
+/// Most page-opened tabs (`window.open`, target=_blank) per `POPUP_WIN`.
+const POPUP_MAX: usize = 3;
+const POPUP_WIN: Duration = Duration::from_secs(10);
+/// Most IPC handler threads running at once.
+const MAX_INFLIGHT: usize = 16;
+static INFLIGHT: AtomicUsize = AtomicUsize::new(0);
+
+/// Decrements [`INFLIGHT`] when a handler thread ends (also on panic).
+struct Inflight;
+impl Drop for Inflight {
+    fn drop(&mut self) {
+        INFLIGHT.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+/// Lower-cased URL scheme (`[a-z][a-z0-9+.-]*` before the first `:`), if there is one.
+fn scheme_of(u: &str) -> Option<String> {
+    let (s, _) = u.split_once(':')?;
+    let mut ch = s.chars();
+    let ok = ch.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && ch.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'));
+    ok.then(|| s.to_ascii_lowercase())
+}
+
+/// A real `http(s)://` URL (case-insensitive scheme; `httpfoo:` and `http:x` do not count).
+fn is_http(u: &str) -> bool {
+    matches!(scheme_of(u).as_deref(), Some("http" | "https")) && u.contains("://")
+}
+
+/// May the webview navigate to `u`? Web pages and the browser's own start page only: never
+/// `file:`, `javascript:`, `ftp:`, app-specific schemes or absurdly long addresses.
+fn nav_allowed(u: &str) -> bool {
+    if u.len() > MAX_URL {
+        return false;
+    }
+    match scheme_of(u).as_deref() {
+        Some("http" | "https") => u.contains("://"),
+        Some("about") => matches!(
+            u.to_ascii_lowercase().as_str(),
+            "about:blank" | "about:srcdoc"
+        ),
+        Some("data") => u.to_ascii_lowercase().starts_with("data:text/html"),
+        Some("blob") => true,
+        _ => false,
+    }
+}
+
+/// Sliding-window limiter: true (and recorded) while fewer than `max` events happened in `win`.
+fn throttle(q: &mut VecDeque<Instant>, now: Instant, max: usize, win: Duration) -> bool {
+    while q.front().is_some_and(|t| now.duration_since(*t) > win) {
+        q.pop_front();
+    }
+    if q.len() >= max {
+        return false;
+    }
+    q.push_back(now);
+    true
+}
+
+/// First `n` characters of `s`.
+fn trunc(s: &str, n: usize) -> String {
+    s.chars().take(n).collect()
+}
+
+/// What another tab's page may be told about this URL: no userinfo, query or fragment, short path
+/// (those parts routinely carry tokens). The tab's own page already knows its own address.
+fn redact_url(u: &str) -> String {
+    let Some((scheme, rest)) = u.split_once("://") else {
+        return trunc(u, 40);
+    };
+    let end = rest.find(['?', '#']).unwrap_or(rest.len());
+    let rest = &rest[..end];
+    let (auth, path) = match rest.find('/') {
+        Some(i) => rest.split_at(i),
+        None => (rest, ""),
+    };
+    let host = auth.rsplit('@').next().unwrap_or("");
+    format!("{scheme}://{host}{}", trunc(path, 60))
 }
 
 /// Longest IPC message we even look at (a saved page is at most ~3 M chars of html + its text).
@@ -123,6 +220,7 @@ const WEB_ONLY: &[&str] = &[
     "sel",
     "dl",
     "open_raw",
+    "related",
 ];
 const KNOWN: &[&str] = &[
     "newtab",
@@ -153,6 +251,7 @@ const KNOWN: &[&str] = &[
     "ready",
     "loaded",
     "pref",
+    "related",
 ];
 
 /// Everything we know about one webview's channel with its overlay.
@@ -493,7 +592,13 @@ fn host_of(u: &str) -> String {
     let rest = u.split_once("://").map_or(u, |x| x.1);
     let auth = rest.split(['/', '?', '#']).next().unwrap_or("");
     let auth = auth.rsplit('@').next().unwrap_or("");
-    auth.split(':').next().unwrap_or("").to_ascii_lowercase()
+    let host = if auth.starts_with('[') {
+        auth.split(']').next().unwrap_or("")
+    } else {
+        auth.split(':').next().unwrap_or("")
+    };
+    // `doubleclick.net.` is the same host (a trailing dot must not bypass the blocker)
+    host.trim_end_matches('.').to_ascii_lowercase()
 }
 
 fn is_tracker(host: &str) -> bool {
@@ -503,7 +608,7 @@ fn is_tracker(host: &str) -> bool {
 }
 
 fn doc_ext(u: &str) -> Option<String> {
-    if !u.starts_with("http") {
+    if !is_http(u) {
         return None;
     }
     let path = u.split(['?', '#']).next().unwrap_or("");
@@ -513,13 +618,21 @@ fn doc_ext(u: &str) -> Option<String> {
     DOC_EXT.contains(&ext.as_str()).then_some(ext)
 }
 
+/// A safe file name for a downloaded document: last path segment, only letters, digits and
+/// `. - _ space` (no separators, no `..`), at most 100 characters (the end, so the extension stays).
 fn file_name_of(u: &str) -> String {
     let path = u.split(['?', '#']).next().unwrap_or("");
-    let last = path.rsplit('/').next().unwrap_or("");
-    if last.is_empty() {
+    let last = path.rsplit(['/', '\\']).next().unwrap_or("");
+    let clean: Vec<char> = last
+        .chars()
+        .filter(|c| c.is_alphanumeric() || matches!(c, '.' | '-' | '_' | ' '))
+        .collect();
+    let tail: String = clean[clean.len().saturating_sub(100)..].iter().collect();
+    let tail = tail.trim().trim_start_matches('.').trim().to_string();
+    if tail.is_empty() {
         "document".into()
     } else {
-        last.to_string()
+        tail
     }
 }
 
@@ -615,13 +728,22 @@ fn start_data(c: &Cfg) -> Value {
     json!({"recent": recent, "watched": watched, "later": later})
 }
 
+/// Address-bar input -> a web address, or `None` (then it is a library search). Only http(s)
+/// ever comes out; other schemes, whitespace/control characters and huge input are searches.
 fn normalize(q: &str) -> Option<String> {
     let q = q.trim();
-    if q.is_empty() || q.contains(' ') {
+    if q.is_empty() || q.len() > MAX_URL || q.chars().any(|c| c.is_whitespace() || c.is_control()) {
         return None;
     }
-    if q.starts_with("http://") || q.starts_with("https://") {
-        return Some(q.to_string());
+    if q.contains("://")
+        || scheme_of(q).is_some_and(|s| {
+            matches!(
+                s.as_str(),
+                "javascript" | "data" | "file" | "blob" | "about" | "vbscript"
+            )
+        })
+    {
+        return is_http(q).then(|| q.to_string());
     }
     if q.contains('.') || q.starts_with("localhost") {
         return Some(format!("https://{q}"));
@@ -646,7 +768,7 @@ fn reply_k(
     if kind == "dl"
         && let Some(u) = x["url"].as_str()
     {
-        c.offered.lock().unwrap().insert(u.to_string());
+        remember(&c.offered, u);
     }
     let msg = json!({"ok": ok, "text": text, "k": kind, "x": x});
     let _ = p.send_event(Ev::Call(tab, "msg", msg));
@@ -666,7 +788,7 @@ fn save_tabs(
     lib: &mut Library,
     color: Option<u8>,
 ) -> Result<(String, Vec<String>), String> {
-    let colors = c.colors.lock().unwrap().clone();
+    let colors = c.colors.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let pages: Vec<Page> = c
         .pages
         .lock()
@@ -676,7 +798,7 @@ fn save_tabs(
         .map(|(_, p)| p.clone())
         .collect();
     let mut paths = vec![];
-    for p in pages.iter().filter(|p| p.url.starts_with("http")) {
+    for p in pages.iter().filter(|p| is_http(&p.url)) {
         if let Ok(v) = grab::save(lib, &p.url, &p.title, &p.text)
             && let Some(path) = v["saved"].as_str()
         {
@@ -722,16 +844,56 @@ fn related(lib: &Library, title: &str, skip: Option<&str>) -> Vec<Value> {
     .collect()
 }
 
+/// The tab id a command refers to (0 = none; ids start at 1).
+fn id_of(m: &Value) -> usize {
+    m["id"]
+        .as_u64()
+        .and_then(|i| usize::try_from(i).ok())
+        .unwrap_or(0)
+}
+
 fn color_of(m: &Value) -> Option<u8> {
     m["color"]
         .as_u64()
-        .map(|k| k as u8)
+        .and_then(|k| u8::try_from(k).ok())
         .filter(|k| (1..=6).contains(k))
 }
 
+/// Loopback, link-local, private and unspecified hosts (the browser must not be a proxy into the
+/// user's own machine or LAN on behalf of a web page that offered a document there).
+fn is_local_host(h: &str) -> bool {
+    let h = h.trim_matches(['[', ']']);
+    if h == "localhost"
+        || h.ends_with(".localhost")
+        || h.ends_with(".local")
+        || h.ends_with(".internal")
+    {
+        return true;
+    }
+    match h.parse::<std::net::IpAddr>() {
+        Ok(std::net::IpAddr::V4(a)) => {
+            a.is_loopback() || a.is_private() || a.is_link_local() || a.is_unspecified()
+        }
+        Ok(std::net::IpAddr::V6(a)) => {
+            let seg = a.segments();
+            a.is_loopback()
+                || a.is_unspecified()
+                || (seg[0] & 0xfe00) == 0xfc00
+                || (seg[0] & 0xffc0) == 0xfe80
+                || a.to_ipv4_mapped().is_some_and(|v| {
+                    v.is_loopback() || v.is_private() || v.is_link_local() || v.is_unspecified()
+                })
+        }
+        Err(_) => false,
+    }
+}
+
 fn download(c: &Cfg, url: &str) -> Result<String, String> {
-    if !url.starts_with("http://") && !url.starts_with("https://") {
+    if !is_http(url) {
         return Err("only http(s) documents can be added".into());
+    }
+    if is_local_host(&host_of(url)) {
+        return Err("documents on this computer or private networks cannot be added".into());
     }
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(std::time::Duration::from_secs(180)))
@@ -756,6 +918,25 @@ fn download(c: &Cfg, url: &str) -> Result<String, String> {
     Ok(v["saved"].as_str().unwrap_or("").to_string())
 }
 
+/// Related library documents for a page (never the page's own saved copy or history entry).
+fn related_for(c: &Cfg, page: &Page) -> Vec<Value> {
+    let home = state_dir(c.home.as_deref()).ok();
+    let skip = home
+        .as_ref()
+        .and_then(|h| grab::status(h, &page.url, &page.text))
+        .and_then(|s| s["path"].as_str().map(String::from));
+    let mut rel = Library::open(c.home.as_deref(), false)
+        .map(|l| related(&l, &page.title, skip.as_deref()))
+        .unwrap_or_default();
+    if let Some(h) = home.as_ref() {
+        let own = grab::history_path(h, &page.url)
+            .to_string_lossy()
+            .into_owned();
+        rel.retain(|r| r["path"].as_str() != Some(own.as_str()));
+    }
+    rel
+}
+
 fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
     let s = |k: &str| m[k].as_str().unwrap_or("").to_string();
     let tab = m["t"].as_u64().unwrap_or(0) as usize;
@@ -763,19 +944,17 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
     match m["cmd"].as_str().unwrap_or("") {
         "newtab" => {
             let u = s("url");
-            let _ = p.send_event(Ev::NewTab(
-                (u.starts_with("http://") || u.starts_with("https://")).then_some(u),
-            ));
+            let _ = p.send_event(Ev::NewTab((is_http(&u) && u.len() <= MAX_URL).then_some(u)));
         }
         "reopen" => {
             let _ = p.send_event(Ev::Reopen);
         }
         "tour_seen" => prefs_set(c, &[("tour_done", json!(true))]),
         "close" => {
-            let _ = p.send_event(Ev::Close(m["id"].as_u64().unwrap_or(0) as usize));
+            let _ = p.send_event(Ev::Close(id_of(m)));
         }
         "activate" => {
-            let _ = p.send_event(Ev::Activate(m["id"].as_u64().unwrap_or(0) as usize));
+            let _ = p.send_event(Ev::Activate(id_of(m)));
         }
         "cycle" => {
             let _ = p.send_event(Ev::Cycle(m["back"].as_bool().unwrap_or(false)));
@@ -804,39 +983,43 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
                 title: s("title"),
                 text: s("text"),
             };
-            c.pages.lock().unwrap().insert(tab, page.clone());
+            c.pages
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(tab, page.clone());
             let _ = p.send_event(Ev::Url(tab, s("url")));
             let _ = p.send_event(Ev::Title(tab, page.title.clone()));
-            if !page.url.starts_with("http") {
+            if !is_http(&page.url) {
                 return;
             }
             let home = state_dir(c.home.as_deref()).ok();
             let status = home
                 .as_ref()
                 .and_then(|h| grab::status(h, &page.url, &page.text));
-            let skip = status
-                .as_ref()
-                .and_then(|s| s["path"].as_str().map(String::from));
             let history = home.as_ref().is_some_and(|h| grab::history_enabled(h));
-            let mut rel = lib()
-                .map(|l| related(&l, &page.title, skip.as_deref()))
-                .unwrap_or_default();
-            if let Some(h) = home.as_ref() {
-                let own = grab::history_path(h, &page.url)
-                    .to_string_lossy()
-                    .into_owned();
-                rel.retain(|r| r["path"].as_str() != Some(own.as_str()));
-            }
+            // Only the COUNT goes to the page's world now: the titles/snippets of related library
+            // documents are shown on demand ("related" command, after a click on the badge). The
+            // page controls its own title, so pushing the search hits would let it probe the library.
+            let rn = related_for(c, &page).len();
             let hl = home
                 .as_ref()
                 .map(|h| grab::highlights(h, &page.url))
                 .unwrap_or_default();
-            let info =
-                json!({"status": status, "related": rel, "highlights": hl, "history": history});
+            let info = json!({"status": status, "rn": rn, "highlights": hl, "history": history});
             let _ = p.send_event(Ev::Call(tab, "info", info));
             if let (true, Ok(mut l)) = (history, lib()) {
                 let _ = grab::history_add(&mut l, &page.url, &page.title, &page.text);
             }
+        }
+        "related" => {
+            let page = c
+                .pages
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .get(&tab)
+                .cloned();
+            let rel = page.map(|pg| related_for(c, &pg)).unwrap_or_default();
+            reply_k(p, c, tab, true, String::new(), "rel", json!(rel));
         }
         "pref" => {
             let k = s("k");
@@ -853,15 +1036,25 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
             }
         }
         "tabcolor" => {
-            let id = m["id"].as_u64().unwrap_or(0) as usize;
+            let id = id_of(m);
             match color_of(m) {
-                Some(k) => c.colors.lock().unwrap().insert(id, k),
-                None => c.colors.lock().unwrap().remove(&id),
+                Some(k) => c
+                    .colors
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .insert(id, k),
+                None => c
+                    .colors
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .remove(&id),
             };
             let _ = p.send_event(Ev::Push);
         }
         "discard" => {
-            let _ = p.send_event(Ev::Discard(m["id"].as_u64().map(|i| i as usize)));
+            let _ = p.send_event(Ev::Discard(
+                m["id"].as_u64().and_then(|i| usize::try_from(i).ok()),
+            ));
         }
         "dedupe" => {
             let _ = p.send_event(Ev::Dedupe);
@@ -874,12 +1067,22 @@ fn handle(c: &Cfg, p: &EventLoopProxy<Ev>, m: &Value) {
         }
         "open_raw" => {
             let u = s("url");
-            if u.starts_with("http") && c.offered.lock().unwrap().contains(&u) {
-                c.allow.lock().unwrap().insert(u.clone());
+            if is_http(&u)
+                && c.offered
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .contains(&u)
+            {
+                remember(&c.allow, &u);
                 let _ = p.send_event(Ev::Navigate(tab, u));
             }
         }
-        "dl" if !c.offered.lock().unwrap().contains(&s("url")) => {
+        "dl" if !c
+            .offered
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains(&s("url")) =>
+        {
             reply(
                 p,
                 c,
@@ -1232,21 +1435,40 @@ const GTK: bool = true;
 )))]
 const GTK: bool = false;
 
+/// A webview that could not be built must not crash the browser: forget its secrets and carry on.
+fn finish(cfg: &Cfg, id: usize, r: Result<WebView, String>) -> Option<WebView> {
+    match r {
+        Ok(w) => Some(w),
+        Err(e) => {
+            eprintln!("cartacolibri-browser: cannot create tab {id}: {e}");
+            cfg.auth
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&id);
+            None
+        }
+    }
+}
+
 fn make_tab(
     window: &Window,
     cfg: &Arc<Cfg>,
     proxy: &EventLoopProxy<Ev>,
     id: usize,
     url: Option<&str>,
-) -> WebView {
+) -> Option<WebView> {
     let (c2, p2) = (cfg.clone(), proxy.clone());
+    let c3 = cfg.clone();
     let (p3, p4, p5, p6) = (proxy.clone(), proxy.clone(), proxy.clone(), proxy.clone());
     let (c5, p7, c7) = (cfg.clone(), proxy.clone(), cfg.clone());
     // a fresh pair of secrets for every webview (also when a sleeping tab wakes up)
     let (key_out, key_in) = {
         let a = Auth::new();
         let k = (a.key_out.clone(), a.key_in.clone());
-        cfg.auth.lock().unwrap().insert(id, a);
+        cfg.auth
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, a);
         k
     };
     let script = OVERLAY
@@ -1256,20 +1478,40 @@ fn make_tab(
     let mut b = WebViewBuilder::new()
         .with_initialization_script_for_main_only(script, true)
         .with_new_window_req_handler(move |u, _| {
-            let _ = p3.send_event(Ev::NewTab(Some(u)));
+            // page-opened windows: http(s) only, and at most POPUP_MAX per POPUP_WIN (popup spam)
+            let go = is_http(&u)
+                && u.len() <= MAX_URL
+                && throttle(
+                    &mut c3.popups.lock().unwrap_or_else(|e| e.into_inner()),
+                    Instant::now(),
+                    POPUP_MAX,
+                    POPUP_WIN,
+                );
+            if go {
+                let _ = p3.send_event(Ev::NewTab(Some(u)));
+            }
             wry::NewWindowResponse::Deny
         })
         .with_document_title_changed_handler(move |t| {
-            let _ = p4.send_event(Ev::Title(id, t));
+            let _ = p4.send_event(Ev::Title(id, trunc(&t, 500)));
         })
         .with_navigation_handler(move |u| {
-            if u.starts_with("http") {
+            if !nav_allowed(&u) {
+                return false; // file:, javascript:, ftp:, custom schemes, giant addresses
+            }
+            if is_http(&u) {
                 let host = host_of(&u);
                 if c5.trackers.load(Ordering::Relaxed) && is_tracker(&host) {
                     reply_k(&p5, &c5, id, true, String::new(), "blk", json!(host));
                     return false;
                 }
-                if doc_ext(&u).is_some() && !c5.allow.lock().unwrap().contains(&u) {
+                if doc_ext(&u).is_some()
+                    && !c5
+                        .allow
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .contains(&u)
+                {
                     // a document: offer to add it to the library instead of a blank/failed view
                     reply_k(
                         &p5,
@@ -1287,7 +1529,16 @@ fn make_tab(
             true
         })
         .with_download_started_handler(move |u, _dest| {
-            if !u.starts_with("http") || c7.allow.lock().unwrap().contains(&u) {
+            if !is_http(&u) {
+                // blob:/data: downloads are the page's own bytes; anything else (file:, ...) is refused
+                return matches!(scheme_of(&u).as_deref(), Some("blob" | "data"));
+            }
+            if c7
+                .allow
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .contains(&u)
+            {
                 return true;
             }
             reply_k(
@@ -1307,11 +1558,27 @@ fn make_tab(
             let Some(m) = authenticate(&c2, id, &uri, req.body()) else {
                 return;
             };
+            // bounded concurrency: a flood of valid-looking commands cannot spawn unbounded threads
+            if INFLIGHT.fetch_add(1, Ordering::SeqCst) >= MAX_INFLIGHT {
+                INFLIGHT.fetch_sub(1, Ordering::SeqCst);
+                return;
+            }
             let (c, p) = (c2.clone(), p2.clone());
-            std::thread::spawn(move || handle(&c, &p, &m));
+            if std::thread::Builder::new()
+                .spawn(move || {
+                    let _g = Inflight;
+                    handle(&c, &p, &m);
+                })
+                .is_err()
+            {
+                INFLIGHT.fetch_sub(1, Ordering::SeqCst);
+            }
         });
     b = match url {
-        Some(u) => b.with_url(normalize(u).unwrap_or_else(|| u.to_string())),
+        Some(u) => match normalize(u).filter(|n| is_http(n)) {
+            Some(n) => b.with_url(n),
+            None => b.with_html(START),
+        },
         None => b.with_html(START),
     };
     if let (Some(mode), 1) = (cfg.selftest, id) {
@@ -1345,9 +1612,11 @@ fn make_tab(
         {
             use tao::platform::unix::WindowExtUnix;
             use wry::WebViewBuilderExtUnix;
-            return b
-                .build_gtk(window.default_vbox().expect("gtk vbox"))
-                .expect("webview");
+            let built = window
+                .default_vbox()
+                .ok_or_else(|| "no gtk container".to_string())
+                .and_then(|v| b.build_gtk(v).map_err(|e| e.to_string()));
+            return finish(cfg, id, built);
         }
     }
     #[cfg(not(any(
@@ -1358,10 +1627,13 @@ fn make_tab(
         target_os = "openbsd"
     )))]
     {
-        return b
-            .with_bounds(full_bounds(window))
-            .build_as_child(window)
-            .expect("webview");
+        return finish(
+            cfg,
+            id,
+            b.with_bounds(full_bounds(window))
+                .build_as_child(window)
+                .map_err(|e| e.to_string()),
+        );
     }
     #[allow(unreachable_code)]
     {
@@ -1594,7 +1866,7 @@ impl Forge {
             Value::String(s) => serde_json::from_str::<Value>(s).unwrap_or(Value::Null),
             v => v.clone(),
         };
-        let g = cfg.auth.lock().unwrap();
+        let g = cfg.auth.lock().unwrap_or_else(|e| e.into_inner());
         let a = g.get(&1);
         let seen = p["seen"].to_string();
         let leaked = a.is_some_and(|a| {
@@ -1636,19 +1908,25 @@ impl Forge {
 }
 
 fn push_tabs(cfg: &Cfg, tabs: &[Tab], active: usize) {
-    let colors = cfg.colors.lock().unwrap().clone();
+    let colors = cfg.colors.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let mut seen: BTreeMap<String, usize> = BTreeMap::new();
-    let list: Vec<Value> = tabs
+    let dups: Vec<bool> = tabs
         .iter()
-        .map(|t| {
-            let dup = t.url.starts_with("http")
-                && seen.insert(dup_key(&t.url), t.id).is_some();
-            json!({"id": t.id, "title": t.title, "url": t.url, "color": colors.get(&t.id).copied().unwrap_or(0),
-                   "sleep": t.wv.is_none(), "dup": dup})
-        })
+        .map(|t| is_http(&t.url) && seen.insert(dup_key(&t.url), t.id).is_some())
         .collect();
-    let st = json!({"tabs": list, "active": active});
     for t in tabs {
+        // The overlay lives in the page's own JS world, so a hostile page can read what is pushed
+        // to it: other tabs get their address without query/fragment/userinfo (tokens live there).
+        let list: Vec<Value> = tabs
+            .iter()
+            .zip(&dups)
+            .map(|(o, dup)| {
+                let url = if o.id == t.id { trunc(&o.url, 2048) } else { redact_url(&o.url) };
+                json!({"id": o.id, "title": trunc(&o.title, 300), "url": url, "color": colors.get(&o.id).copied().unwrap_or(0),
+                       "sleep": o.wv.is_none(), "dup": dup})
+            })
+            .collect();
+        let st = json!({"tabs": list, "active": active});
         if let Some(wv) = &t.wv
             && let Some(js) = entry_js(cfg, t.id, "tabs", &st)
         {
@@ -1662,7 +1940,7 @@ fn save_session(cfg: &Cfg, tabs: &[Tab]) {
         let urls: Vec<&str> = tabs
             .iter()
             .map(|t| t.url.as_str())
-            .filter(|u| u.starts_with("http"))
+            .filter(|u| is_http(u))
             .collect();
         let _ = std::fs::write(
             h.join("tabs.json"),
@@ -1677,7 +1955,7 @@ fn wake(window: &Window, cfg: &Arc<Cfg>, proxy: &EventLoopProxy<Ev>, tabs: &mut 
         && t.wv.is_none()
     {
         let u = (!t.url.is_empty()).then(|| t.url.clone());
-        t.wv = Some(make_tab(window, cfg, proxy, id, u.as_deref()));
+        t.wv = make_tab(window, cfg, proxy, id, u.as_deref());
     }
 }
 
@@ -1741,6 +2019,7 @@ fn main() {
         colors: Mutex::new(BTreeMap::new()),
         trackers: AtomicBool::new(false),
         allow: Mutex::new(BTreeSet::new()),
+        popups: Mutex::new(VecDeque::new()),
     });
     if selftest.is_none() {
         let on = prefs_get(&cfg)
@@ -1760,6 +2039,12 @@ fn main() {
     {
         start_urls = v;
     }
+    // only http(s) addresses, at most MAX_TABS (tabs.json and the command line are not trusted blindly)
+    let start_urls: Vec<String> = start_urls
+        .into_iter()
+        .filter_map(|u| normalize(&u).filter(|n| is_http(n)))
+        .take(MAX_TABS)
+        .collect();
 
     let event_loop = EventLoopBuilder::<Ev>::with_user_event().build();
     let proxy = event_loop.create_proxy();
@@ -1790,7 +2075,9 @@ fn main() {
     for u in first {
         let id = next_id;
         next_id += 1;
-        let wv = make_tab(&window, &cfg, &proxy, id, u.as_deref());
+        let Some(wv) = make_tab(&window, &cfg, &proxy, id, u.as_deref()) else {
+            continue;
+        };
         tabs.push(Tab {
             id,
             wv: Some(wv),
@@ -1798,6 +2085,10 @@ fn main() {
             url: u.unwrap_or_default(),
         });
         active = id;
+    }
+    if tabs.is_empty() {
+        eprintln!("cartacolibri-browser: no webview could be created");
+        std::process::exit(1);
     }
     show_only(&tabs, active);
     let mut closed: Vec<String> = vec![];
@@ -1857,8 +2148,13 @@ fn main() {
                 let mut n = 0;
                 for t in tabs.iter_mut() {
                     let pick = which.is_none_or(|w| w == t.id);
-                    if pick && t.id != active && t.wv.is_some() && t.url.starts_with("http") {
+                    if pick && t.id != active && t.wv.is_some() && is_http(&t.url) {
                         t.wv = None;
+                        // late messages of the dropped webview are refused (a wake mints new secrets)
+                        cfg.auth
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .remove(&t.id);
                         n += 1;
                     }
                 }
@@ -1870,7 +2166,7 @@ fn main() {
                 // keep the active tab of a group of duplicates, else the first
                 let order: Vec<(usize, String)> = tabs
                     .iter()
-                    .filter(|t| t.url.starts_with("http"))
+                    .filter(|t| is_http(&t.url))
                     .map(|t| (t.id, dup_key(&t.url)))
                     .collect();
                 for (id, k) in &order {
@@ -1890,8 +2186,18 @@ fn main() {
                 }
                 tabs.retain(|t| !drop_ids.contains(&t.id));
                 for id in &drop_ids {
-                    cfg.pages.lock().unwrap().remove(id);
-                    cfg.colors.lock().unwrap().remove(id);
+                    cfg.auth
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .remove(id);
+                    cfg.pages
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .remove(id);
+                    cfg.colors
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .remove(id);
                 }
                 show_only(&tabs, active);
                 push_tabs(&cfg, &tabs, active);
@@ -1907,9 +2213,24 @@ fn main() {
                 );
             }
             Event::UserEvent(Ev::NewTab(u)) => {
+                let u = u.filter(|u| is_http(u) && u.len() <= MAX_URL);
+                if tabs.len() >= MAX_TABS {
+                    reply_k(
+                        &proxy,
+                        &cfg,
+                        active,
+                        false,
+                        format!("at most {MAX_TABS} tabs"),
+                        "",
+                        json!(null),
+                    );
+                    return;
+                }
                 let id = next_id;
                 next_id += 1;
-                let wv = make_tab(&window, &cfg, &proxy, id, u.as_deref());
+                let Some(wv) = make_tab(&window, &cfg, &proxy, id, u.as_deref()) else {
+                    return;
+                };
                 tabs.push(Tab {
                     id,
                     wv: Some(wv),
@@ -1925,14 +2246,24 @@ fn main() {
                 if tabs.len() > 1 {
                     if let Some(i) = tabs.iter().position(|t| t.id == id) {
                         let gone = tabs.remove(i);
-                        if gone.url.starts_with("http") {
+                        if is_http(&gone.url) {
                             closed.push(gone.url);
                             if closed.len() > 20 {
                                 closed.remove(0);
                             }
                         }
-                        cfg.pages.lock().unwrap().remove(&id);
-                        cfg.colors.lock().unwrap().remove(&id);
+                        cfg.auth
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .remove(&id);
+                        cfg.pages
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .remove(&id);
+                        cfg.colors
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .remove(&id);
                         if active == id {
                             active = tabs[i.min(tabs.len() - 1)].id;
                         }
@@ -1969,6 +2300,7 @@ fn main() {
                 }
             }
             Event::UserEvent(Ev::Title(id, title)) => {
+                let title = trunc(&title, 500);
                 if let Some(t) = tabs.iter_mut().find(|t| t.id == id)
                     && t.title != title
                 {
@@ -1977,6 +2309,7 @@ fn main() {
                 }
             }
             Event::UserEvent(Ev::Url(id, url)) => {
+                let url = trunc(&url, 4096);
                 if let Some(t) = tabs.iter_mut().find(|t| t.id == id)
                     && t.url != url
                 {
@@ -2196,5 +2529,191 @@ mod tests {
         assert!(a.key_out.bytes().all(|c| c.is_ascii_hexdigit()));
         assert_ne!(a.key_out, b.key_out);
         assert_ne!(a.key_out, a.key_in);
+    }
+
+    #[test]
+    fn navigation_policy_blocks_dangerous_schemes() {
+        for bad in [
+            "file:///etc/passwd",
+            "FILE:///etc/passwd",
+            "javascript:alert(1)",
+            "JaVaScRiPt:alert(1)",
+            "ftp://x/",
+            "view-source:https://a/",
+            "wry://x",
+            "about:config",
+            "data:application/x-sh,aaa",
+            "httpfoo://x",
+            "http:/x",
+        ] {
+            assert!(!nav_allowed(bad), "{bad}");
+        }
+        for good in [
+            "https://a.example/x",
+            "HTTP://a.example",
+            "about:blank",
+            "data:text/html,<p>",
+        ] {
+            assert!(nav_allowed(good), "{good}");
+        }
+        assert!(!nav_allowed(&format!("https://a/{}", "x".repeat(MAX_URL))));
+        assert!(!is_http("httpx://a/") && !is_http("http:a") && is_http("HtTpS://a/"));
+    }
+
+    #[test]
+    fn normalize_only_yields_http() {
+        assert_eq!(
+            normalize("example.com").as_deref(),
+            Some("https://example.com")
+        );
+        assert_eq!(
+            normalize("localhost:8080").as_deref(),
+            Some("https://localhost:8080")
+        );
+        assert_eq!(normalize("HTTP://a.b/").as_deref(), Some("HTTP://a.b/"));
+        for bad in [
+            "file:///a.txt",
+            "javascript:alert(1)//a.b",
+            "data:text/html,a.b",
+            "a.b\nc",
+            "a.b\u{0}",
+            "two words",
+            "",
+            "   ",
+        ] {
+            assert_eq!(normalize(bad), None, "{bad:?}");
+        }
+        assert_eq!(
+            normalize(&format!("https://a.b/{}", "x".repeat(MAX_URL))),
+            None
+        );
+    }
+
+    #[test]
+    fn trackers_trailing_dot_and_ipv6() {
+        assert_eq!(host_of("https://DoubleClick.net./x"), "doubleclick.net");
+        assert!(is_tracker(&host_of(
+            "https://user@ads.doubleclick.net.:443/p"
+        )));
+        assert!(is_tracker(&host_of("https://user:pw@x.hotjar.com/")));
+        assert!(!is_tracker(&host_of("https://notdoubleclick.net/")));
+        assert!(!is_tracker(&host_of(
+            "https://example.com/?u=doubleclick.net"
+        )));
+        assert_eq!(host_of("http://[::1]:8080/x"), "[::1");
+    }
+
+    #[test]
+    fn popups_are_throttled() {
+        let mut q = VecDeque::new();
+        let t = Instant::now();
+        let n = (0..20)
+            .filter(|_| throttle(&mut q, t, POPUP_MAX, POPUP_WIN))
+            .count();
+        assert_eq!(n, POPUP_MAX);
+        assert!(throttle(
+            &mut q,
+            t + POPUP_WIN + Duration::from_secs(1),
+            POPUP_MAX,
+            POPUP_WIN
+        ));
+    }
+
+    #[test]
+    fn redaction_and_truncation_are_char_safe() {
+        assert_eq!(
+            redact_url("https://u:p@a.example/p/q?token=abc#frag"),
+            "https://a.example/p/q"
+        );
+        assert_eq!(redact_url("https://a.example?x=1"), "https://a.example");
+        assert_eq!(redact_url(""), "");
+        let long = format!("https://a.example/{}", "é".repeat(500));
+        assert!(redact_url(&long).chars().count() < 100);
+        assert_eq!(trunc(&"é".repeat(10), 3), "ééé");
+    }
+
+    #[test]
+    fn file_names_cannot_escape() {
+        for (u, want) in [
+            ("https://a/x/..", "document"),
+            ("https://a/x/../../etc/passwd", "passwd"),
+            ("https://a/x\\..\\..\\evil.pdf", "evil.pdf"),
+            ("https://a/%2e%2e%2fx.pdf?y=1", "2e2e2fx.pdf"),
+            ("https://a/", "document"),
+            ("https://a/a b.pdf#f", "a b.pdf"),
+        ] {
+            assert_eq!(file_name_of(u), want, "{u}");
+        }
+        let n = file_name_of(&format!("https://a/{}.pdf", "é".repeat(300)));
+        assert!(n.chars().count() <= 100 && n.ends_with(".pdf"));
+    }
+
+    #[test]
+    fn colors_ids_and_local_hosts() {
+        assert_eq!(color_of(&json!({"color": 3})), Some(3));
+        assert_eq!(color_of(&json!({"color": 257})), None); // no wrap-around into 1..=6
+        assert_eq!(color_of(&json!({"color": 0})), None);
+        assert_eq!(
+            id_of(&json!({"id": u64::MAX})),
+            usize::try_from(u64::MAX).unwrap_or(0)
+        );
+        assert_eq!(id_of(&json!({"id": "x"})), 0);
+        for h in [
+            "localhost",
+            "127.0.0.1",
+            "10.0.0.5",
+            "192.168.1.1",
+            "169.254.169.254",
+            "[::1]",
+            "::1",
+            "fd00::1",
+            "fe80::1",
+            "::ffff:127.0.0.1",
+            "0.0.0.0",
+            "x.localhost",
+            "printer.local",
+        ] {
+            assert!(is_local_host(h), "{h}");
+        }
+        for h in ["example.com", "8.8.8.8", "2606:4700::1111"] {
+            assert!(!is_local_host(h), "{h}");
+        }
+        assert!(download(&test_cfg(), "http://127.0.0.1:1/a.pdf").is_err());
+        assert!(download(&test_cfg(), "file:///etc/passwd").is_err());
+    }
+
+    fn test_cfg() -> Cfg {
+        Cfg {
+            home: None,
+            gateway: String::new(),
+            mock: true,
+            selftest: None,
+            auth: Mutex::new(BTreeMap::new()),
+            offered: Mutex::new(BTreeSet::new()),
+            pages: Mutex::new(BTreeMap::new()),
+            colors: Mutex::new(BTreeMap::new()),
+            trackers: AtomicBool::new(false),
+            allow: Mutex::new(BTreeSet::new()),
+            popups: Mutex::new(VecDeque::new()),
+        }
+    }
+
+    #[test]
+    fn offered_set_is_bounded_and_forged_ipc_for_unknown_tab_is_dropped() {
+        let c = test_cfg();
+        for i in 0..1000 {
+            remember(&c.offered, &format!("https://a/{i}.pdf"));
+        }
+        assert!(c.offered.lock().unwrap().len() <= MAX_OFFERED);
+        // no Auth entry (closed/asleep tab): nothing authenticates
+        assert!(
+            authenticate(
+                &c,
+                7,
+                "https://a/",
+                "cc1.7.0123456789abcdef01234567.1.x.{\"cmd\":\"save\"}"
+            )
+            .is_none()
+        );
     }
 }

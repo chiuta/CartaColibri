@@ -331,11 +331,41 @@ fn table(key: &str) -> [&'static str; 8] {
 
 /// Translate `key` into language index `lang`, replacing `{0}`, `{1}`... with `args`.
 pub fn t(lang: usize, key: &str, args: &[&str]) -> String {
-    let mut s = table(key)[lang.min(7)].to_string();
-    for (i, a) in args.iter().enumerate() {
-        s = s.replace(&format!("{{{i}}}"), a);
+    // one pass over the template: an argument that itself contains "{1}" is not substituted again
+    let tpl = table(key)[lang.min(7)];
+    let mut out = String::with_capacity(tpl.len());
+    let mut rest = tpl;
+    while let Some(i) = rest.find('{') {
+        out.push_str(&rest[..i]);
+        let tail = &rest[i..];
+        let hit = tail.find('}').and_then(|j| {
+            tail[1..j]
+                .parse::<usize>()
+                .ok()
+                .and_then(|n| args.get(n))
+                .map(|a| (j, *a))
+        });
+        match hit {
+            Some((j, a)) => {
+                out.push_str(a);
+                rest = &tail[j + 1..];
+            }
+            None => {
+                out.push('{');
+                rest = &tail[1..];
+            }
+        }
     }
-    s
+    out.push_str(rest);
+    out
+}
+
+/// Text that is safe to print on a terminal: control characters (ANSI escape sequences, bell,
+/// backspace...) coming from documents or file names are dropped; newline and tab stay.
+pub fn plain(s: &str) -> String {
+    s.chars()
+        .filter(|c| !c.is_control() || matches!(c, '\n' | '\t'))
+        .collect()
 }
 
 /// ANSI colour, only on a terminal and when `NO_COLOR` is unset.
@@ -421,7 +451,7 @@ pub fn friendly(lang: usize, raw: &str) -> (String, Option<String>) {
 /// Print `error: msg` and the `Try this:` hint to stderr.
 pub fn print_error(lang: usize, raw: &str) {
     let p = Paint::stderr();
-    let (m, hint) = friendly(lang, raw);
+    let (m, hint) = friendly(lang, &plain(raw));
     eprintln!("{} {m}", p.red(&format!("{}:", t(lang, "error", &[]))));
     let hint = hint.unwrap_or_else(|| "cartacolibri doctor".to_string());
     eprintln!("{} {hint}", p.bold(&t(lang, "try", &[])));

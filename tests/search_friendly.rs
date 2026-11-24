@@ -292,3 +292,228 @@ fn reindex_of_unchanged_2000_files_is_fast() {
     assert!(el.as_secs_f64() < 5.0, "took {el:?}");
     assert!(Path::new(&root[0]).exists());
 }
+
+// ---------------------------------------------------------------- adversarial audit
+
+fn root_of(d: &tempfile::TempDir) -> [String; 1] {
+    [d.path().to_string_lossy().into_owned()]
+}
+
+#[test]
+fn hyphenated_and_indic_words_are_found() {
+    let (_h, _d, lib) = setup(&[
+        ("a.txt", "Send the e-mail to the user-agent today."),
+        ("b.txt", "\u{939}\u{93f}\u{928}\u{94d}\u{926}\u{940} bhasha"),
+    ]);
+    assert_eq!(n(&lib, "user-agent"), 1, "hyphen must act as a word break");
+    assert_eq!(n(&lib, "e-mail"), 1);
+    assert_eq!(
+        n(&lib, "\u{939}\u{93f}\u{928}\u{94d}\u{926}\u{940}"),
+        1,
+        "combining marks"
+    );
+}
+
+#[test]
+fn hostile_queries_never_panic_or_error() {
+    let (_h, _d, lib) = setup(&[("a.txt", "alpha beta gamma delta [x] \"quoted\" text")]);
+    let big = "word ".repeat(200_000);
+    let qs: Vec<String> = [
+        "\"",
+        "\"\"\"\"",
+        "NEAR(",
+        "alpha NEAR/2 beta",
+        "NEAR(alpha beta, 2)",
+        "text:alpha",
+        "{text}: alpha",
+        "*",
+        "**",
+        "(",
+        ")",
+        "((alpha)",
+        "-",
+        "^alpha",
+        "alpha AND",
+        "NOT",
+        "OR OR OR",
+        "alpha NOT",
+        "'; DROP TABLE docs;--",
+        "alpha\0beta",
+        "\u{202e}alpha",
+        "\"alpha",
+        "alpha\"",
+        "col:*",
+        "alpha*beta",
+        "AND alpha",
+        "a b c d e f g h i j k l",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .chain([big])
+    .collect();
+    for q in qs {
+        let t = std::time::Instant::now();
+        let f = Filter::default();
+        let r = lib.search_friendly(&q, &f);
+        assert!(
+            r.is_ok(),
+            "search_friendly({:?}) failed: {:?}",
+            &q[..q.len().min(30)],
+            r.err()
+        );
+        assert!(
+            lib.search(&q, &f).is_ok(),
+            "search({:?})",
+            &q[..q.len().min(30)]
+        );
+        let _ = lib.suggest(&q);
+        assert!(
+            t.elapsed().as_secs() < 10,
+            "query of {} bytes took {:?}",
+            q.len(),
+            t.elapsed()
+        );
+    }
+    assert_eq!(lib.documents(None).unwrap().len(), 1, "no SQL got through");
+}
+
+#[test]
+fn files_that_stop_qualifying_leave_the_index() {
+    let home = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    for f in ["a.txt", "b.txt", "c.txt"] {
+        fs::write(docs.path().join(f), format!("unique{f} content")).unwrap();
+    }
+    let mut lib = Library::open(Some(home.path().to_str().unwrap()), false).unwrap();
+    let root = root_of(&docs);
+    lib.update(Some(&root), &mut |_| {}).unwrap();
+    assert_eq!(lib.documents(None).unwrap().len(), 3);
+    fs::rename(docs.path().join("a.txt"), docs.path().join(".a.txt")).unwrap(); // hidden now
+    fs::rename(docs.path().join("b.txt"), docs.path().join("b.xyz")).unwrap(); // unsupported
+    fs::rename(docs.path().join("c.txt"), docs.path().join("c.txt~")).unwrap(); // backup file
+    lib.update(Some(&root), &mut |_| {}).unwrap();
+    let left: Vec<String> = lib
+        .documents(None)
+        .unwrap()
+        .into_iter()
+        .map(|d| d.path)
+        .collect();
+    assert!(left.is_empty(), "stale entries kept: {left:?}");
+}
+
+#[test]
+fn sha1_collision_is_not_reported_as_duplicate() {
+    let (h, d, mut lib) = setup(&[
+        ("a.txt", "first body"),
+        ("b.txt", "second body!"),
+        ("c.txt", "first body"),
+    ]);
+    // simulate a SHA-1 collision (e.g. the SHAttered PDFs): same hash recorded for different bytes
+    {
+        let db = rusqlite::Connection::open(h.path().join("index.sqlite")).unwrap();
+        db.execute("UPDATE docs SET sha1='deadbeef'", []).unwrap();
+    }
+    let _ = &mut lib;
+    let dups = lib.duplicates();
+    let flat: Vec<&String> = dups.iter().flatten().collect();
+    assert!(
+        dups.len() == 1 && flat.len() == 2 && flat.iter().all(|p| !p.ends_with("b.txt")),
+        "different content reported as duplicate: {dups:?} in {:?}",
+        d.path()
+    );
+}
+
+#[test]
+fn corrupt_index_does_not_panic() {
+    let home = tempfile::tempdir().unwrap();
+    fs::write(
+        home.path().join("index.sqlite"),
+        b"this is not a database at all, really",
+    )
+    .unwrap();
+    let r = std::panic::catch_unwind(|| {
+        let h = home.path().to_str().unwrap().to_string();
+        if let Ok(lib) = Library::open(Some(&h), false) {
+            let _ = lib.roots();
+            let _ = lib.problems();
+            let _ = lib.duplicates();
+            let _ = lib.documents(None);
+            let _ = lib.text_of(1);
+            let _ = lib.search("x", &Filter::default());
+        }
+    });
+    assert!(r.is_ok(), "panicked on a corrupt index");
+}
+
+#[test]
+fn file_that_becomes_unreadable_keeps_no_stale_text() {
+    let home = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    fs::write(docs.path().join("a.docx"), b"PK not really").unwrap();
+    let mut lib = Library::open(Some(home.path().to_str().unwrap()), false).unwrap();
+    let st = lib.update(Some(&root_of(&docs)), &mut |_| {}).unwrap();
+    assert_eq!(st.failed, 1);
+    assert!(lib.documents(None).unwrap().is_empty());
+}
+
+#[test]
+fn odd_file_names_are_indexed_and_searchable() {
+    let home = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    let long = format!("{}.txt", "\u{e9}".repeat(120)); // 240 bytes
+    for name in [
+        "new\nline.txt",
+        "quote\"'; DROP TABLE docs;--.txt",
+        "con.txt",
+        "aux.md",
+        "\u{202e}rtl.txt",
+        "emoji \u{1f600} \u{4e2d}\u{6587}.txt",
+        "percent%20and%00.txt",
+        long.as_str(),
+    ] {
+        let _ = fs::write(docs.path().join(name), "needleword inside");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        let bad = std::ffi::OsStr::from_bytes(b"bad\xff\xfename.txt");
+        let _ = fs::write(docs.path().join(bad), "needleword invalid utf8 name");
+        std::os::unix::fs::symlink(docs.path(), docs.path().join("loop")).unwrap();
+        std::os::unix::fs::symlink("nowhere", docs.path().join("dangling.txt")).unwrap();
+    }
+    let mut lib = Library::open(Some(home.path().to_str().unwrap()), false).unwrap();
+    let root = root_of(&docs);
+    for _ in 0..2 {
+        lib.update(Some(&root), &mut |_| {}).unwrap();
+    }
+    assert!(n(&lib, "needleword") >= 6, "got {}", n(&lib, "needleword"));
+    let hits = lib.search("needleword", &Filter::default()).unwrap();
+    for h in hits {
+        assert!(!h.snippet.is_empty());
+    }
+}
+
+#[test]
+fn edit_is_seen_even_if_the_clock_went_backwards() {
+    let home = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    let f = docs.path().join("a.txt");
+    fs::write(&f, "alpha one").unwrap();
+    let mut lib = Library::open(Some(home.path().to_str().unwrap()), false).unwrap();
+    let root = root_of(&docs);
+    lib.update(Some(&root), &mut |_| {}).unwrap();
+    // a rewrite with another size is always seen, whatever the clock says
+    let t0 = fs::metadata(&f).unwrap().modified().unwrap();
+    fs::write(&f, "beta one two").unwrap();
+    let past = t0 - std::time::Duration::from_secs(86_400 * 400); // clock went backwards
+    fs::File::options()
+        .write(true)
+        .open(&f)
+        .unwrap()
+        .set_modified(past)
+        .unwrap();
+    let st = lib.update(Some(&root), &mut |_| {}).unwrap();
+    assert_eq!(st.updated, 1, "{st:?}");
+    assert_eq!(n(&lib, "beta"), 1);
+    assert_eq!(n(&lib, "alpha"), 0);
+}

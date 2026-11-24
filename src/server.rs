@@ -15,16 +15,44 @@ const MARK: &[u8] = include_bytes!("../assets/cartacolibri-mark.png");
 const MAX_UPLOAD: u64 = 100 * 1024 * 1024;
 const MAX_JSON: u64 = 2 * 1024 * 1024;
 const MAX_CONCURRENT: usize = 32;
+/// Big bodies (up to 100 MB each) are held in memory, so only a few may be in flight at once.
+const MAX_BIG: usize = 2;
 static ACTIVE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+static BIG: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Decrements a counter when dropped, so a panicking handler can never leak a slot.
+struct Slot(&'static std::sync::atomic::AtomicUsize);
+impl Slot {
+    fn take(c: &'static std::sync::atomic::AtomicUsize, max: usize) -> Option<Slot> {
+        if c.fetch_add(1, std::sync::atomic::Ordering::SeqCst) >= max {
+            c.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            None
+        } else {
+            Some(Slot(c))
+        }
+    }
+}
+impl Drop for Slot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
 
 /// Reads the body, refusing (413) instead of silently truncating.
 fn read_body(r: &mut Request, limit: u64) -> Result<Vec<u8>, ()> {
     if r.body_length().is_some_and(|n| n as u64 > limit) {
         return Err(());
     }
+    let want = r.body_length();
     let mut body = Vec::new();
-    let _ = r.as_reader().take(limit + 1).read_to_end(&mut body);
-    if body.len() as u64 > limit {
+    // a body that stops early (reset, bad chunking) is an error, not a shorter request
+    if r.as_reader()
+        .take(limit + 1)
+        .read_to_end(&mut body)
+        .is_err()
+        || body.len() as u64 > limit
+        || want.is_some_and(|n| n != body.len())
+    {
         Err(())
     } else {
         Ok(body)
@@ -36,7 +64,9 @@ fn same(a: &str, b: &str) -> bool {
 }
 
 fn hdr(k: &str, v: &str) -> Header {
-    Header::from_bytes(k.as_bytes(), v.as_bytes()).unwrap()
+    // never panic on an odd value (a panic here would take the request thread down)
+    Header::from_bytes(k.as_bytes(), v.as_bytes())
+        .unwrap_or_else(|_| Header::from_bytes("X-Invalid-Header", "1").unwrap())
 }
 
 fn host_ok(h: &str) -> bool {
@@ -132,8 +162,15 @@ fn respond(r: Request, code: u16, ctype: &str, body: Vec<u8>, extra: &[Header]) 
         .with_header(hdr("Referrer-Policy", "no-referrer"))
         .with_header(hdr(
             "Content-Security-Policy",
-            "frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'",
-        ));
+            if ctype.starts_with("text/html") {
+                // the UI is one page with inline script/style and same-origin calls only: nothing may
+                // be loaded from, or sent to, anywhere else (even if some text got through unescaped)
+                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+            } else {
+                "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; sandbox"
+            },
+        ))
+        .with_header(hdr("Cross-Origin-Resource-Policy", "same-origin"));
     for h in extra {
         resp = resp.with_header(h.clone());
     }
@@ -145,7 +182,7 @@ fn json(r: Request, code: u16, v: serde_json::Value, extra: &[Header]) {
         r,
         code,
         "application/json; charset=utf-8",
-        serde_json::to_vec(&v).unwrap(),
+        serde_json::to_vec(&v).unwrap_or_default(),
         extra,
     )
 }
@@ -172,6 +209,17 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
         );
     }
     let url = r.url().to_string();
+    if let Some(site) = get(&r, "Sec-Fetch-Site")
+        && site.eq_ignore_ascii_case("cross-site")
+        && url.split('?').next() != Some("/carta/clip")
+    {
+        return json(
+            r,
+            403,
+            serde_json::json!({"error": "cross-site request refused"}),
+            &[],
+        );
+    }
     let (path, qs) = url.split_once('?').unwrap_or((&url, ""));
     let method = r.method().clone();
     let home_path = library::state_dir(home.as_deref()).ok();
@@ -249,10 +297,22 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
         );
     }
     let route = path.trim_start_matches("/carta/").trim_end_matches('/');
-    let limit = if matches!(route, "upload" | "import") {
-        MAX_UPLOAD
+    let big = matches!(route, "upload" | "import");
+    let limit = if big { MAX_UPLOAD } else { MAX_JSON };
+    let _big_slot = if big {
+        match Slot::take(&BIG, MAX_BIG) {
+            Some(s) => Some(s),
+            None => {
+                return json(
+                    r,
+                    503,
+                    serde_json::json!({"error": "another upload is in progress, try again"}),
+                    &[],
+                );
+            }
+        }
     } else {
-        MAX_JSON
+        None
     };
     let Ok(body) = read_body(&mut r, limit) else {
         return json(
@@ -262,6 +322,7 @@ fn handle(mut r: Request, home: Option<String>, backend: String) {
             &[],
         );
     };
+    drop(_big_slot); // the memory-heavy part (reading the body) is over
     let filename =
         get(&r, "X-File-Name").map(|f| percent_decode_str(f).decode_utf8_lossy().into_owned());
     let req = api::Req {
@@ -308,8 +369,7 @@ pub fn serve(addr: &str, home: Option<String>, backend: String) -> Result<(), St
     }
     for req in server.incoming_requests() {
         let (h, b) = (home.clone(), backend.clone());
-        if ACTIVE.fetch_add(1, std::sync::atomic::Ordering::SeqCst) >= MAX_CONCURRENT {
-            ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        let Some(slot) = Slot::take(&ACTIVE, MAX_CONCURRENT) else {
             json(
                 req,
                 503,
@@ -317,7 +377,7 @@ pub fn serve(addr: &str, home: Option<String>, backend: String) -> Result<(), St
                 &[],
             );
             continue;
-        }
+        };
         let dbg = std::env::var_os("CARTACOLIBRI_DEBUG_REQ").map(|_| {
             let line = format!("{} {}", req.method(), req.url());
             eprintln!("[req] recv  {line}");
@@ -328,7 +388,7 @@ pub fn serve(addr: &str, home: Option<String>, backend: String) -> Result<(), St
             if let Some((line, t0)) = dbg {
                 eprintln!("[req] done  {line}  {} ms", t0.elapsed().as_millis());
             }
-            ACTIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            drop(slot);
         });
     }
     Ok(())

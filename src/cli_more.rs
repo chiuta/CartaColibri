@@ -25,7 +25,7 @@ pub struct Src {
 
 #[derive(Args, Clone)]
 pub struct Model {
-    #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+    #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
     pub url: String,
     #[arg(long)]
     pub model: Option<String>,
@@ -213,8 +213,26 @@ fn feed_urls(lib: &Library) -> Vec<String> {
         .unwrap_or_default()
 }
 fn set_feed_urls(lib: &Library, v: &[String]) -> Res<()> {
-    std::fs::write(feeds_file(lib), serde_json::to_string_pretty(v).unwrap())
-        .map_err(|e| e.to_string())
+    // write-then-rename so an interrupted write never leaves a half-written list
+    let p = feeds_file(lib);
+    let tmp = p.with_extension(format!("json.{}.tmp", std::process::id()));
+    std::fs::write(&tmp, serde_json::to_string_pretty(v).unwrap_or_default())
+        .and_then(|_| std::fs::rename(&tmp, &p))
+        .map_err(|e| {
+            let _ = std::fs::remove_file(&tmp);
+            e.to_string()
+        })
+}
+
+/// A document the user names on the command line must be in the library (honest error otherwise).
+fn known_doc(lib: &Library, path: &str) -> Res<()> {
+    if lib.documents(None)?.iter().any(|d| d.path == path) {
+        Ok(())
+    } else {
+        Err(format!(
+            "`{path}` is not in the library (use the exact path shown by `cartacolibri list`)"
+        ))
+    }
 }
 
 fn docs_of(lib: &Library, s: &Src) -> Res<Vec<cartacolibri::library::Doc>> {
@@ -275,6 +293,28 @@ pub fn restore(home: Option<&str>, zip: &Path) -> Res<()> {
     Ok(())
 }
 
+/// `verify` works from the home folder, so `--repair` can also fix an index that cannot be opened.
+pub fn verify_cmd(home: Option<&str>, repair: bool) -> Res<()> {
+    let h = cartacolibri::library::state_dir(home)?;
+    let (_lib, r) = organize::verify_home(&h.to_string_lossy(), repair)?;
+    println!(
+        "{}",
+        if r.ok {
+            "index OK"
+        } else {
+            "index has problems"
+        }
+    );
+    r.problems.iter().for_each(|p| println!("  - {p}"));
+    if r.rebuilt {
+        println!("index rebuilt: {} documents", r.docs);
+    }
+    if !r.ok {
+        return Err("the index is damaged: run `cartacolibri verify --repair`".into());
+    }
+    Ok(())
+}
+
 pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
     match cmd {
         More::Task {
@@ -305,7 +345,7 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
             let text = carta::run_ex(lib, &name, &docs, &model.backend(), &o, &x, &mut |m| {
                 eprintln!("· {m}")
             })?;
-            println!("{text}");
+            println!("{}", cartacolibri::tour::plain(&text));
             if let Some(fmt) = save {
                 let g = src
                     .group
@@ -329,10 +369,17 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
             loop {
                 eprint!("› ");
                 let _ = std::io::stderr().flush();
-                let mut l = String::new();
-                if stdin.lock().read_line(&mut l).map_err(|e| e.to_string())? == 0 {
+                // bytes, then lossy: an invalid UTF-8 byte must not end the conversation
+                let mut raw = Vec::new();
+                if stdin
+                    .lock()
+                    .read_until(b'\n', &mut raw)
+                    .map_err(|e| e.to_string())?
+                    == 0
+                {
                     break;
                 }
+                let l = String::from_utf8_lossy(&raw).into_owned();
                 let q = l.trim();
                 if q.is_empty() {
                     break;
@@ -342,13 +389,14 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
                     continue;
                 }
                 match s.ask(lib, q) {
-                    Ok(r) => println!("{}\n", r.render()),
+                    Ok(r) => println!("{}\n", cartacolibri::tour::plain(&r.render())),
                     Err(e) => eprintln!("{e}"),
                 }
             }
         }
         More::Tag(t) => match t {
             TagCmd::Add { path, tags } => {
+                known_doc(lib, &path)?;
                 println!("{}", organize::tag_add(lib, &path, &tags)?.join(", "))
             }
             TagCmd::Rm { path, tags } => {
@@ -364,11 +412,15 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
                 .for_each(|p| println!("{p}")),
         },
         More::Star { path, off } => {
+            if !off {
+                known_doc(lib, &path)?;
+            }
             organize::set_star(lib, &path, !off)?;
             println!("{} {path}", if off { "unstarred" } else { "★" });
         }
         More::Note { path, text } => match text {
             Some(t) => {
+                known_doc(lib, &path)?;
                 organize::set_note(lib, &path, &t)?;
                 println!("note saved");
             }

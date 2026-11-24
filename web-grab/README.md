@@ -9,7 +9,7 @@ traffic is the page you ask to fetch. Stuck? Run `cartacolibri doctor`, and see 
 
 | Way | How | Tested |
 |---|---|---|
-| **Browser** `cartacolibri-browser [URL…]` | A small Rust browser on the system webview (WebKitGTK / WebView2 / WKWebView), with **tabs** (Ctrl+T / Ctrl+W / Ctrl+Tab / Ctrl+L, session restored; `--fresh` to skip). Replaces the Falkon plugin idea: no Falkon code, MIT. See below. | Linux: CI self-tests under Xvfb (save, ask, two tabs asked together). Windows / macOS: compiled in CI, **not yet run by hand** |
+| **Browser** `cartacolibri-browser [URL…]` | A small Rust browser on the system webview (WebKitGTK / WebView2 / WKWebView), with **tabs** (Ctrl+T / Ctrl+W / Ctrl+Tab / Ctrl+L, session restored; `--fresh` to skip). Written from scratch: no code from any other browser, MIT. See below. | Linux: CI self-tests under Xvfb (save, ask, two tabs asked together). Windows / macOS: compiled in CI, **not yet run by hand** |
 | Command line | `cartacolibri grab https://example.org/article` | CI |
 | Bookmarklet (any other browser) | `cartacolibri bookmarklet` prints a `javascript:` link; save it as a bookmark and click it on a page (a selection is saved instead of the whole page) | the `/carta/clip` endpoint is tested; a page's CSP can block it |
 | API | `POST /carta/grab`, `POST /carta/clip?token=…` | CI |

@@ -128,6 +128,30 @@ pub fn run_cmd(mut cmd: Command, timeout: std::time::Duration) -> Res<std::proce
 
 const TOO_LONG: &str = "This file took too long to read, so it was skipped.";
 
+/// Open a file for reading without ever blocking on a pipe that replaced it after a check, and
+/// refuse anything that is not an ordinary file.
+pub fn open_regular(path: &Path) -> std::io::Result<std::fs::File> {
+    let mut o = std::fs::OpenOptions::new();
+    o.read(true);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.custom_flags(0o4000); // O_NONBLOCK
+    }
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.custom_flags(0x4); // O_NONBLOCK
+    }
+    let f = o.open(path)?;
+    if !f.metadata()?.is_file() {
+        return Err(std::io::Error::other(
+            "This is not an ordinary file (a device, pipe or socket), so it was skipped.",
+        ));
+    }
+    Ok(f)
+}
+
 /// Read a regular file fully, refusing FIFOs/devices and files over the read limit.
 fn read_regular(path: &Path) -> Res<Vec<u8>> {
     let md = std::fs::metadata(path).map_err(|e| e.to_string())?;
@@ -142,7 +166,7 @@ fn read_regular(path: &Path) -> Res<Vec<u8>> {
             MAX_READ_BYTES >> 20
         ));
     }
-    let f = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let f = open_regular(path).map_err(|e| e.to_string())?;
     let mut buf = Vec::with_capacity(md.len().min(MAX_READ_BYTES) as usize);
     f.take(MAX_READ_BYTES + 1)
         .read_to_end(&mut buf)
@@ -415,7 +439,7 @@ fn open_zip(path: &Path) -> Res<zip::ZipArchive<std::fs::File>> {
             "This is not an ordinary file (a device, pipe or socket), so it was skipped.".into(),
         );
     }
-    let f = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let f = open_regular(path).map_err(|e| e.to_string())?;
     let mut z = zip::ZipArchive::new(f).map_err(|e| format!("not a valid zip container: {e}"))?;
     zip_sanity(&mut z)?;
     Ok(z)
@@ -513,9 +537,12 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
         let (mut ctype, mut val, mut in_c, mut in_v, mut in_t) =
             (String::new(), String::new(), false, false, false);
         let mut ev = 0u64;
+        // a shared string can be referenced by millions of cells: bound what one sheet keeps
+        let mut kept = 0usize;
+        let room = max_text_bytes().saturating_sub(spent);
         loop {
             ev += 1;
-            if ev > XML_MAX_EVENTS || rows.len() > 5_000_000 {
+            if ev > XML_MAX_EVENTS || rows.len() > 5_000_000 || kept > room {
                 break;
             }
             match rd.read_event().map_err(|e| e.to_string())? {
@@ -547,6 +574,7 @@ fn xlsx_text(z: &mut zip::ZipArchive<std::fs::File>) -> Res<Parts> {
                             val.clone()
                         };
                         if !v.is_empty() {
+                            kept += v.len() + 3;
                             cells.push(v)
                         }
                     }
@@ -615,7 +643,7 @@ pub fn ocr_image(path: &Path, pdf: bool) -> Res<Vec<u8>> {
         return Err("OCR needs tesseract (apt install tesseract-ocr tesseract-ocr-ron)".into());
     }
     let mut c = Command::new("tesseract");
-    c.arg(path)
+    c.arg(safe_arg(path))
         .arg("stdout")
         .arg("-l")
         .arg(tesseract_lang("ron+eng"));
@@ -653,7 +681,7 @@ fn ocr_pdf_page(path: &Path, n: usize) -> String {
         &n.to_string(),
         "-png",
     ])
-    .arg(path)
+    .arg(safe_arg(path))
     .arg(&base);
     let _ = run_cmd(pp, extract_timeout());
     let png = std::fs::read_dir(&d).ok().and_then(|r| {
@@ -669,16 +697,39 @@ fn ocr_pdf_page(path: &Path, n: usize) -> String {
     text
 }
 
+/// A path as a command-line argument that a tool cannot mistake for an option (`-x.pdf`).
+fn safe_arg(p: &Path) -> std::path::PathBuf {
+    if p.is_relative() && p.to_string_lossy().starts_with('-') {
+        Path::new(".").join(p)
+    } else {
+        p.to_path_buf()
+    }
+}
+
+/// A fresh private directory in the temp folder: unpredictable name, created exclusively
+/// (never reuses a directory or link someone else planted), owner-only where supported.
 fn tempdir() -> std::io::Result<std::path::PathBuf> {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static N: AtomicU64 = AtomicU64::new(0);
-    let p = std::env::temp_dir().join(format!(
-        "cartacolibri-{}-{}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ));
-    std::fs::create_dir_all(&p)?;
-    Ok(p)
+    let mut last = None;
+    for _ in 0..16 {
+        let mut r = [0u8; 8];
+        let _ = getrandom::fill(&mut r);
+        let p = std::env::temp_dir().join(format!(
+            "cartacolibri-{}-{}",
+            std::process::id(),
+            hex::encode(r)
+        ));
+        let mut b = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            b.mode(0o700);
+        }
+        match b.create(&p) {
+            Ok(()) => return Ok(p),
+            Err(e) => last = Some(e),
+        }
+    }
+    Err(last.unwrap_or_else(|| std::io::Error::other("no temp dir")))
 }
 
 fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
@@ -700,7 +751,7 @@ fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
     }
     if which("pdftotext") {
         let mut c = Command::new("pdftotext");
-        c.arg("-layout").arg(path).arg("-");
+        c.arg("-layout").arg(safe_arg(path)).arg("-");
         let o = run_cmd(c, extract_timeout())?;
         if o.status.success() {
             let t = decode(&o.stdout);

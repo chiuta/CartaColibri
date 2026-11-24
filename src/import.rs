@@ -58,16 +58,43 @@ pub(crate) fn write_note(dest: &Path, title: &str, key: &str, body: &str) -> Res
         name = "note".into();
     }
     let p = dest.join(format!("{name}-{}.md", short_hash(key)));
-    std::fs::write(&p, body.as_bytes()).map_err(|e| e.to_string())?;
+    safe_write(&p, body.as_bytes())?;
     Ok(p)
 }
 
+/// Write a file, but never through a link planted at the target (note names are predictable).
+fn safe_write(p: &Path, data: &[u8]) -> Res<()> {
+    if let Ok(m) = std::fs::symlink_metadata(p)
+        && !m.file_type().is_file()
+    {
+        if m.file_type().is_symlink() {
+            std::fs::remove_file(p).map_err(|e| e.to_string())?;
+        } else {
+            return Err(format!("{} is not an ordinary file", p.display()));
+        }
+    }
+    std::fs::write(p, data).map_err(|e| e.to_string())
+}
+
 fn read_limited(p: &Path) -> Res<String> {
+    use std::io::Read;
     let md = std::fs::metadata(p).map_err(|e| e.to_string())?;
+    if !md.is_file() {
+        return Err("not an ordinary file (a device, pipe or socket)".into());
+    }
     if md.len() > MAX_INPUT {
         return Err("file is too large to import".into());
     }
-    Ok(decode(&std::fs::read(p).map_err(|e| e.to_string())?))
+    let mut buf = Vec::new();
+    std::fs::File::open(p)
+        .map_err(|e| e.to_string())?
+        .take(MAX_INPUT + 1)
+        .read_to_end(&mut buf)
+        .map_err(|e| e.to_string())?;
+    if buf.len() as u64 > MAX_INPUT {
+        return Err("file is too large to import".into());
+    }
+    Ok(decode(&buf))
 }
 
 /// Pick an importer from the file name / content. A directory is treated as a Markdown vault.
@@ -125,7 +152,16 @@ pub fn bookmarks(html: &str, dest: &Path) -> Res<ImportStats> {
             let title = html_to_text(c.get(3).map_or("", |m| m.as_str()))
                 .trim()
                 .to_string();
-            if url.is_empty() || url.to_lowercase().starts_with("javascript:") {
+            let lu: String = url
+                .chars()
+                .filter(|c| !c.is_whitespace() && !c.is_control())
+                .collect::<String>()
+                .to_lowercase();
+            if url.is_empty()
+                || ["javascript:", "data:", "vbscript:"]
+                    .iter()
+                    .any(|s| lu.starts_with(s))
+            {
                 skipped += 1;
                 continue;
             }
@@ -162,9 +198,11 @@ pub fn bookmarks(html: &str, dest: &Path) -> Res<ImportStats> {
         for (n, chunk) in items.chunks(ITEMS_PER_NOTE * 5).enumerate() {
             let mut body = format!("# Bookmarks: {path}\n\n");
             for (t, u) in chunk {
+                let one = |x: &str| x.replace(['\n', '\r'], " ");
                 body.push_str(&format!(
-                    "- [{}]({u})\n",
-                    if t.is_empty() { u.as_str() } else { t.as_str() }
+                    "- [{}]({})\n",
+                    one(if t.is_empty() { u.as_str() } else { t.as_str() }),
+                    one(u)
                 ));
             }
             write_note(
@@ -193,6 +231,22 @@ fn wiki_targets(text: &str) -> Vec<String> {
             (!t.is_empty()).then(|| t.to_string())
         })
         .collect()
+}
+
+/// Canonical form of a path that may not exist yet: canonicalize the nearest existing ancestor.
+fn canonical_lenient(p: &Path) -> Option<PathBuf> {
+    let mut tail = Vec::new();
+    let mut cur = p.to_path_buf();
+    loop {
+        if let Ok(c) = std::fs::canonicalize(&cur) {
+            return Some(tail.iter().rev().fold(c, |a, t| a.join(t)));
+        }
+        tail.push(cur.file_name()?.to_owned());
+        cur = cur.parent()?.to_path_buf();
+        if cur.as_os_str().is_empty() {
+            cur = PathBuf::from(".");
+        }
+    }
 }
 
 fn walk_md(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
@@ -228,13 +282,23 @@ pub fn vault(src: &Path, dest: &Path) -> Res<ImportStats> {
     if !src.is_dir() {
         return Err(format!("not a folder: {}", src.display()));
     }
+    // Writing into the vault itself would re-import our own notes and append "Backlinks"
+    // sections to the user's originals on every run.
+    if let (Ok(cs), Some(cd)) = (std::fs::canonicalize(src), canonical_lenient(dest))
+        && cd.starts_with(&cs)
+    {
+        return Err("the destination must be outside the vault being imported".into());
+    }
     let mut files = Vec::new();
     walk_md(src, 0, &mut files);
+    let mut budget = MAX_INPUT;
     let mut notes: Vec<(String, String, String)> = Vec::new(); // (rel path, stem, text)
     let mut skipped = 0;
     for f in &files {
         match std::fs::metadata(f) {
-            Ok(m) if m.len() <= 5 * 1024 * 1024 => {}
+            Ok(m) if m.is_file() && m.len() <= 5 * 1024 * 1024 && m.len() <= budget => {
+                budget -= m.len();
+            }
             _ => {
                 skipped += 1;
                 continue;
@@ -283,14 +347,20 @@ pub fn vault(src: &Path, dest: &Path) -> Res<ImportStats> {
         // keep the folder structure; neutralise any `..` components
         let safe: PathBuf = rel
             .split('/')
-            .filter(|c| !c.is_empty() && *c != "." && *c != "..")
+            .filter(|c| !c.is_empty() && *c != "." && *c != ".." && !c.contains(':'))
             .collect();
         let target = dest.join(safe);
-        if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let written = target
+            .parent()
+            .map_or(Ok(()), |p| {
+                std::fs::create_dir_all(p).map_err(|e| e.to_string())
+            })
+            .and_then(|_| safe_write(&target, body.as_bytes()));
+        if written.is_ok() {
+            count += 1;
+        } else {
+            skipped += 1; // one unwritable note (reserved name, clash with a folder) is not fatal
         }
-        std::fs::write(&target, body).map_err(|e| e.to_string())?;
-        count += 1;
     }
     Ok(finish(dest, count, skipped))
 }
@@ -483,12 +553,25 @@ pub fn csv_bookmarks(text: &str, dest: &Path) -> Res<ImportStats> {
                 .unwrap_or("")
                 .to_string()
         };
-        let url = r.get(url_i).map(|s| s.trim()).unwrap_or("").to_string();
-        if url.is_empty() {
+        let url = r
+            .get(url_i)
+            .map(|s| s.trim())
+            .unwrap_or("")
+            .replace(['\n', '\r'], " ");
+        let lu: String = url
+            .chars()
+            .filter(|c| !c.is_whitespace() && !c.is_control())
+            .collect::<String>()
+            .to_lowercase();
+        if url.is_empty()
+            || ["javascript:", "data:", "vbscript:"]
+                .iter()
+                .any(|s| lu.starts_with(s))
+        {
             skipped += 1;
             continue;
         }
-        let title = g(title_i);
+        let title = g(title_i).replace(['\n', '\r'], " ");
         let mut line = format!(
             "- [{}]({url})",
             if title.is_empty() { &url } else { &title }
@@ -499,7 +582,7 @@ pub fn csv_bookmarks(text: &str, dest: &Path) -> Res<ImportStats> {
             ("excerpt", g(ex_i)),
         ] {
             if !v.is_empty() {
-                line.push_str(&format!(" -- {lbl}: {}", v.replace('\n', " ")));
+                line.push_str(&format!(" -- {lbl}: {}", v.replace(['\n', '\r'], " ")));
             }
         }
         let group = g(group_i);
@@ -534,7 +617,9 @@ pub fn csv_bookmarks(text: &str, dest: &Path) -> Res<ImportStats> {
 pub fn enex(xml: &[u8], dest: &Path) -> Res<ImportStats> {
     let mut r = Reader::from_reader(xml);
     r.config_mut().check_end_names = false;
-    let mut path: Vec<String> = Vec::new();
+    // one byte per open element (0 = other, 1 = note, 2 = title, 3 = content, 4 = created, 5 = tag)
+    let mut path: Vec<u8> = Vec::new();
+    let mut in_note_flag = false;
     let (mut title, mut content, mut created) = (String::new(), String::new(), String::new());
     let mut tags: Vec<String> = Vec::new();
     let (mut notes, mut skipped) = (0usize, 0usize);
@@ -548,14 +633,14 @@ pub fn enex(xml: &[u8], dest: &Path) -> Res<ImportStats> {
             _ => (String::new(), false),
         };
         if is_text {
-            let cur = path.last().map(String::as_str).unwrap_or("");
-            let in_note = path.iter().any(|p| p == "note");
+            let cur = path.last().copied().unwrap_or(0);
+            let in_note = in_note_flag;
             if in_note && content.len() < 32 * 1024 * 1024 {
                 match cur {
-                    "title" => title.push_str(&text),
-                    "content" => content.push_str(&text),
-                    "created" => created.push_str(&text),
-                    "tag" => tags.push(text.trim().to_string()),
+                    2 => title.push_str(&text),
+                    3 => content.push_str(&text),
+                    4 => created.push_str(&text),
+                    5 => tags.push(text.trim().to_string()),
                     _ => {}
                 }
             }
@@ -564,18 +649,25 @@ pub fn enex(xml: &[u8], dest: &Path) -> Res<ImportStats> {
             Ok(Event::Start(e)) => {
                 let n = e.name().as_ref().to_lowercase();
                 if n == "note" {
+                    in_note_flag = true;
                     title.clear();
                     content.clear();
                     created.clear();
                     tags.clear();
                 }
-                if path.len() < MAX_DEPTH {
-                    path.push(n);
-                }
+                path.push(match n.as_str() {
+                    "note" => 1,
+                    "title" => 2,
+                    "content" => 3,
+                    "created" => 4,
+                    "tag" => 5,
+                    _ => 0,
+                });
             }
             Ok(Event::End(e)) => {
                 let n = e.name().as_ref().to_lowercase();
-                if n == "note" {
+                if n == "note" && in_note_flag {
+                    in_note_flag = false;
                     let t = if title.trim().is_empty() {
                         "Untitled"
                     } else {

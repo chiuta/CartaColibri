@@ -118,7 +118,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
 .vbody{display:flex;flex:1;min-height:0}.vbody pre{flex:1;min-width:0}
 .dpanel{width:310px;flex:none;border-left:1px solid var(--line);padding:14px;overflow:auto}.dpanel h4{margin:14px 0 6px;font-size:.8em;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}.dpanel h4:first-child{margin-top:0}
 .dpanel .row input[type=text]{flex:1}.dpanel textarea{min-height:110px}
-.starbtn[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#2b1d00}
+.starbtn[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#2b1d00}:root[data-theme=light] .starbtn[aria-pressed=true]{color:#fff}@media(prefers-color-scheme:light){:root[data-theme=auto] .starbtn[aria-pressed=true]{color:#fff}}
 .rel{list-style:none;margin:0;padding:0}.rel li{border-top:1px solid var(--line);padding:4px 0}.rel button{background:none;border:0;color:var(--cyan);cursor:pointer;text-align:left;padding:2px 0;text-decoration:underline;word-break:break-all}
 .msg{margin:10px 0}.msg .who{font-size:.8em;font-weight:700;color:var(--mute);margin-bottom:2px}.msg.u .mb{background:var(--sel);border-radius:var(--r);padding:8px 12px;white-space:pre-wrap}
 .msg.b .mb{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;background:var(--s2)}
@@ -138,7 +138,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
 <a class="skip" href="#main" data-i="skip"></a>
 <nav class="rail" aria-label="CartaColibri">
   <a href="/carta.html" title="CartaColibri"><img src="/carta-mark.png" alt="CartaColibri"></a>
-  <a class="rb" href="/" data-tip="" data-i="chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></a>
+  <button class="rb" id="chatRail" data-tip="" data-i="chat" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></button>
   <button class="rb" data-view="library" data-tip="" data-i="library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.8 1-3 13-3.8-1z"/></svg></button>
   <button class="rb" data-view="fetch" data-tip="" data-i="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
   <button class="rb" data-view="stats" data-tip="" data-i="stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></button>
@@ -158,7 +158,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   <div class="gprog"><div class="progbox" role="status"><div class="pbar ind" aria-hidden="true"><i></i></div><div class="muted progTxt" style="font-size:.87em"></div></div></div>
 
   <!-- LIBRARY: every local document + its location; add / remove folder; upload; view -->
-  <section class="view" id="v-library" aria-label="Library">
+  <section class="view" id="v-library" data-al="library">
     <div class="side" id="sideLib">
       <h3><span data-i="folders"></span><button class="hlp" type="button" data-h="h_folder" data-al="help_label">?</button></h3><div id="roots"></div>
       <div class="row"><input type="text" id="newRoot" data-ph="folder_path" data-al="folder_path" style="width:100%" autocomplete="off" spellcheck="false"></div>
@@ -186,7 +186,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   </section>
 
   <!-- RAG-fetch: search + filters + groups ("search scope") -->
-  <section class="view" id="v-fetch" aria-label="Search">
+  <section class="view" id="v-fetch" data-al="search">
     <div class="side" id="sideFetch">
       <h3><span data-i="filters"></span><button class="hlp" type="button" data-h="h_filters" data-al="help_label">?</button></h3>
       <div class="chips" id="exts"></div>
@@ -210,7 +210,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
     </div>
   </section>
   <!-- STATS: numbers, timeline, backup, index health -->
-  <section class="view" id="v-stats" aria-label="Stats">
+  <section class="view" id="v-stats" data-al="stats">
     <div class="body"><div class="scroll" id="statsBody">
       <div class="bar"><b data-i="st_title"></b></div>
       <div id="statsOut"></div>
@@ -258,7 +258,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
 </aside>
 <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="vTitle"><div class="bar"><b id="vTitle" style="flex:1"></b><button class="btn sm starbtn" id="vStar" aria-pressed="false" data-i="dp_star"></button><button class="btn sm" id="vClose" data-i="close"></button></div>
   <div class="vbody"><pre id="vText" tabindex="0"></pre>
-  <aside class="dpanel" aria-label="">
+  <aside class="dpanel" data-al="dp_panel">
     <h4 data-i="dp_tags"></h4><div id="vTags"></div>
     <div class="row"><input type="text" id="vTagIn" list="tagDl" data-ph="dp_tag_ph" data-al="dp_tag_ph" maxlength="40" autocomplete="off"><button class="btn sm" id="vTagAdd" data-i="dp_add"></button></div><datalist id="tagDl"></datalist>
     <h4 data-i="dp_note"></h4><textarea id="vNote" data-ph="dp_note_ph" data-al="dp_note_ph" maxlength="20000"></textarea><div class="muted" id="vNoteSt" role="status" style="font-size:.85em;min-height:1.3em"></div>
@@ -650,6 +650,7 @@ fd_opml_in:{en:'Import OPML',ro:'Importă OPML',fr:'Importer OPML',it:'Importa O
 fd_opml_out:{en:'Export OPML',ro:'Exportă OPML',fr:'Exporter OPML',it:'Esporta OPML',es:'Exportar OPML',pt:'Exportar OPML',de:'OPML exportieren',hu:'OPML exportálása'},
 fd_opml_done:{en:'{n} new feeds added.',ro:'{n} fluxuri noi adăugate.',fr:'{n} nouveaux flux ajoutés.',it:'{n} nuovi feed aggiunti.',es:'{n} fuentes nuevas añadidas.',pt:'{n} feeds novos adicionados.',de:'{n} neue Feeds hinzugefügt.',hu:'{n} új hírforrás hozzáadva.'},
 opens_n:{en:'{n}×',ro:'{n}×',fr:'{n}×',it:'{n}×',es:'{n}×',pt:'{n}×',de:'{n}×',hu:'{n}×'},
+dp_panel:{en:'Document details',ro:'Detaliile documentului',fr:'Détails du document',it:'Dettagli del documento',es:'Detalles del documento',pt:'Detalhes do documento',de:'Dokumentdetails',hu:'A dokumentum adatai'},
 k_stats:{en:'Go to Stats',ro:'Mergi la Cifre',fr:'Aller aux Chiffres',it:'Vai ai Numeri',es:'Ir a Cifras',pt:'Ir para Números',de:'Zu den Zahlen',hu:'Ugrás a Számokhoz'}
 };
 let LANG=(()=>{try{const s=localStorage.getItem('carta.lang');if(s&&L[s])return s}catch(e){}const n=(navigator.language||'en').slice(0,2);return L[n]?n:'en'})();
@@ -735,7 +736,7 @@ function emptySearch(){
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><h2>${T('empty_search_title')}</h2><p>${T('hint_fetch')}</p>${chipsHtml()}<p style="font-size:.87em">${T('syntax_tip')}</p>`}
 function renderRes(){const r=S.results;$('#resCount').textContent=r.length?r.length+' '+T('results_n'):'';
   $('#resTable').style.display=r.length?'':'none';const e=$('#resEmpty');e.style.display=r.length?'none':'block';if(!r.length)e.innerHTML=emptySearch();
-  $('#resRows').innerHTML=r.map(x=>`<tr tabindex="0" class="${S.selRes.has(x.id)?'sel':''}" data-r="${x.id}" title="${esc(T('res_hint'))}"><td><input type="checkbox" data-c="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selRes.has(x.id)?'checked':''}></td><td class="n">${x.score}</td><td>${starHtml(x.path)}${esc(base(x.path))}<div>${tagsHtml(x.path)}</div><div class="snip">${esc(x.snippet).replace(/\[([^\]]+)\]/g,'<b>$1</b>')}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td></tr>`).join('')}
+  $('#resRows').innerHTML=r.map(x=>`<tr tabindex="0" class="${S.selRes.has(x.id)?'sel':''}" data-r="${x.id}" title="${esc(T('res_hint'))}"><td><input type="checkbox" data-c="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selRes.has(x.id)?'checked':''}></td><td class="n">${esc(x.score)}</td><td>${starHtml(x.path)}${esc(base(x.path))}<div>${tagsHtml(x.path)}</div><div class="snip">${esc(x.snippet).replace(/\[([^\]]+)\]/g,'<b>$1</b>')}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td></tr>`).join('')}
 
 /* delegated events: keep focus while ticking boxes */
 document.addEventListener('click',e=>{const t=e.target;let b;
@@ -762,7 +763,7 @@ const openResult=r=>openDoc(+r.dataset.r,base(S.results.find(x=>x.id==r.dataset.
 const V={id:0,path:'',dirty:false,t:0};
 async function openDoc(id,name){await flushNote();try{const j=await api('doc?id='+id);$('#vTitle').textContent=name;
   const q=((S.dym&&S.dym.corrected)||$('#q').value).trim().split(/\s+/).filter(w=>/\w/.test(w)&&!/^(AND|OR|NOT)$/.test(w)).map(w=>w.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);
-  let h=esc(j.text);if(q.length)h=h.replace(new RegExp('('+q.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi'),'<mark>$1</mark>');
+  let h;if(q.length){const re=new RegExp('('+q.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi');h=j.text.split(re).map((x,i)=>i%2?'<mark>'+esc(x)+'</mark>':esc(x)).join('')}else h=esc(j.text);
   $('#vText').innerHTML=h;V.id=id;V.path='';V.dirty=false;$('#vNote').value='';$('#vNoteSt').textContent='';$('#vTags').innerHTML='';$('#vRel').innerHTML='';
   openM($('#viewer'),'#vClose');api('open','POST',{id}).catch(()=>{});loadPanel(id)}catch(e){fail(e)}}
 
@@ -895,7 +896,7 @@ const selIds=()=>selInfo().ids;
 function renderDrawerScope(){const s=selInfo();$('#scopeSelTxt').textContent=s.ids.length+' '+T(s.top?'top_n':'selected_n');
   const g=S.lib.groups;$('#scopeGroup').innerHTML=Object.keys(g).map(n=>`<option>${esc(n)}</option>`).join('');$('#cartaEmpty').style.display=s.ids.length||Object.keys(g).length?'none':'';const cg=$('#chatGroup'),cv=cg.value;cg.innerHTML=`<option value="">${esc(T('chat_all'))}</option>`+Object.keys(g).map(n=>`<option>${esc(n)}</option>`).join('');cg.value=Object.keys(g).includes(cv)?cv:''}
 function toggleCarta(){const d=$('#drawer');if(d.classList.contains('on'))closeM(d);else{renderDrawerScope();openM(d,pref('tab')==='chat'?'#chatIn':'#req')}}
-$('#cartaBtn').onclick=toggleCarta;$('#dClose').onclick=()=>closeM($('#drawer'));
+$('#cartaBtn').onclick=toggleCarta;$('#chatRail').onclick=()=>{setTab('chat');if(!$('#drawer').classList.contains('on'))toggleCarta();else setTimeout(()=>$('#chatIn').focus(),30)};$('#dClose').onclick=()=>closeM($('#drawer'));
 const TASKS=['summarize','extract','synthesize','compare','timeline','glossary','outline','actions','faq','flashcards','quiz','translate','explain','contradictions'];
 const tn=t=>T(['summarize','extract','synthesize'].includes(t)?t:'tn_'+t);
 $$('#taskSeg button').forEach(b=>b.onclick=()=>setTask(b.dataset.t));
@@ -918,7 +919,7 @@ function addMsg(who,text,wait){const w=document.createElement('div');w.className
   $('#chatLog').appendChild(w);$('#chatEmpty').style.display='none';w.scrollIntoView({block:'end'});return w}
 function renderBot(w,j){const mb=w.querySelector('.mb');
   if(!j.found){mb.innerHTML=`<div class="nf" role="status"><b>⚠ ${esc(T('chat_nf'))}</b><p>${esc(T('chat_nf_hint'))}</p></div>`;return}
-  const cited=j.sources.filter(x=>new RegExp('\\b'+x.label+'\\b').test(j.answer)),list=cited.length?cited:j.sources;
+  const cited=j.sources.filter(x=>new RegExp('\\b'+String(x.label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(j.answer)),list=cited.length?cited:j.sources;
   let h=(j.note?`<p class="muted">${esc(j.note)}</p>`:'')+md(j.answer);
   if(list.length)h+=`<div class="srcs"><h4>${T('chat_src')}</h4>${list.map(x=>`<div class="src" data-sid="${esc(x.label)}"><b class="cite">[${esc(x.label)}]</b><span class="nm" title="${esc(x.path)}">${esc(base(x.path))}</span><button class="btn sm" data-op="${esc(x.path)}">${T('open_source')}</button><details><summary>${T('chat_passage')}</summary><div class="snip">${esc(x.passage)}</div></details></div>`).join('')}</div>`;
   mb.innerHTML=h;w.scrollIntoView({block:'end'})}
@@ -985,7 +986,7 @@ function bars(data,fmt,lab){const rows=data.slice(0,12);if(!rows.length)return `
     return `<text class="bl" x="${lw-8}" y="${y+17}" text-anchor="end">${esc(trunc(l,21))}</text><rect class="bb" x="${lw}" y="${y+4}" width="${w}" height="16" rx="4"><title>${esc(l)}: ${fmt?fmt(r[1]):r[1]}</title></rect><text class="bv" x="${lw+w+6}" y="${y+17}">${fmt?fmt(r[1]):r[1]}</text>`}).join('')+'</svg>'}
 function timelineSvg(months){const m=months.slice().reverse().slice(-48);if(!m.length)return '';const n=m.length,W=720,H=140,pad=24,bw=Math.min(34,(W-pad*2)/n),mx=Math.max(1,...m.map(x=>x.count));
   return `<svg class="bars tl" viewBox="0 0 ${W} ${H+22}" role="img" aria-label="${esc(F('st_tl_aria',{a:m[0].month,b:m[n-1].month}))}">`+m.map((x,i)=>{const h=Math.max(2,(H-14)*x.count/mx),X=pad+i*bw;
-    return `<rect class="bb" x="${X+1}" y="${H-h}" width="${Math.max(2,bw-2)}" height="${h}" rx="2"><title>${x.month}: ${x.count}</title></rect>`+(x.month.endsWith('-01')||i===0?`<text class="ax" x="${X}" y="${H+15}">${x.month.slice(0,4)}</text>`:'')}).join('')+`<text class="ax" x="${W-pad}" y="12" text-anchor="end">max ${mx}</text></svg>`}
+    return `<rect class="bb" x="${X+1}" y="${H-h}" width="${Math.max(2,bw-2)}" height="${h}" rx="2"><title>${esc(x.month)}: ${+x.count}</title></rect>`+(x.month.endsWith('-01')||i===0?`<text class="ax" x="${X}" y="${H+15}">${esc(x.month.slice(0,4))}</text>`:'')}).join('')+`<text class="ax" x="${W-pad}" y="12" text-anchor="end">max ${mx}</text></svg>`}
 async function renderStats(){const o=$('#statsOut');try{const [st,tl]=await Promise.all([api('stats'),api('timeline')]);
   if(!st.docs){o.innerHTML=`<div class="empty"><h2>${T('st_title')}</h2><p>${T('st_none')}</p></div>`;return}
   const ent=m=>Object.entries(m).sort((a,b)=>b[1]-a[1]),lang=c=>c==='?'?T('unknown'):(L[c]||c);
@@ -1104,7 +1105,7 @@ async function health(){try{const r=await fetch('/health',{cache:'no-store'});S.
 (async()=>{applyLang();const h=(location.hash||'').slice(1);let v=/^(fetch|library|stats)$/.test(h)?h:pref('view');
   try{S.ocr=(await api('status')).ocr}catch(e){}
   try{await load()}catch(e){fail(e)}
-  if(!S.lib)S.lib={documents:[],roots:[],groups:[]};
+  if(!S.lib)S.lib={documents:[],roots:[],groups:{},problems:[]};
   if(!/^(fetch|library|stats)$/.test(v||''))v=S.lib.documents.length?'fetch':'library';show(v);health();
   try{const pr=await api('progress');if(pr.running)waitIndex().then(()=>load()).catch(()=>{})}catch(e){}
   setInterval(health,8000);

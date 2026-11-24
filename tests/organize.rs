@@ -189,7 +189,14 @@ fn backup_restore_verified() {
     let full = out.path().join("full.zip");
     let slim = out.path().join("slim.zip");
     assert!(backup(&lib, &full, true).unwrap().includes_index);
+    std::fs::write(lib.home.join("clip.token"), "secret-token-value").unwrap();
     let m = backup(&lib, &slim, false).unwrap();
+    assert!(
+        m.files.iter().all(|f| !f.name.starts_with("clip.token")),
+        "token leaked into backup"
+    );
+    let m2 = backup(&lib, &full, true).unwrap();
+    assert!(m2.files.iter().all(|f| !f.name.starts_with("clip.token")));
     assert!(!m.includes_index && m.files.iter().all(|f| !f.name.starts_with("index.sqlite")));
     assert!(backup_verify(&full).is_ok());
     drop(lib);
@@ -286,4 +293,232 @@ fn stats_and_timeline() {
     assert_eq!(t[0].count, 3);
     assert_eq!(t[0].month.len(), 7);
     assert_eq!(t[0].month[..4], s.by_year.keys().next().unwrap()[..]);
+}
+
+// ───────────────────────── adversarial ─────────────────────────
+
+fn evil_zip(path: &std::path::Path, name: &str, body: &[u8]) {
+    use sha1::{Digest, Sha1};
+    use std::io::Write;
+    let f = fs::File::create(path).unwrap();
+    let mut z = zip::ZipWriter::new(f);
+    let o = zip::write::SimpleFileOptions::default();
+    z.start_file(format!("state/{name}"), o).unwrap();
+    z.write_all(body).unwrap();
+    let man = serde_json::json!({
+        "format": "cartacolibri-backup", "version": 1, "app_version": "x", "created": "now",
+        "includes_index": false,
+        "files": [{"name": name, "size": body.len(), "sha1": hex::encode(Sha1::digest(body))}]
+    });
+    z.start_file("manifest.json", o).unwrap();
+    z.write_all(man.to_string().as_bytes()).unwrap();
+    z.finish().unwrap();
+}
+
+#[test]
+fn backup_with_traversal_names_is_refused() {
+    let t = tempfile::tempdir().unwrap();
+    for name in [
+        "../escape.txt",
+        "a/../../escape.txt",
+        "..\\escape.txt",
+        "a\\..\\..\\escape.txt",
+        "/abs.txt",
+        "C:evil.txt",
+        "a//b",
+        "./x",
+        "bad\0name",
+        "new\nline",
+    ] {
+        let z = t.path().join("evil.zip");
+        evil_zip(&z, name, b"pwned");
+        let home = t.path().join("home");
+        assert!(backup_verify(&z).is_err(), "{name:?} accepted by verify");
+        assert!(restore(&z, &home).is_err(), "{name:?} accepted by restore");
+        assert!(!t.path().join("escape.txt").exists());
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn restore_never_writes_through_a_symlink_and_backup_survives_symlink_loops() {
+    let t = tempfile::tempdir().unwrap();
+    let outside = t.path().join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    let home = t.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    std::os::unix::fs::symlink(&outside, home.join("sub")).unwrap();
+    let z = t.path().join("b.zip");
+    evil_zip(&z, "sub/owned.txt", b"pwned");
+    assert!(restore(&z, &home).is_err());
+    assert!(
+        !outside.join("owned.txt").exists(),
+        "wrote through a symlink"
+    );
+    // a symlink loop inside the home must not hang or overflow the stack in backup
+    let (h, _d, lib) = setup(&corpus());
+    std::os::unix::fs::symlink(h.path(), h.path().join("loop")).unwrap();
+    std::os::unix::fs::symlink("/etc/hostname", h.path().join("leak")).unwrap();
+    let out = t.path().join("ok.zip");
+    let m = backup(&lib, &out, false).unwrap();
+    assert!(
+        m.files
+            .iter()
+            .all(|f| !f.name.starts_with("loop") && f.name != "leak")
+    );
+}
+
+#[test]
+fn damaged_state_file_is_kept_not_silently_replaced() {
+    let (h, _d, lib) = setup(&corpus());
+    let a = path_of(&lib, "a.txt");
+    tag_add(&lib, &a, &["keep".into()]).unwrap();
+    let f = h.path().join("organize.json");
+    let good = fs::read_to_string(&f).unwrap();
+    fs::write(&f, &good[..good.len() / 2]).unwrap(); // truncated by a crash
+    let err = tag_add(&lib, &a, &["new".into()]).unwrap_err();
+    assert!(err.contains("damaged"), "{err}");
+    let kept = fs::read_dir(h.path())
+        .unwrap()
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().contains("corrupt"))
+        .count();
+    assert_eq!(kept, 1, "the damaged file must be preserved");
+    assert!(tag_add(&lib, &a, &["new".into()]).is_ok());
+}
+
+#[test]
+fn concurrent_writers_lose_no_update() {
+    let (h, _d, lib) = setup(&corpus());
+    let a = path_of(&lib, "a.txt");
+    drop(lib);
+    let home = h.path().to_string_lossy().into_owned();
+    let mut hs = vec![];
+    for i in 0..8 {
+        let (home, a) = (home.clone(), a.clone());
+        hs.push(std::thread::spawn(move || {
+            let lib = Library::open(Some(&home), false).unwrap();
+            for j in 0..10 {
+                tag_add(&lib, &a, &[format!("t{i}-{j}")]).unwrap();
+            }
+        }));
+    }
+    for t in hs {
+        t.join().unwrap();
+    }
+    let lib = Library::open(Some(&home), false).unwrap();
+    assert_eq!(tags_of(&lib, &a).len(), 80, "updates were lost");
+    assert!(!h.path().join("organize.lock").exists());
+}
+
+#[test]
+fn tags_notes_and_paths_are_bounded_and_normalised() {
+    let (_h, _d, lib) = setup(&corpus());
+    let a = path_of(&lib, "a.txt");
+    let t = tag_add(
+        &lib,
+        &a,
+        &[
+            "  #Mixed   CASE\ttag\n".into(),
+            "x".repeat(500),
+            "\u{7}\u{1b}[31m".into(),
+            "   ".into(),
+            "#".into(),
+        ],
+    )
+    .unwrap();
+    assert!(t.contains(&"mixed case tag".to_string()), "{t:?}");
+    assert!(
+        t.iter()
+            .all(|s| s.chars().count() <= TAG_MAX && !s.contains(char::is_control)),
+        "{t:?}"
+    );
+    assert!(t.iter().all(|s| !s.trim().is_empty()));
+    assert!(set_note(&lib, &a, &"n".repeat(NOTE_MAX + 1)).is_err());
+    assert!(set_note(&lib, &a, &"n".repeat(NOTE_MAX)).is_ok());
+    assert!(tag_add(&lib, "", &["x".into()]).is_err());
+    assert!(set_star(&lib, "  ", true).is_err());
+    // unicode case folding for tags
+    tag_add(&lib, &a, &["ȘCOALĂ".into()]).unwrap();
+    assert!(paths_with_tag(&lib, "școală").contains(&a));
+}
+
+#[test]
+fn csv_cells_that_look_like_formulas_are_neutralised() {
+    let it = |s: &str| ExportItem {
+        path: "/p.txt".into(),
+        title: s.into(),
+        note: s.into(),
+        snippet: s.into(),
+        tags: vec![s.into()],
+        ..Default::default()
+    };
+    for bad in [
+        "=1+1",
+        "+cmd|' /C calc'!A0",
+        "-2+3",
+        "@SUM(A1)",
+        "\t=1",
+        "\r=1",
+    ] {
+        let c = to_csv(&[it(bad)]);
+        let line = c.lines().nth(1).unwrap();
+        assert!(
+            !line.starts_with(bad.chars().next().unwrap()) || bad.starts_with('\r'),
+            "{line}"
+        );
+        for cell in line.split(',') {
+            let cell = cell.trim_matches('"');
+            assert!(!cell.starts_with(['=', '+', '-', '@']), "{bad:?} -> {line}");
+        }
+    }
+    // numbers and ordinary text are untouched
+    let c = to_csv(&[ExportItem {
+        path: "/a b.txt".into(),
+        title: "a".into(),
+        size: 42,
+        ..Default::default()
+    }]);
+    assert!(c.contains(",42,"), "{c}");
+}
+
+#[test]
+fn export_zip_refuses_to_overwrite_a_source_document() {
+    let (_h, d, lib) = setup(&corpus());
+    let a = path_of(&lib, "a.txt");
+    let before = fs::read_to_string(&a).unwrap();
+    let hits = lib.search("nectar", &Filter::default()).unwrap();
+    let items = items_from_hits(&lib, &hits);
+    assert!(export_zip(&items, std::path::Path::new(&a)).is_err());
+    assert_eq!(fs::read_to_string(&a).unwrap(), before);
+    assert!(export_zip(&items, d.path()).is_err());
+}
+
+#[test]
+fn import_json_keeps_local_notes_and_bounds_tags() {
+    let (_h, _d, lib) = setup(&corpus());
+    let a = path_of(&lib, "a.txt");
+    set_note(&lib, &a, "mine").unwrap();
+    let json =
+        serde_json::json!({"format":"cartacolibri-export","version":1,"created":"x","items":[
+            {"path": a, "title":"t", "note":"theirs", "tags":["A".repeat(300)]},
+            {"path": "", "title":"t", "note":"ignored"}
+        ]})
+        .to_string();
+    import_json(&lib, &json).unwrap();
+    let m = meta_of(&lib, &a);
+    assert!(
+        m.note.starts_with("mine") && m.note.contains("theirs"),
+        "{:?}",
+        m.note
+    );
+    assert!(m.tags.iter().all(|t| t.chars().count() <= TAG_MAX));
+    assert!(!all_meta(&lib).contains_key(""));
+}
+
+#[test]
+fn related_with_huge_k_does_not_overflow() {
+    let (_h, _d, lib) = setup(&corpus());
+    let id = lib.documents(None).unwrap()[0].id;
+    let _ = related(&lib, id, usize::MAX).unwrap();
 }

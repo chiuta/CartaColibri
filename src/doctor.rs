@@ -99,14 +99,14 @@ pub fn run(home: Option<&str>, url: &str, port: u16) -> Vec<Check> {
         v.push(ck(
             Level::Ok,
             "gateway",
-            format!("Colibrì answers at {url}"),
+            format!("Colibrì answers at {}", crate::carta::redact_url(url)),
             None,
         ));
     } else {
         v.push(ck(
             Level::Warn,
             "gateway",
-            format!("Colibrì gateway not reachable at {url} (summarize/extract/synthesize will need --mock)"),
+            format!("Colibrì gateway not reachable at {} (summarize/extract/synthesize will need --mock)", crate::carta::redact_url(url)),
             Some("coli web --model DIR   (same command on Linux/macOS/Windows; or add --mock)".into()),
         ));
     }
@@ -143,7 +143,7 @@ pub fn run(home: Option<&str>, url: &str, port: u16) -> Vec<Check> {
                         Level::Fail,
                         "index",
                         format!("cannot open the index: {e}"),
-                        Some("move or delete index.sqlite in the home folder, then run: cartacolibri index".into()),
+                        Some("rebuild it (the old file is kept as index.sqlite.broken): cartacolibri verify --repair".into()),
                     )),
                 }
             } else {

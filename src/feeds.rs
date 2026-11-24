@@ -7,9 +7,7 @@ use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::io::Read;
 use std::path::Path;
-use std::time::Duration;
 
 pub type Res<T> = Result<T, String>;
 
@@ -221,21 +219,13 @@ pub fn fetch(url: &str) -> Res<String> {
     if !(lower.starts_with("http://") || lower.starts_with("https://")) {
         return Err("only http:// and https:// feeds are supported".into());
     }
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(30)))
-        .user_agent("CartaColibri-feeds/0.2 (+local; https://github.com/chiuta/CartaColibri)")
-        .build()
-        .into();
-    let mut resp = agent
-        .get(url)
-        .call()
-        .map_err(|e| format!("cannot fetch {url}: {e}"))?;
-    let mut raw = Vec::new();
-    resp.body_mut()
-        .as_reader()
-        .take(MAX_FEED_BYTES + 1)
-        .read_to_end(&mut raw)
-        .map_err(|e| e.to_string())?;
+    // same guarded client as web-grab: no loopback / private targets, also after redirects
+    let (raw, _) = crate::grab::fetch_raw(
+        url,
+        MAX_FEED_BYTES,
+        30,
+        "CartaColibri-feeds/0.2 (+local; https://github.com/chiuta/CartaColibri)",
+    )?;
     if raw.len() as u64 > MAX_FEED_BYTES {
         return Err(format!(
             "feed larger than {} MB; skipped",

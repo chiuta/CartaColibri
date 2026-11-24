@@ -151,6 +151,7 @@
   hidden("msg", (m) => {
     if (!sh) return;
     if (m.k === "ts") return renderTs(m.x || []);
+    if (m.k === "rel") return renderRel(m.x || []);
     if (!m.ok) return show(friendly(m.text), "err");
     const x = m.x;
     if (m.k === "dl") return offerDoc(x);
@@ -195,8 +196,8 @@
       badge.textContent = "📚 " + L.inlib + (i.status.changed ? " · ⚠ " + L.changed : "");
       badge.className = i.status.changed ? "warn" : "";
       badge.title = i.status.path;
-    } else if (i.related && i.related.length) {
-      badge.style.display = "inline-block"; badge.textContent = "🔗 " + i.related.length + " " + L.related.toLowerCase(); badge.className = "";
+    } else if (i.rn > 0) {
+      badge.style.display = "inline-block"; badge.textContent = "🔗 " + i.rn + " " + L.related.toLowerCase(); badge.className = "";
     }
   });
   // ---- new-tab page (drawn inside the closed shadow root: the page itself learns nothing)
@@ -283,10 +284,16 @@
         const acts = el("div", null, "acts"); acts.append(btn("💾 " + L.refreshCopy, () => act("save"), "go")); box.append(d, acts);
       }
     }
-    if (info.related && info.related.length) {
-      box.append(el("div", "🔗 " + L.related + ":", "dh"));
-      for (const r of info.related) box.append(el("div", " • " + r.score + "%  " + r.path + "\n     " + r.snippet, "pre"));
+    // titles/snippets of related library documents are fetched on demand, never pushed unasked
+    if (info.rn > 0) {
+      if (!info.status) { send({ cmd: "related" }); return; }
+      box.append(btn("🔗 " + L.related, () => send({ cmd: "related" })));
     }
+    showNode(box);
+  };
+  const renderRel = (list) => {
+    const box = el("div"); box.append(el("div", "🔗 " + L.related + ":", "dh"));
+    for (const r of list) box.append(el("div", " • " + r.score + "%  " + r.path + "\n     " + r.snippet, "pre"));
     showNode(box);
   };
   const meta = (...names) => { for (const n of names) { const m = document.querySelector('meta[name="' + n + '"],meta[property="' + n + '"],meta[itemprop="' + n + '"]'); if (m && m.content) return m.content.trim(); } return ""; };

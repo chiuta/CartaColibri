@@ -216,7 +216,9 @@ fn check(dir: &Path, ext: &str, data: &[u8], what: &str) {
     let r = extract::extract(&p, ext, false);
     let dt = t.elapsed();
     let _ = std::fs::remove_file(&p);
-    assert!(dt < Duration::from_secs(5), "{ext} {what}: took {dt:?}");
+    // generous in unoptimised builds (these inputs are millions of elements)
+    let limit = if cfg!(debug_assertions) { 30 } else { 5 };
+    assert!(dt < Duration::from_secs(limit), "{ext} {what}: took {dt:?}");
     if let Err(m) = r {
         assert!(!m.contains("panicked"), "{ext} {what}: reader panicked");
     }
@@ -633,4 +635,134 @@ fn twenty_thousand_files_walk_quickly() {
     let dt = start.elapsed();
     assert_eq!(st.seen, 20_000, "{st:?}");
     assert!(dt < Duration::from_secs(20), "walk took {dt:?}");
+}
+
+// ---------------------------------------------------------------- adversarial audit
+
+#[test]
+fn xlsx_shared_string_amplification_is_bounded() {
+    let d = tempfile::tempdir().unwrap();
+    let big = "a".repeat(4 * 1024 * 1024);
+    let sst = format!("<sst><si><t>{big}</t></si></sst>");
+    let sheet = format!(
+        "<worksheet><sheetData><row>{}</row></sheetData></worksheet>",
+        "<c t=\"s\"><v>0</v></c>".repeat(60_000)
+    );
+    let z = make_zip(
+        &[
+            ("xl/sharedStrings.xml", sst.into_bytes()),
+            ("xl/worksheets/sheet1.xml", sheet.into_bytes()),
+        ],
+        true,
+    );
+    let p = write_tmp(d.path(), ".xlsx", &z);
+    let t = Instant::now();
+    let parts = extract::extract(&p, ".xlsx", false).unwrap();
+    let total: usize = parts.iter().map(|(_, t)| t.len()).sum();
+    assert!(
+        total <= extract::max_text_bytes() + (8 << 20),
+        "xlsx produced {total} bytes"
+    );
+    assert!(t.elapsed() < Duration::from_secs(30));
+}
+
+#[test]
+fn odd_encodings_and_nul_bytes_never_panic() {
+    let d = tempfile::tempdir().unwrap();
+    let mut cases: Vec<Vec<u8>> = vec![
+        vec![0xff, 0xfe],
+        vec![0xff, 0xfe, 0x41],
+        vec![0xfe, 0xff, 0xd8, 0x00],
+        vec![0xff, 0xfe, 0x00, 0xd8, 0x41, 0x00],
+        vec![0xef, 0xbb, 0xbf],
+        vec![0xef, 0xbb, 0xbf, 0xff, 0xff],
+        b"a b c ".to_vec(),
+        vec![0; 100_000],
+        "\u{10ffff}\u{0}\u{feff}\u{202e}".as_bytes().to_vec(),
+        [b"line ".as_slice(), &vec![b'x'; 5_000_000]].concat(),
+        vec![0xff; 1_000_000],
+        "\u{e9}".repeat(3_000_000).into_bytes(),
+    ];
+    cases.push(
+        b"\xEF\xBB\xBF"
+            .iter()
+            .chain(b"caf\xe9 \xff\xfe".iter())
+            .copied()
+            .collect(),
+    );
+    for ext in [
+        ".txt", ".md", ".html", ".rtf", ".csv", ".tsv", ".json", ".jsonl", ".eml", ".mbox", ".ics",
+        ".vcf", ".srt", ".vtt", ".ipynb", ".tex", ".yaml", ".log",
+    ] {
+        for (i, c) in cases.iter().enumerate() {
+            check(d.path(), ext, c, &format!("case {i}"));
+        }
+    }
+    // chunking an enormous single line is linear and never splits a character
+    let line = "\u{e9}".repeat(2_000_000);
+    let t = Instant::now();
+    let ch = extract::chunk(&line, extract::CHUNK_CHARS);
+    assert!(t.elapsed() < Duration::from_secs(20));
+    assert!(ch.iter().all(|c| c.len() <= extract::CHUNK_CHARS + 4));
+}
+
+#[test]
+fn hostile_containers_member_names_and_flags() {
+    let d = tempfile::tempdir().unwrap();
+    let w = W_DOC.as_bytes().to_vec();
+    // zip-slip style, absolute, reserved and newline names must only ever be read, never created
+    let names = [
+        "../../evil.txt",
+        "/etc/passwd.txt",
+        "C:\\x\\con.txt",
+        "a\nb\r.txt",
+        "nul.txt",
+        "word/../word/document.xml",
+    ];
+    let entries: Vec<(&str, Vec<u8>)> = names.iter().map(|n| (*n, b"hello".to_vec())).collect();
+    let z = make_zip(&entries, true);
+    let p = write_tmp(d.path(), ".zip", &z);
+    let parts = extract::extract(&p, ".zip", false).unwrap();
+    assert!(!parts.is_empty());
+    assert!(!d.path().join("../evil.txt").exists());
+    // duplicate member names: must pick one and not panic
+    let mut z = make_zip(
+        &[
+            ("word/document.xml", w.clone()),
+            ("word/document.xmZ", w.clone()),
+        ],
+        true,
+    );
+    for i in 0..z.len() - 3 {
+        if &z[i..i + 3] == b"xmZ" {
+            z[i + 2] = b'l';
+        }
+    }
+    check(d.path(), ".docx", &z, "dup names");
+    // a 'zip' whose declared sizes lie (small declared, tiny real) and EOCD comment overflow
+    let mut z = make_zip(&[("word/document.xml", w.clone())], false);
+    let n = z.len();
+    z[n - 2..].copy_from_slice(&u16::MAX.to_le_bytes()); // comment length beyond the file
+    check(d.path(), ".docx", &z, "comment length lie");
+    // encrypted flag set on the entry: refused, not read as garbage
+    let mut z = make_zip(&[("word/document.xml", w)], false);
+    for i in 0..z.len().saturating_sub(4) {
+        if z[i..i + 4] == [0x50, 0x4b, 0x03, 0x04] || z[i..i + 4] == [0x50, 0x4b, 0x01, 0x02] {
+            let off = if z[i + 2] == 3 { 6 } else { 8 };
+            z[i + off] |= 1;
+        }
+    }
+    let p = write_tmp(d.path(), ".docx", &z);
+    assert!(extract::extract(&p, ".docx", false).is_err());
+    // 20k tiny epub members that decode to nothing
+    let many: Vec<(String, Vec<u8>)> = (0..3000)
+        .map(|i| (format!("c{i}.xhtml"), b"<!--x-->".to_vec()))
+        .collect();
+    let refs: Vec<(&str, Vec<u8>)> = many.iter().map(|(a, b)| (a.as_str(), b.clone())).collect();
+    check(
+        d.path(),
+        ".epub",
+        &make_zip(&refs, true),
+        "many empty chapters",
+    );
 }

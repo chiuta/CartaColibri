@@ -115,6 +115,7 @@ fn state_path(lib: &Library) -> PathBuf {
     lib.home.join("organize.json")
 }
 
+/// Lenient read for queries: a missing or unreadable file means "no user data yet".
 fn load(lib: &Library) -> OrgState {
     std::fs::read_to_string(state_path(lib))
         .ok()
@@ -122,29 +123,146 @@ fn load(lib: &Library) -> OrgState {
         .unwrap_or_default()
 }
 
+/// Strict read for edits. A corrupt `organize.json` is moved aside (never silently replaced by an
+/// empty state, which would destroy the user's tags and notes) and the edit is refused once.
+fn load_strict(lib: &Library) -> Res<OrgState> {
+    let p = state_path(lib);
+    let s = match std::fs::read_to_string(&p) {
+        Ok(s) => s,
+        Err(x) if x.kind() == std::io::ErrorKind::NotFound => return Ok(OrgState::default()),
+        Err(x) => return Err(format!("cannot read {}: {x}", p.display())),
+    };
+    if s.trim().is_empty() {
+        return Ok(OrgState::default());
+    }
+    match serde_json::from_str(&s) {
+        Ok(st) => Ok(st),
+        Err(x) => {
+            let aside = p.with_extension(format!("json.corrupt-{}", now() as u64));
+            let moved = std::fs::rename(&p, &aside).is_ok();
+            Err(format!(
+                "organize.json is damaged ({x}); {} Nothing was changed, try again to start with an empty state.",
+                if moved {
+                    format!("it was kept as {}.", aside.display())
+                } else {
+                    "it could not be moved aside.".to_string()
+                }
+            ))
+        }
+    }
+}
+
 fn save(lib: &Library, mut st: OrgState) -> Res<()> {
     st.meta.retain(|_, m| !m.is_empty());
     let p = state_path(lib);
-    let tmp = p.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_string_pretty(&st).map_err(e)?).map_err(e)?;
-    std::fs::rename(&tmp, &p).map_err(e)
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let tmp = p.with_extension(format!(
+        "json.{}.{}.tmp",
+        std::process::id(),
+        SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
+    let write = || -> std::io::Result<()> {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(
+            serde_json::to_string_pretty(&st)
+                .map_err(std::io::Error::other)?
+                .as_bytes(),
+        )?;
+        f.sync_all()?;
+        drop(f);
+        std::fs::rename(&tmp, &p)
+    };
+    write().map_err(|x| {
+        let _ = std::fs::remove_file(&tmp);
+        e(x)
+    })
+}
+
+/// Cross-process lock for read-modify-write of organize.json (a lock file; stale after 30 s).
+struct FileLock(PathBuf);
+
+impl FileLock {
+    fn acquire(p: PathBuf) -> Res<FileLock> {
+        let start = std::time::Instant::now();
+        loop {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&p)
+            {
+                Ok(_) => return Ok(FileLock(p)),
+                Err(x) if x.kind() == std::io::ErrorKind::AlreadyExists => {
+                    let stale = std::fs::metadata(&p)
+                        .and_then(|m| m.modified())
+                        .ok()
+                        .and_then(|t| t.elapsed().ok())
+                        .is_some_and(|d| d.as_secs() > 30);
+                    if stale {
+                        let _ = std::fs::remove_file(&p);
+                    } else if start.elapsed().as_secs() >= 10 {
+                        return Err(
+                            "organize.json is locked by another CartaColibri process".into()
+                        );
+                    } else {
+                        std::thread::sleep(std::time::Duration::from_millis(15));
+                    }
+                }
+                Err(x) => return Err(e(x)),
+            }
+        }
+    }
+}
+
+impl Drop for FileLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
 }
 
 fn edit<T>(lib: &Library, f: impl FnOnce(&mut OrgState) -> T) -> Res<T> {
-    let mut st = load(lib);
+    static GATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _g = GATE.lock().unwrap_or_else(|p| p.into_inner());
+    let _fl = FileLock::acquire(lib.home.join("organize.lock"))?;
+    let mut st = load_strict(lib)?;
     let r = f(&mut st);
     save(lib, st)?;
     Ok(r)
 }
 
+/// Longest tag (characters) and note (characters) that are stored.
+pub const TAG_MAX: usize = 64;
+pub const NOTE_MAX: usize = 100_000;
+
+/// Lower-case, no leading `#`, single spaces, no control characters, at most [`TAG_MAX`] chars.
 fn clean_tag(t: &str) -> String {
-    t.trim().trim_start_matches('#').to_lowercase()
+    let t: String = t
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    let t = t.split_whitespace().collect::<Vec<_>>().join(" ");
+    t.trim_start_matches('#')
+        .trim()
+        .to_lowercase()
+        .chars()
+        .take(TAG_MAX)
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn need_path(path: &str) -> Res<()> {
+    if path.trim().is_empty() {
+        Err("a document path is required".into())
+    } else {
+        Ok(())
+    }
 }
 
 // ---------------------------------------------------------------- tags, stars, notes
 
 /// Add tags (case-insensitive, stored lower-case). Returns the document's tags.
 pub fn tag_add(lib: &Library, path: &str, tags: &[String]) -> Res<Vec<String>> {
+    need_path(path)?;
     edit(lib, |st| {
         let m = st.meta.entry(path.to_string()).or_default();
         for t in tags.iter().map(|t| clean_tag(t)).filter(|t| !t.is_empty()) {
@@ -198,6 +316,7 @@ pub fn paths_with_tag(lib: &Library, tag: &str) -> Vec<String> {
 }
 
 pub fn set_star(lib: &Library, path: &str, on: bool) -> Res<()> {
+    need_path(path)?;
     edit(lib, |st| {
         st.meta.entry(path.to_string()).or_default().starred = on
     })
@@ -214,6 +333,10 @@ pub fn starred(lib: &Library) -> Vec<String> {
 
 /// Set (or clear, with an empty string) the free-text note.
 pub fn set_note(lib: &Library, path: &str, note: &str) -> Res<()> {
+    need_path(path)?;
+    if note.chars().count() > NOTE_MAX {
+        return Err(format!("note too long (max {NOTE_MAX} characters)"));
+    }
     edit(lib, |st| {
         st.meta.entry(path.to_string()).or_default().note = note.to_string()
     })
@@ -349,7 +472,7 @@ pub fn saved_run(lib: &Library, name: &str) -> Res<Vec<Hit>> {
 pub fn record_open(lib: &Library, path: &str) -> Res<()> {
     edit(lib, |st| {
         let m = st.meta.entry(path.to_string()).or_default();
-        m.opens += 1;
+        m.opens = m.opens.saturating_add(1);
         m.last_opened = now();
     })
 }
@@ -416,7 +539,7 @@ pub fn related(lib: &Library, doc_id: i64, k: usize) -> Res<Vec<Hit>> {
         .collect::<Vec<_>>()
         .join(" OR ");
     let f = Filter {
-        limit: Some(k + 1),
+        limit: Some(k.saturating_add(1)),
         ..Filter::default()
     };
     let mut hits = lib.search(&fts, &f)?;
@@ -522,16 +645,33 @@ pub fn to_markdown(items: &[ExportItem]) -> String {
         }
         s += "\n";
         if !it.snippet.is_empty() {
-            s += &format!("   > {}\n", it.snippet.replace('\n', " "));
+            s += &format!("   > {}\n", one_line(&it.snippet));
         }
         if !it.note.is_empty() {
-            s += &format!("   Note: {}\n", it.note.replace('\n', " "));
+            s += &format!("   Note: {}\n", one_line(&it.note));
         }
     }
     s
 }
 
+/// Collapse every run of whitespace/control characters (newlines included) into one space.
+fn one_line(s: &str) -> String {
+    s.split(|c: char| c.is_whitespace() || c.is_control())
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// One CSV cell. A cell that a spreadsheet would run as a formula (`=`, `+`, `-`, `@`, tab, CR)
+/// gets a leading apostrophe; cells with commas, quotes or line breaks are quoted.
 fn csv_field(s: &str) -> String {
+    let guarded;
+    let s = if s.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        guarded = format!("'{s}");
+        guarded.as_str()
+    } else {
+        s
+    };
     if s.contains([',', '"', '\n', '\r']) {
         format!("\"{}\"", s.replace('"', "\"\""))
     } else {
@@ -555,7 +695,8 @@ pub fn to_csv(items: &[ExportItem]) -> String {
         ];
         s += &row
             .iter()
-            .map(|f| csv_field(f))
+            .enumerate()
+            .map(|(i, f)| if i == 3 { f.clone() } else { csv_field(f) })
             .collect::<Vec<_>>()
             .join(",");
         s += "\n";
@@ -576,6 +717,28 @@ pub fn to_json(items: &[ExportItem]) -> String {
 /// Write a zip with `sources/` (the files that still exist), `citations.md`, `index.json`, `index.csv`.
 /// Returns the number of source files bundled.
 pub fn export_zip(items: &[ExportItem], out: &Path) -> Res<usize> {
+    // never truncate one of the documents being exported (or a directory) by mistake
+    if out.is_dir() {
+        return Err(format!("{} is a folder, give a file name", out.display()));
+    }
+    if let Ok(oc) = std::fs::canonicalize(out)
+        && items
+            .iter()
+            .any(|it| std::fs::canonicalize(&it.path).is_ok_and(|p| p == oc))
+    {
+        return Err(format!(
+            "{} is one of the documents to export; choose another output file",
+            out.display()
+        ));
+    }
+    let r = export_zip_inner(items, out);
+    if r.is_err() {
+        let _ = std::fs::remove_file(out);
+    }
+    r
+}
+
+fn export_zip_inner(items: &[ExportItem], out: &Path) -> Res<usize> {
     let f = std::fs::File::create(out).map_err(e)?;
     let mut z = zip::ZipWriter::new(f);
     let o = zip::write::SimpleFileOptions::default()
@@ -634,12 +797,16 @@ pub fn import_json(lib: &Library, json: &str) -> Res<ImportReport> {
     };
     edit(lib, |st| {
         for it in f.items {
+            if it.path.trim().is_empty() {
+                continue;
+            }
             let m = st.meta.entry(it.path).or_default();
             if !it.tags.is_empty() {
                 rep.tagged += 1;
                 m.tags.extend(
                     it.tags
                         .iter()
+                        .take(200)
                         .map(|t| clean_tag(t))
                         .filter(|t| !t.is_empty()),
                 );
@@ -650,7 +817,13 @@ pub fn import_json(lib: &Library, json: &str) -> Res<ImportReport> {
             }
             if !it.note.is_empty() {
                 rep.notes += 1;
-                m.note = it.note;
+                let imported: String = it.note.chars().take(NOTE_MAX).collect();
+                if m.note.is_empty() || m.note == imported {
+                    m.note = imported;
+                } else if m.note.chars().count() + imported.chars().count() < NOTE_MAX {
+                    // keep the local note: the imported one is appended, not overwritten
+                    m.note = format!("{}\n---\n{imported}", m.note);
+                }
             }
         }
     })?;
@@ -695,11 +868,16 @@ fn collect(dir: &Path, base: &Path, skip_index: bool, out: &mut Vec<(String, Pat
         let Ok(rel) = p.strip_prefix(base) else {
             continue;
         };
+        // symlinks are neither followed (loops) nor stored (they could point anywhere)
+        if en.file_type().is_ok_and(|t| t.is_symlink()) {
+            continue;
+        }
         let rel = rel.to_string_lossy().replace('\\', "/");
         let fname = en.file_name().to_string_lossy().into_owned();
-        if p.is_dir() {
+        if en.file_type().is_ok_and(|t| t.is_dir()) {
             collect(&p, base, skip_index, out);
         } else if fname.ends_with(".tmp")
+            || fname.ends_with(".lock")
             || (fname.starts_with("backup-") && fname.ends_with(".zip"))
             || (skip_index && fname.starts_with("index.sqlite"))
         {
@@ -714,6 +892,17 @@ fn collect(dir: &Path, base: &Path, skip_index: bool, out: &mut Vec<(String, Pat
 /// carrying a format version and a SHA-1 per file. `include_index=false` leaves the (rebuildable)
 /// index out. The folders list is saved as `roots.json` so a restore without index can re-register them.
 pub fn backup(lib: &Library, out: &Path, include_index: bool) -> Res<Manifest> {
+    if out.is_dir() {
+        return Err(format!("{} is a folder, give a file name", out.display()));
+    }
+    let r = backup_inner(lib, out, include_index);
+    if r.is_err() {
+        let _ = std::fs::remove_file(out);
+    }
+    r
+}
+
+fn backup_inner(lib: &Library, out: &Path, include_index: bool) -> Res<Manifest> {
     let _ = lib.conn().execute_batch("PRAGMA wal_checkpoint(TRUNCATE)");
     std::fs::write(
         lib.home.join("roots.json"),
@@ -726,6 +915,8 @@ pub fn backup(lib: &Library, out: &Path, include_index: bool) -> Res<Manifest> {
         .ok()
         .map(|d| d.join(out.file_name().unwrap_or_default()));
     files.retain(|(_, p)| std::fs::canonicalize(p).ok() != outc);
+    // the clip token is a secret of this machine: never put it in a file people copy around
+    files.retain(|(rel, _)| rel != "clip.token" && !rel.starts_with("clip.token."));
     let f = std::fs::File::create(out).map_err(e)?;
     let mut z = zip::ZipWriter::new(f);
     let o = zip::write::SimpleFileOptions::default()
@@ -765,6 +956,7 @@ fn read_backup(zip_path: &Path) -> Res<BackupData> {
         let mut s = String::new();
         z.by_name(MANIFEST)
             .map_err(|_| "not a CartaColibri backup: manifest missing".to_string())?
+            .take(32 << 20)
             .read_to_string(&mut s)
             .map_err(e)?;
         serde_json::from_str(&s).map_err(|x| format!("manifest unreadable: {x}"))?
@@ -781,14 +973,19 @@ fn read_backup(zip_path: &Path) -> Res<BackupData> {
     let mut data = vec![];
     for bf in &man.files {
         let safe = !bf.name.starts_with('/')
-            && !bf.name.contains(':')
-            && !bf.name.split('/').any(|c| c == ".." || c.is_empty());
+            && !bf.name.contains([':', '\\', '\0'])
+            && !bf.name.chars().any(char::is_control)
+            && !bf
+                .name
+                .split('/')
+                .any(|c| matches!(c, "." | "..") || c.is_empty());
         if !safe {
             return Err(format!("unsafe path in backup: {}", bf.name));
         }
         let mut buf = vec![];
         z.by_name(&format!("state/{}", bf.name))
             .map_err(|_| format!("backup damaged: {} is missing", bf.name))?
+            .take(bf.size.saturating_add(1)) // never read more than the manifest promises
             .read_to_end(&mut buf)
             .map_err(e)?;
         if buf.len() as u64 != bf.size || sha1_hex(&buf) != bf.sha1 {
@@ -834,10 +1031,28 @@ pub fn restore(zip_path: &Path, home: &Path) -> Res<RestoreReport> {
             roots = serde_json::from_slice(buf).unwrap_or_default();
         }
         let p = home.join(name);
+        // refuse to write through a symlink inside the home: it could lead anywhere
+        let mut cur = home.to_path_buf();
+        for comp in name.split('/') {
+            cur.push(comp);
+            if std::fs::symlink_metadata(&cur).is_ok_and(|m| m.file_type().is_symlink()) {
+                return Err(format!(
+                    "refusing to restore {name}: {} is a symbolic link",
+                    cur.display()
+                ));
+            }
+        }
         if let Some(d) = p.parent() {
             std::fs::create_dir_all(d).map_err(e)?;
         }
-        std::fs::write(&p, buf).map_err(e)?;
+        // write next to the target, then rename: a failure never leaves a half-written file
+        let tmp = p.with_extension(format!("restore-{}.tmp", std::process::id()));
+        std::fs::write(&tmp, buf)
+            .and_then(|_| std::fs::rename(&tmp, &p))
+            .map_err(|x| {
+                let _ = std::fs::remove_file(&tmp);
+                format!("cannot restore {name}: {x}")
+            })?;
     }
     let mut restored = 0;
     if !man.includes_index {
@@ -890,7 +1105,8 @@ fn index_problems(lib: &Library) -> Vec<String> {
     p
 }
 
-fn snapshot_roots(lib: &Library) {
+/// Save the folder list next to the index (`roots.json`) so a broken index can be rebuilt.
+pub fn snapshot_roots(lib: &Library) {
     if let Ok(s) = serde_json::to_string_pretty(&lib.roots()) {
         let _ = std::fs::write(lib.home.join("roots.json"), s);
     }
@@ -935,13 +1151,16 @@ pub fn verify_home(home: &str, repair: bool) -> Res<(Library, VerifyReport)> {
         }
         Err(msg) if repair => {
             let h = PathBuf::from(home);
+            // keep the unreadable index as *.broken instead of deleting it (it may only be locked)
             for n in [
                 "index.sqlite",
                 "index.sqlite-wal",
                 "index.sqlite-shm",
                 "index.sqlite-journal",
             ] {
-                let _ = std::fs::remove_file(h.join(n));
+                if h.join(n).exists() {
+                    let _ = std::fs::rename(h.join(n), h.join(format!("{n}.broken")));
+                }
             }
             let roots: Vec<String> = std::fs::read_to_string(h.join("roots.json"))
                 .ok()
@@ -1050,8 +1269,8 @@ pub fn stats(lib: &Library) -> Res<LibraryStats> {
             ))
         })
         .map_err(e)?
-        .flatten()
-        .collect();
+        .collect::<Result<_, _>>()
+        .map_err(e)?;
     let mut big: Vec<(String, i64)> = vec![];
     for (_, root, path, ext, size, mt) in &docs {
         st.docs += 1;
@@ -1114,8 +1333,8 @@ pub fn timeline(lib: &Library) -> Res<Vec<TimelineMonth>> {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
         })
         .map_err(e)?
-        .flatten()
-        .collect();
+        .collect::<Result<_, _>>()
+        .map_err(e)?;
     let mut out: Vec<TimelineMonth> = vec![];
     for (id, path, ext, size, mt) in rows {
         let (y, m) = ym(mt);

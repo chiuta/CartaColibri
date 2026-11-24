@@ -241,8 +241,8 @@ fn unzip_safe(data: &[u8], dest: &Path) -> Result<(), String> {
         if f.is_dir() {
             continue;
         }
-        total += f.size();
-        if total > cap {
+        // the sizes in a zip header are only claims: count what is really written
+        if total.saturating_add(f.size()) > cap {
             return Err("that zip is too large once unpacked".into());
         }
         let out = dest.join(&rel);
@@ -250,7 +250,13 @@ fn unzip_safe(data: &[u8], dest: &Path) -> Result<(), String> {
             std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
         }
         let mut o = std::fs::File::create(&out).map_err(|e| e.to_string())?;
-        std::io::copy(&mut std::io::Read::take(&mut f, cap), &mut o).map_err(|e| e.to_string())?;
+        let room = cap - total;
+        let n = std::io::copy(&mut std::io::Read::take(&mut f, room + 1), &mut o)
+            .map_err(|_| "that zip file is damaged".to_string())?;
+        total += n;
+        if total > cap {
+            return Err("that zip is too large once unpacked".into());
+        }
     }
     Ok(())
 }
@@ -448,7 +454,11 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             .map_err(bad)?,
         ("POST", "grab") => {
             let j = jbody(r.body).map_err(bad)?;
-            let url = s(&j, "url").map_err(bad)?;
+            let url = http_url(s(&j, "url").map_err(bad)?).map_err(bad)?;
+            let url = url.as_str();
+            if j["title"].as_str().is_some_and(|t| t.chars().count() > 500) {
+                return Err((400, "that title is too long".into()));
+            }
             match j["text"].as_str() {
                 Some(t) => {
                     grab::save(&mut lib, url, j["title"].as_str().unwrap_or(""), t).map_err(bad)?
@@ -794,6 +804,10 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
         }
         ("POST", "import") => {
             let name = safe_name(r.filename.as_deref().unwrap_or("")).map_err(bad)?;
+            // the name becomes a real file in a staging folder: keep it valid on every OS
+            if name.contains([':', '<', '>', '"', '|', '?', '*']) || name.ends_with('.') {
+                return Err((400, "that file name is not allowed".into()));
+            }
             let ext = name
                 .rsplit_once('.')
                 .map(|x| x.1.to_lowercase())

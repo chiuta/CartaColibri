@@ -57,7 +57,7 @@ struct TaskArgs {
     json: bool,
     #[arg(long)]
     save: bool,
-    #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+    #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
     url: String,
     #[arg(long)]
     model: Option<String>,
@@ -65,7 +65,7 @@ struct TaskArgs {
     #[arg(long)]
     mock: bool,
     /// source characters per model call
-    #[arg(long, default_value_t = carta::CTX_CHARS)]
+    #[arg(long, default_value_t = carta::CTX_CHARS, value_parser = parse_budget)]
     budget: usize,
 }
 
@@ -78,7 +78,7 @@ enum Cmd {
         folder: Option<String>,
         #[arg(long, default_value_t = 8765)]
         port: u16,
-        #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
         url: String,
         /// do not open the browser
         #[arg(long)]
@@ -91,7 +91,7 @@ enum Cmd {
     Doctor {
         #[arg(long, default_value_t = 8765)]
         port: u16,
-        #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
         url: String,
     },
     /// print a shell tab-completion script
@@ -115,7 +115,7 @@ enum Cmd {
     Problems,
     /// keep the index current: re-scan the folders every N seconds
     Watch {
-        #[arg(long, default_value_t = 30)]
+        #[arg(long, default_value_t = 30, value_parser = parse_positive)]
         interval: u64,
     },
     List {
@@ -130,9 +130,9 @@ enum Cmd {
         /// comma-separated, e.g. pdf,txt
         #[arg(long)]
         ext: Option<String>,
-        #[arg(long)]
+        #[arg(long, value_parser = parse_kb)]
         min_kb: Option<f64>,
-        #[arg(long)]
+        #[arg(long, value_parser = parse_kb)]
         max_kb: Option<f64>,
         #[arg(long)]
         path: Option<String>,
@@ -172,7 +172,7 @@ enum Cmd {
     Serve {
         #[arg(long, default_value_t = 8765)]
         port: u16,
-        #[arg(long, env = "COLI_URL", default_value = carta::DEFAULT_URL)]
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
         url: String,
     },
 }
@@ -194,7 +194,7 @@ enum WwCmd {
     },
     /// check forever, every N minutes
     Run {
-        #[arg(long, default_value_t = 60)]
+        #[arg(long, default_value_t = 60, value_parser = parse_positive)]
         minutes: u64,
         #[arg(long)]
         refresh: bool,
@@ -229,6 +229,28 @@ enum GroupCmd {
     },
 }
 
+fn parse_budget(s: &str) -> Result<usize, String> {
+    match s.trim().parse::<usize>() {
+        Ok(n) if n >= 100 => Ok(n),
+        Ok(_) => Err("must be at least 100 characters".into()),
+        Err(_) => Err(format!("`{s}` is not a whole number")),
+    }
+}
+
+fn parse_positive(s: &str) -> Result<u64, String> {
+    match s.trim().parse::<u64>() {
+        Ok(n) if (1..=31_536_000).contains(&n) => Ok(n),
+        _ => Err(format!("`{s}` must be a whole number from 1 to 31536000")),
+    }
+}
+
+fn parse_kb(s: &str) -> Result<f64, String> {
+    match s.trim().parse::<f64>() {
+        Ok(n) if n.is_finite() && n >= 0.0 => Ok(n),
+        _ => Err(format!("`{s}` must be a number of KB, 0 or more")),
+    }
+}
+
 fn csv(s: &Option<String>) -> Vec<String> {
     s.as_deref()
         .map(|v| {
@@ -241,6 +263,20 @@ fn csv(s: &Option<String>) -> Vec<String> {
 }
 
 fn main() {
+    // `cartacolibri list | head` closes stdout early: exit quietly instead of a panic backtrace
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let msg = info
+            .payload()
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| info.payload().downcast_ref::<&str>().copied())
+            .unwrap_or("");
+        if msg.contains("failed printing to std") {
+            std::process::exit(0);
+        }
+        default_hook(info)
+    }));
     let c = Cli::parse();
     let lang = tour::resolve(c.lang.as_deref());
     if let Err(m) = run(c, lang) {
@@ -354,6 +390,7 @@ fn start(
     println!("{}", t(lang, "indexing", &[]));
     if let Some(l) = &list {
         lib.add_root(&l[0])?;
+        cartacolibri::organize::snapshot_roots(&lib);
     }
     let st = lib.update(list.as_deref(), &mut |m| eprintln!("  {}", p.dim(m)))?;
     println!(
@@ -450,6 +487,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
         }
         Cmd::Doctor { port, url } => return doctor_cmd(lang, home, url, *port),
         Cmd::More(cli_more::More::Restore { zip }) => return cli_more::restore(home, zip),
+        Cmd::More(cli_more::More::Verify { repair }) => return cli_more::verify_cmd(home, *repair),
         Cmd::Start {
             folder,
             port,
@@ -483,7 +521,10 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
         }
         let addr = format!("127.0.0.1:{port}");
         let h = Library::open(home, false)?.home;
-        println!("CartaColibri UI: http://{addr}/   (gateway: {url})");
+        println!(
+            "CartaColibri UI: http://{addr}/   (gateway: {})",
+            carta::redact_url(url)
+        );
         println!(
             "web-grab bookmarklet token is in {}",
             h.join("clip.token").display()
@@ -520,6 +561,11 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
         },
         Cmd::Webwatch(w) => match w {
             WwCmd::Add { url } => {
+                if !(url.starts_with("http://") || url.starts_with("https://")) {
+                    return Err(format!(
+                        "`{url}` is not a web address (http:// or https://)"
+                    ));
+                }
                 let mut l = grab::watch_list(&lib.home);
                 if !l.contains(&url) {
                     l.push(url.clone());
@@ -541,7 +587,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             WwCmd::Check { refresh } => print_watch(&grab::watch_check(&mut lib, refresh)),
             WwCmd::Run { minutes, refresh } => loop {
                 print_watch(&grab::watch_check(&mut lib, refresh));
-                std::thread::sleep(Duration::from_secs(minutes * 60));
+                std::thread::sleep(Duration::from_secs(minutes.saturating_mul(60)));
             },
         },
         Cmd::Bookmarklet { port } => {
@@ -552,15 +598,19 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
         }
         Cmd::Add { folder } => {
             println!("registered {}", lib.add_root(&folder)?);
+            cartacolibri::organize::snapshot_roots(&lib);
             println!(
                 "{:?}",
                 lib.update(Some(&[folder]), &mut |m| eprintln!("{m}"))?
             );
         }
-        Cmd::Remove { folder } => println!(
-            "forgot {folder} ({} documents dropped from the index; files untouched)",
-            lib.remove_root(&folder)?
-        ),
+        Cmd::Remove { folder } => {
+            println!(
+                "forgot {folder} ({} documents dropped from the index; files untouched)",
+                lib.remove_root(&folder)?
+            );
+            cartacolibri::organize::snapshot_roots(&lib);
+        }
         Cmd::Folders => lib.roots().iter().for_each(|r| println!("{r}")),
         Cmd::Index { folder } => {
             let r = folder.map(|f| vec![f]);
@@ -594,7 +644,12 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             }
             if !json {
                 for d in docs {
-                    println!("{:>7} KB  {:<6} {}", d.size / 1024, d.ext, d.path)
+                    println!(
+                        "{:>7} KB  {:<6} {}",
+                        d.size / 1024,
+                        tour::plain(&d.ext),
+                        tour::plain(&d.path)
+                    )
                 }
             }
         }
@@ -624,7 +679,10 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             for h in &hits {
                 println!(
                     "{:>7}  {} {}\n         {}",
-                    h.score, h.path, h.loc, h.snippet
+                    h.score,
+                    tour::plain(&h.path),
+                    tour::plain(&h.loc),
+                    tour::plain(&h.snippet)
                 );
             }
             if hits.is_empty() {
@@ -729,7 +787,7 @@ fn task(lib: &Library, name: &str, a: TaskArgs) -> Result<(), String> {
         budget: a.budget,
     };
     let text = carta::run(lib, name, &docs, &be, &o, &mut |m| eprintln!("· {m}"))?;
-    println!("{text}");
+    println!("{}", tour::plain(&text));
     if a.save {
         println!(
             "saved: {}",

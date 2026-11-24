@@ -238,6 +238,22 @@ fn init_db(home: &Path) -> Res<Connection> {
     Ok(db)
 }
 
+/// Longest query (bytes) and most terms that are looked at; the rest is ignored.
+const MAX_QUERY_BYTES: usize = 4096;
+const MAX_QUERY_TERMS: usize = 64;
+const MAX_SUGGEST_WORDS: usize = 16;
+
+fn clip(q: &str) -> &str {
+    if q.len() <= MAX_QUERY_BYTES {
+        return q;
+    }
+    let mut c = MAX_QUERY_BYTES;
+    while !q.is_char_boundary(c) {
+        c -= 1;
+    }
+    &q[..c]
+}
+
 pub struct Library {
     pub home: PathBuf,
     pub exts: BTreeSet<String>,
@@ -325,11 +341,13 @@ impl Library {
     }
 
     pub fn roots(&self) -> Vec<String> {
-        let mut q = self
-            .db
-            .prepare("SELECT path FROM roots ORDER BY path")
-            .unwrap();
-        q.query_map([], |r| r.get(0)).unwrap().flatten().collect()
+        let Ok(mut q) = self.db.prepare("SELECT path FROM roots ORDER BY path") else {
+            return vec![];
+        };
+        let Ok(rows) = q.query_map([], |r| r.get(0)) else {
+            return vec![];
+        };
+        rows.flatten().collect()
     }
 
     // ---- uploads
@@ -515,6 +533,12 @@ impl Library {
                 &mut seen_dirs,
                 0,
             );
+            // everything the walk found, before any filtering: an indexed file that is still
+            // here but no longer qualifies (renamed hidden, grown too big, ...) must leave the index
+            let walked: HashSet<String> = files
+                .iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect();
             let outputs = self.home.join("outputs"); // RAG-CARTA results are never re-indexed
             files.retain(|p| !p.starts_with(&outputs));
             // a link planted inside the folder must not pull in files from elsewhere (e.g. ~/.ssh)
@@ -535,7 +559,11 @@ impl Library {
             }
             let mut seen: HashSet<String> = HashSet::new();
             let tx = self.db.unchecked_transaction().map_err(e)?;
-            let prefix = format!("{}{}", root.trim_end_matches('/'), "/");
+            let prefix = format!(
+                "{}{}",
+                root.trim_end_matches(['/', '\\']),
+                std::path::MAIN_SEPARATOR
+            );
             tx.execute(
                 "DELETE FROM problems WHERE substr(path,1,length(?1))=?1",
                 [&prefix],
@@ -642,10 +670,11 @@ impl Library {
                     continue;
                 }
                 let mut empty = false;
+                tx.execute_batch("SAVEPOINT file_sp").map_err(e)?;
                 let res: Res<bool> = (|| {
                     let raw = {
                         use std::io::Read;
-                        let f = std::fs::File::open(&p)
+                        let f = extract::open_regular(&p)
                             .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
                         let mut buf = Vec::new();
                         f.take(MAX_FILE_BYTES + 1)
@@ -711,6 +740,13 @@ impl Library {
                     empty = total == 0;
                     Ok(true)
                 })();
+                // a file either lands completely or not at all (never a doc with half its chunks)
+                tx.execute_batch(if res.is_err() {
+                    "ROLLBACK TO file_sp; RELEASE file_sp"
+                } else {
+                    "RELEASE file_sp"
+                })
+                .map_err(e)?;
                 if let Err(msg) = res {
                     st.failed += 1;
                     pr.failed += 1;
@@ -736,7 +772,7 @@ impl Library {
                     .collect()
             };
             for (id, path) in gone {
-                if !seen.contains(&path) && !Path::new(&path).exists() {
+                if !seen.contains(&path) && (walked.contains(&path) || !Path::new(&path).exists()) {
                     tx.execute("DELETE FROM chunks WHERE doc_id=?", [id])
                         .map_err(e)?;
                     tx.execute("DELETE FROM docs WHERE id=?", [id]).map_err(e)?;
@@ -752,24 +788,45 @@ impl Library {
 
     /// Groups of indexed files with identical content (same SHA-1), each group sorted by path.
     pub fn duplicates(&self) -> Vec<Vec<String>> {
-        let mut q = self
-            .db
-            .prepare(
-                "SELECT sha1, path FROM docs WHERE size>0 AND sha1 IN
-                 (SELECT sha1 FROM docs WHERE size>0 GROUP BY sha1 HAVING count(*)>1)
-                 ORDER BY sha1, path",
-            )
-            .unwrap();
-        let rows: Vec<(String, String)> = q
-            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-            .unwrap()
-            .flatten()
-            .collect();
-        let mut by: BTreeMap<String, Vec<String>> = BTreeMap::new();
-        for (h, p) in rows {
-            by.entry(h).or_default().push(p);
+        let Ok(mut q) = self.db.prepare(
+            "SELECT sha1, size, path FROM docs WHERE size>0 AND (sha1,size) IN
+             (SELECT sha1,size FROM docs WHERE size>0 GROUP BY sha1,size HAVING count(*)>1)
+             ORDER BY sha1, size, path",
+        ) else {
+            return vec![];
+        };
+        let Ok(it) = q.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        }) else {
+            return vec![];
+        };
+        let mut by: BTreeMap<(String, i64), Vec<String>> = BTreeMap::new();
+        for (h, sz, p) in it.flatten() {
+            by.entry((h, sz)).or_default().push(p);
         }
-        let mut out: Vec<Vec<String>> = by.into_values().collect();
+        // SHA-1 is broken (crafted collisions exist): confirm byte for byte before telling the
+        // user two files are the same, and drop files that vanished since indexing.
+        let mut out: Vec<Vec<String>> = vec![];
+        for (_, paths) in by {
+            let mut classes: Vec<Vec<String>> = vec![];
+            'next: for p in paths {
+                if !Path::new(&p).is_file() {
+                    continue;
+                }
+                for c in classes.iter_mut() {
+                    if same_bytes(Path::new(&c[0]), Path::new(&p)) == Some(true) {
+                        c.push(p);
+                        continue 'next;
+                    }
+                }
+                classes.push(vec![p]);
+            }
+            out.extend(classes.into_iter().filter(|c| c.len() > 1));
+        }
         out.sort();
         out
     }
@@ -793,20 +850,29 @@ impl Library {
     }
 
     pub fn problems(&self) -> Vec<serde_json::Value> {
-        let mut q = self
+        let Ok(mut q) = self
             .db
             .prepare("SELECT path,reason FROM problems ORDER BY path")
-            .unwrap();
-        q.query_map([], |r| Ok(serde_json::json!({"path": r.get::<_, String>(0)?, "reason": r.get::<_, String>(1)?}))).unwrap().flatten().collect()
+        else {
+            return vec![];
+        };
+        let Ok(rows) = q.query_map([], |r| {
+            Ok(serde_json::json!({"path": r.get::<_, String>(0)?, "reason": r.get::<_, String>(1)?}))
+        }) else {
+            return vec![];
+        };
+        rows.flatten().collect()
     }
 
     // ---- listing / search
     fn all_docs(&self) -> Vec<Doc> {
-        let mut q = self
+        let Ok(mut q) = self
             .db
             .prepare("SELECT id,root,path,ext,size,chars,pages FROM docs ORDER BY path")
-            .unwrap();
-        q.query_map([], |r| {
+        else {
+            return vec![];
+        };
+        let Ok(rows) = q.query_map([], |r| {
             Ok(Doc {
                 id: r.get(0)?,
                 root: r.get(1)?,
@@ -816,10 +882,10 @@ impl Library {
                 chars: r.get(5)?,
                 pages: r.get(6)?,
             })
-        })
-        .unwrap()
-        .flatten()
-        .collect()
+        }) else {
+            return vec![];
+        };
+        rows.flatten().collect()
     }
 
     pub fn documents(&self, group: Option<&str>) -> Res<Vec<Doc>> {
@@ -839,14 +905,14 @@ impl Library {
 
     /// Words, "phrases", prefix* and AND/OR/NOT pass through; anything FTS5 would reject is quoted.
     pub fn fts_query(q: &str) -> Res<String> {
-        let q = q.trim();
+        let q = clip(q.trim());
         if q.is_empty() {
             return Err("empty query".into());
         }
         let tok = Regex::new(r#""[^"]+"|\S+"#).unwrap();
         let word = Regex::new(r"\w+").unwrap();
         let mut out: Vec<String> = vec![];
-        for m in tok.find_iter(q) {
+        for m in tok.find_iter(q).take(MAX_QUERY_TERMS) {
             let t = m.as_str();
             if matches!(t, "AND" | "OR" | "NOT") {
                 out.push(t.to_string());
@@ -863,13 +929,18 @@ impl Library {
                     out.push(format!("\"{}\"", phrase.join(" ")));
                 }
             } else {
+                // Split like the index tokenizer does (e-mail -> "e mail"); combining marks stay.
                 let core = t.trim_end_matches('*');
-                let w: String = core
-                    .chars()
-                    .filter(|c| c.is_alphanumeric() || *c == '_')
-                    .collect();
-                if !w.is_empty() {
-                    out.push(if t.ends_with('*') { format!("{w}*") } else { w });
+                let pieces: Vec<&str> = word.find_iter(core).map(|m| m.as_str()).collect();
+                let star = if t.ends_with('*') { "*" } else { "" };
+                match pieces.len() {
+                    0 => {}
+                    1 => out.push(format!("{}{star}", pieces[0])),
+                    _ => out.push(format!(
+                        "\"{}\"{}",
+                        pieces.join(" "),
+                        if star.is_empty() { "" } else { " *" }
+                    )),
                 }
             }
         }
@@ -895,11 +966,13 @@ impl Library {
 
     /// Returns the hits and the FTS match string that actually produced them.
     fn search_core(&self, query: &str, f: &Filter, fallback: bool) -> Res<(Vec<Hit>, String)> {
+        let query = clip(query);
         let word = Regex::new(r"\w+").unwrap();
         let plain: Vec<&str> = word
             .find_iter(query)
             .map(|m| m.as_str())
             .filter(|w| !matches!(*w, "AND" | "OR" | "NOT" | "NEAR"))
+            .take(MAX_QUERY_TERMS)
             .collect();
         let mut used = Self::fts_query(query)?;
         let mut rows = match self.fetch(&used) {
@@ -1065,10 +1138,12 @@ impl Library {
     /// "Did you mean": full queries with unknown words replaced by close words from the
     /// index vocabulary (edit distance, bounded). Empty when every word is already known.
     pub fn suggest(&self, query: &str) -> Vec<String> {
+        let query = clip(query);
         let word = Regex::new(r"\w+").unwrap();
         let spans: Vec<(usize, usize, String)> = word
             .find_iter(query)
             .filter(|m| !matches!(m.as_str(), "AND" | "OR" | "NOT" | "NEAR"))
+            .take(MAX_SUGGEST_WORDS)
             .map(|m| (m.start(), m.end(), fold(m.as_str())))
             .collect();
         if spans.is_empty() {
@@ -1149,15 +1224,17 @@ impl Library {
     }
 
     pub fn text_of(&self, doc_id: i64) -> String {
-        let mut q = self
+        let Ok(mut q) = self
             .db
             .prepare("SELECT loc,text FROM chunks WHERE doc_id=? ORDER BY CAST(seq AS INTEGER)")
-            .unwrap();
-        let rows: Vec<(String, String)> = q
-            .query_map([doc_id], |r| Ok((r.get(0)?, r.get(1)?)))
-            .unwrap()
-            .flatten()
-            .collect();
+        else {
+            return String::new();
+        };
+        let rows: Vec<(String, String)> =
+            match q.query_map([doc_id], |r| Ok((r.get(0)?, r.get(1)?))) {
+                Ok(it) => it.flatten().collect(),
+                Err(_) => return String::new(),
+            };
         let (mut out, mut last): (Vec<String>, Option<String>) = (vec![], None);
         for (loc, text) in rows {
             if !loc.is_empty() && last.as_deref() != Some(loc.as_str()) {
@@ -1268,6 +1345,40 @@ impl Library {
                 })
             })
             .collect())
+    }
+}
+
+/// Whether two files hold the same bytes (None when either cannot be read).
+fn same_bytes(a: &Path, b: &Path) -> Option<bool> {
+    use std::io::Read;
+    let (mut fa, mut fb) = (
+        extract::open_regular(a).ok()?,
+        extract::open_regular(b).ok()?,
+    );
+    if fa.metadata().ok()?.len() != fb.metadata().ok()?.len() {
+        return Some(false);
+    }
+    let (mut x, mut y) = (vec![0u8; 64 * 1024], vec![0u8; 64 * 1024]);
+    loop {
+        let n = read_full(&mut fa, &mut x)?;
+        let m = read_full(&mut fb, &mut y)?;
+        if n != m || x[..n] != y[..m] {
+            return Some(false);
+        }
+        if n == 0 {
+            return Some(true);
+        }
+    }
+    fn read_full(f: &mut std::fs::File, buf: &mut [u8]) -> Option<usize> {
+        let mut got = 0;
+        while got < buf.len() {
+            match f.read(&mut buf[got..]) {
+                Ok(0) => break,
+                Ok(k) => got += k,
+                Err(_) => return None,
+            }
+        }
+        Some(got)
     }
 }
 

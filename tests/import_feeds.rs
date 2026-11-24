@@ -328,6 +328,8 @@ fn poll_local_server_dedupes() {
             let _ = rq.respond(tiny_http::Response::from_string(body).with_status_code(code));
         }
     });
+    // SAFETY: only this test touches the variable, and it is set before any reader looks at it.
+    unsafe { std::env::set_var("CARTACOLIBRI_GRAB_LOCAL", "1") };
     let home = tempfile::tempdir().unwrap();
     let mut lib = Library::open(Some(home.path().to_str().unwrap()), false).unwrap();
     let urls: Vec<String> = ["rss", "missing", "big"]
@@ -347,4 +349,109 @@ fn poll_local_server_dedupes() {
     let again = feeds::poll(home.path(), &urls[..1], &mut lib);
     assert_eq!(again.new_items, 0);
     assert_eq!(again.feeds[0].items, 2);
+}
+
+// ---------------------------------------------------------------- adversarial audit
+
+#[test]
+fn vault_into_itself_never_modifies_sources() {
+    let s = tempfile::tempdir().unwrap();
+    std::fs::write(s.path().join("A.md"), "see [[B]]").unwrap();
+    std::fs::write(s.path().join("B.md"), "see [[A]]").unwrap();
+    let before = std::fs::read(s.path().join("A.md")).unwrap();
+    let _ = import::vault(s.path(), s.path());
+    let _ = import::vault(s.path(), &s.path().join("out"));
+    let _ = import::vault(s.path(), &s.path().join("out"));
+    assert_eq!(
+        std::fs::read(s.path().join("A.md")).unwrap(),
+        before,
+        "source note was rewritten"
+    );
+    assert!(!s.path().join("out/out").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn import_never_writes_through_planted_links() {
+    let d = tempfile::tempdir().unwrap();
+    let victim = tempfile::tempdir().unwrap();
+    let target = victim.path().join("precious.txt");
+    std::fs::write(&target, "keep me").unwrap();
+    // first run learns the (deterministic) note name; then plant a link under that name
+    let bib = "@book{k1, title={Same}, author={X}}";
+    import::bibtex(bib, d.path()).unwrap();
+    let name = std::fs::read_dir(d.path())
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    std::fs::remove_file(&name).unwrap();
+    std::os::unix::fs::symlink(&target, &name).unwrap();
+    let _ = import::bibtex(bib, d.path());
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "keep me");
+}
+
+#[cfg(unix)]
+#[test]
+fn import_of_a_fifo_does_not_hang() {
+    let d = tempfile::tempdir().unwrap();
+    let f = d.path().join("x.bib");
+    let c = std::ffi::CString::new(f.to_str().unwrap()).unwrap();
+    unsafe extern "C" {
+        fn mkfifo(p: *const std::ffi::c_char, m: u32) -> i32;
+    }
+    if unsafe { mkfifo(c.as_ptr(), 0o600) } != 0 {
+        return;
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    let out = d.path().join("out");
+    std::thread::spawn(move || {
+        let _ = tx.send(import::import_path(&f, &out).is_err());
+    });
+    assert_eq!(rx.recv_timeout(std::time::Duration::from_secs(5)), Ok(true));
+}
+
+#[test]
+fn vault_unwritable_note_is_skipped_not_fatal() {
+    let s = tempfile::tempdir().unwrap();
+    std::fs::write(s.path().join("a.md"), "one").unwrap();
+    std::fs::write(s.path().join("b.md"), "two").unwrap();
+    let d = tempfile::tempdir().unwrap();
+    std::fs::create_dir(d.path().join("a.md")).unwrap(); // a directory sits where a note goes
+    let st = import::vault(s.path(), d.path()).unwrap();
+    assert_eq!((st.notes, st.skipped), (1, 1));
+}
+
+#[test]
+fn hostile_import_inputs() {
+    let d = tempfile::tempdir().unwrap();
+    let o = d.path();
+    let _ = import::bibtex(&"@a{".repeat(300_000), o);
+    let _ = import::bibtex(&format!("@a{{k, t = {}", "{".repeat(500_000)), o);
+    let _ = import::bibtex("@a{k, t = \"unterminated", o);
+    let _ = import::bookmarks(&"<h3>".repeat(200_000), o);
+    let _ = import::bookmarks(&"<dl>".repeat(200_000), o);
+    let _ = import::bookmarks(&"</dl>".repeat(200_000), o);
+    let _ = import::csv_bookmarks("url\n\"", o);
+    let _ = import::csv_bookmarks(&format!("url,t\n{}", "x,\"\n".repeat(100_000)), o);
+    let _ = import::enex(&"<note>".repeat(100_000).into_bytes(), o);
+    let _ = import::enex(
+        b"<note><title>\xff\xfe</title><content>&bogus;&#0;</content></note>",
+        o,
+    );
+    let deep = format!(
+        "{}<note><title>t</title><content>hello</content></note>{}",
+        "<a>".repeat(200),
+        "</a>".repeat(200)
+    );
+    let st = import::enex(deep.as_bytes(), o).unwrap();
+    assert_eq!(st.notes, 1, "deep nesting must not lose the note");
+    // dangerous link schemes are not carried into notes
+    let st = import::bookmarks(
+        "<DL><DT><A HREF=\"data:text/html,<script>\">x</A><DT><A HREF=\" VBScript:x\">y</A></DL>",
+        o,
+    )
+    .unwrap();
+    assert_eq!(st.skipped, 2);
 }

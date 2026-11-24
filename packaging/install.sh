@@ -2,7 +2,7 @@
 # CartaColibri per-user installer (Linux / macOS). No sudo; everything goes under ~/.local.
 #   ./install.sh              install (run it from the unzipped package)
 #   ./install.sh --uninstall  remove the program, links and menu entry (your library in ~/.cartacolibri is kept)
-set -eu
+set -euo pipefail
 PREFIX="${PREFIX:-$HOME/.local}"
 APPDIR="$PREFIX/share/cartacolibri"
 BIN="$PREFIX/bin"
@@ -10,7 +10,10 @@ DESK="${XDG_DATA_HOME:-$HOME/.local/share}/applications/cartacolibri.desktop"
 
 if [ "${1:-}" = "--uninstall" ]; then
   [ -f "$APPDIR/.cartacolibri-install" ] || [ ! -e "$APPDIR" ] || { echo "Refusing to remove $APPDIR (not created by this installer)"; exit 1; }
-  rm -rf "$APPDIR"; rm -f "$BIN/cartacolibri" "$BIN/cartacolibri-ui" "$BIN/cartacolibri-browser" "$DESK"
+  for l in cartacolibri cartacolibri-browser; do   # only remove links that point into our own folder
+    if [ -L "$BIN/$l" ] && [ "$(readlink "$BIN/$l")" = "$APPDIR/$l" ]; then rm -f "$BIN/$l"; fi
+  done
+  rm -rf "$APPDIR"; rm -f "$BIN/cartacolibri-ui" "$DESK"
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$(dirname "$DESK")" 2>/dev/null || true
   echo "CartaColibri removed. Your library (~/.cartacolibri) was left untouched; delete it by hand if you want."
   exit 0
@@ -20,6 +23,7 @@ SRC="$(cd "$(dirname "$0")" && pwd)"
 [ -x "$SRC/App/CartaColibri/cartacolibri" ] || SRC="$(dirname "$SRC")"
 [ -x "$SRC/App/CartaColibri/cartacolibri" ] || { echo "Run this from the unzipped CartaColibri package (App/CartaColibri/cartacolibri not found)."; exit 1; }
 
+[ ! -e "$APPDIR" ] || [ -f "$APPDIR/.cartacolibri-install" ] || { echo "Refusing to overwrite $APPDIR (not created by this installer). Remove it yourself or set PREFIX."; exit 1; }
 rm -rf "$APPDIR"; mkdir -p "$APPDIR" "$BIN" "$(dirname "$DESK")"
 cp -R "$SRC/App/CartaColibri/." "$APPDIR/"
 [ -d "$SRC/Other" ] && cp -R "$SRC/Other/." "$APPDIR/" || true
@@ -49,7 +53,7 @@ if [ "$(uname -s)" != Darwin ]; then
 Type=Application
 Name=CartaColibri
 Comment=Local AI library - 100% on your machine
-Exec=$BIN/cartacolibri-ui
+Exec="$BIN/cartacolibri-ui"
 Icon=$ICON
 Terminal=false
 Categories=Office;Utility;

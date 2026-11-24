@@ -553,7 +553,7 @@ fn api_roundtrip() {
         br#"{"url":"file:///etc/passwd"}"#,
         None,
     );
-    assert_eq!(c, 502, "only http(s) can be grabbed");
+    assert!(c == 400 || c == 502, "only http(s) can be grabbed, got {c}");
     let (c, v) = call(
         &fx,
         "DELETE",

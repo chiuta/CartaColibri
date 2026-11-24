@@ -47,97 +47,182 @@ pub fn allow_local(on: bool) {
     ALLOW_LOCAL.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
-fn host_of(url: &str) -> Option<(String, u16)> {
-    let rest = url.split_once("://")?.1;
-    let auth = rest.split(['/', '?', '#']).next()?;
-    let auth = auth.rsplit_once('@').map(|x| x.1).unwrap_or(auth);
-    let default = if url.starts_with("https") { 443 } else { 80 };
-    if let Some(v6) = auth.strip_prefix('[') {
-        let (h, tail) = v6.split_once(']')?;
-        let port = tail
-            .strip_prefix(':')
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(default);
-        return Some((h.to_string(), port));
-    }
-    match auth.rsplit_once(':') {
-        Some((h, p)) if p.chars().all(|c| c.is_ascii_digit()) && !p.is_empty() => {
-            Some((h.to_string(), p.parse().ok()?))
+fn allowed_local() -> bool {
+    ALLOW_LOCAL.load(std::sync::atomic::Ordering::Relaxed)
+        || std::env::var("CARTACOLIBRI_GRAB_LOCAL").is_ok_and(|v| v == "1")
+}
+
+fn bad4(v: std::net::Ipv4Addr) -> bool {
+    let o = v.octets();
+    o[0] == 0                                   // 0.0.0.0/8 "this network"
+        || o[0] == 10
+        || (o[0] == 100 && (o[1] & 0xc0) == 64) // 100.64/10 carrier-grade NAT
+        || o[0] == 127
+        || (o[0] == 169 && o[1] == 254)
+        || (o[0] == 172 && (o[1] & 0xf0) == 16)
+        || (o[0] == 192 && o[1] == 0 && o[2] == 0)
+        || (o[0] == 192 && o[1] == 0 && o[2] == 2)
+        || (o[0] == 192 && o[1] == 168)
+        || (o[0] == 198 && (o[1] & 0xfe) == 18) // benchmarking
+        || (o[0] == 198 && o[1] == 51 && o[2] == 100)
+        || (o[0] == 203 && o[1] == 0 && o[2] == 113)
+        || o[0] >= 224 // multicast, reserved, broadcast
+}
+
+/// True for loopback, private, link-local, multicast, reserved and tunnelled-IPv4 addresses.
+pub fn bad_ip(ip: std::net::IpAddr) -> bool {
+    use std::net::{IpAddr, Ipv4Addr};
+    match ip {
+        IpAddr::V4(v) => bad4(v),
+        IpAddr::V6(v) => {
+            let s = v.segments();
+            let embedded = |a: u16, b: u16| {
+                bad4(Ipv4Addr::new(
+                    (a >> 8) as u8,
+                    a as u8,
+                    (b >> 8) as u8,
+                    b as u8,
+                ))
+            };
+            v.is_unspecified()
+                || v.is_loopback()
+                || (s[..6].iter().all(|x| *x == 0) && embedded(s[6], s[7])) // ::a.b.c.d
+                || (s[..5].iter().all(|x| *x == 0) && s[5] == 0xffff && embedded(s[6], s[7])) // ::ffff:a.b.c.d
+                || (s[0] == 0x64 && s[1] == 0xff9b && s[2..6].iter().all(|x| *x == 0) && embedded(s[6], s[7])) // NAT64
+                || s[0] == 0x2002 && embedded(s[1], s[2]) // 6to4
+                || (s[0] == 0x2001 && s[1] == 0) // Teredo
+                || (s[0] == 0x2001 && s[1] == 0xdb8) // documentation
+                || (s[0] & 0xfe00) == 0xfc00 // unique local
+                || (s[0] & 0xffc0) == 0xfe80 // link-local
+                || (s[0] & 0xffc0) == 0xfec0 // site-local
+                || (s[0] & 0xff00) == 0xff00 // multicast
         }
-        _ => Some((auth.to_string(), default)),
     }
 }
 
-/// True when the address behind `url` is this machine or a private network.
-fn blocked(url: &str) -> bool {
-    use std::net::{IpAddr, ToSocketAddrs};
-    if ALLOW_LOCAL.load(std::sync::atomic::Ordering::Relaxed)
-        || std::env::var("CARTACOLIBRI_GRAB_LOCAL").is_ok_and(|v| v == "1")
+/// Splits an http(s) URL with the same parser the HTTP client uses, so the address that is
+/// checked is the address that is fetched. Userinfo, backslashes and control characters are refused.
+fn parse_target(url: &str) -> Option<(String, u16, String)> {
+    if url
+        .chars()
+        .any(|c| c.is_control() || c.is_whitespace() || c == '\\')
     {
+        return None;
+    }
+    let uri: ureq::http::Uri = url.parse().ok()?;
+    let scheme = uri.scheme_str()?.to_ascii_lowercase();
+    if scheme != "http" && scheme != "https" {
+        return None;
+    }
+    let auth = uri.authority()?;
+    if auth.as_str().contains('@') {
+        return None;
+    }
+    let port = auth
+        .port_u16()
+        .unwrap_or(if scheme == "https" { 443 } else { 80 });
+    let host = auth.host().trim_start_matches('[').trim_end_matches(']');
+    if host.is_empty() || host.contains('%') {
+        return None;
+    }
+    Some((host.to_string(), port, scheme))
+}
+
+/// True when the address behind `url` is this machine or a private network (or cannot be checked).
+pub fn blocked(url: &str) -> bool {
+    use std::net::ToSocketAddrs;
+    if allowed_local() {
         return false;
     }
-    let Some((host, port)) = host_of(url) else {
+    let Some((host, port, _)) = parse_target(url) else {
         return true;
     };
-    let bad = |ip: IpAddr| match ip {
-        IpAddr::V4(v) => {
-            v.is_loopback()
-                || v.is_private()
-                || v.is_link_local()
-                || v.is_unspecified()
-                || v.is_broadcast()
-        }
-        IpAddr::V6(v) => {
-            v.is_loopback()
-                || v.is_unspecified()
-                || (v.segments()[0] & 0xfe00) == 0xfc00
-                || (v.segments()[0] & 0xffc0) == 0xfe80
-                || v.to_ipv4_mapped().is_some_and(bad4)
-        }
-    };
-    fn bad4(v: std::net::Ipv4Addr) -> bool {
-        v.is_loopback() || v.is_private() || v.is_link_local() || v.is_unspecified()
-    }
     (host.as_str(), port)
         .to_socket_addrs()
-        .map(|mut a| a.any(|s| bad(s.ip())))
+        .map(|mut a| a.any(|s| bad_ip(s.ip())))
         .unwrap_or(true)
 }
 
+/// Resolver that refuses private answers at connect time, closing the DNS-rebinding gap between
+/// the pre-check and the real connection.
+#[derive(Debug)]
+struct GuardedResolver;
+
+impl ureq::unversioned::resolver::Resolver for GuardedResolver {
+    fn resolve(
+        &self,
+        uri: &ureq::http::Uri,
+        config: &ureq::config::Config,
+        timeout: ureq::unversioned::transport::NextTimeout,
+    ) -> Result<ureq::unversioned::resolver::ResolvedSocketAddrs, ureq::Error> {
+        use ureq::unversioned::resolver::DefaultResolver;
+        let found = DefaultResolver::default().resolve(uri, config, timeout)?;
+        if !allowed_local() && config.proxy().is_none() && found.iter().any(|a| bad_ip(a.ip())) {
+            return Err(ureq::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "address is on this machine or a private network",
+            )));
+        }
+        Ok(found)
+    }
+}
+
+/// Resolves a redirect target against the URL it came from.
 fn absolute(base: &str, loc: &str) -> Option<String> {
-    if loc.starts_with("http://") || loc.starts_with("https://") {
+    let loc = loc.trim();
+    let lower = loc.to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") {
         return Some(loc.to_string());
     }
     let (scheme, rest) = base.split_once("://")?;
-    let auth = rest.split(['/', '?', '#']).next()?;
-    loc.starts_with('/')
-        .then(|| format!("{scheme}://{auth}{loc}"))
+    if let Some(r) = loc.strip_prefix("//") {
+        return Some(format!("{scheme}://{r}"));
+    }
+    let auth_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let (auth, path) = rest.split_at(auth_end);
+    if loc.starts_with('/') {
+        return Some(format!("{scheme}://{auth}{loc}"));
+    }
+    if loc.is_empty() || loc.contains("://") || loc.starts_with('#') {
+        return None;
+    }
+    let path = path.split(['?', '#']).next().unwrap_or("");
+    let dir = path.rsplit_once('/').map_or("/", |x| &path[..=x.0.len()]);
+    Some(format!("{scheme}://{auth}{dir}{loc}"))
 }
 
-/// Fetch a page and return (title, text). Loopback and private addresses are refused (also after redirects).
-pub fn fetch(url: &str) -> Result<(String, String), String> {
+/// Guarded download: http(s) only, public addresses only (checked before every hop and again at
+/// connect time), redirects followed by hand, at most `max` bytes (+1 so callers can detect overflow).
+/// Returns the body and the lower-cased content type.
+pub fn fetch_raw(
+    url: &str,
+    max: u64,
+    secs: u64,
+    agent_name: &str,
+) -> Result<(Vec<u8>, String), String> {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return Err("only http:// and https:// addresses can be grabbed".into());
     }
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(60)))
+    let cfg = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(secs)))
         .max_redirects(0)
         .http_status_as_error(false)
-        .user_agent("CartaColibri-web-grab/0.2 (+local; https://github.com/chiuta/CartaColibri)")
-        .build()
-        .into();
+        .user_agent(agent_name)
+        .build();
+    let agent = ureq::Agent::with_parts(
+        cfg,
+        ureq::unversioned::transport::DefaultConnector::default(),
+        GuardedResolver,
+    );
     let mut cur = url.to_string();
     let mut r = None;
     for _ in 0..6 {
         if blocked(&cur) {
-            return Err(format!(
-                "{cur} is on this machine or a private network; web-grab only fetches public pages (set CARTACOLIBRI_GRAB_LOCAL=1 to allow it)"
-            ));
+            return Err("that address is on this machine or a private network; only public pages are fetched (set CARTACOLIBRI_GRAB_LOCAL=1 to allow it)".to_string());
         }
-        let resp = agent
-            .get(&cur)
-            .call()
-            .map_err(|e| format!("cannot fetch {cur}: {e}"))?;
+        let resp = agent.get(&cur).call().map_err(|_| {
+            "cannot fetch that address (no answer, or it is not reachable)".to_string()
+        })?;
         let code = resp.status().as_u16();
         if (300..400).contains(&code) {
             let loc = resp
@@ -145,16 +230,16 @@ pub fn fetch(url: &str) -> Result<(String, String), String> {
                 .get("location")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("");
-            cur = absolute(&cur, loc).ok_or_else(|| format!("bad redirect from {cur}"))?;
+            cur = absolute(&cur, loc).ok_or_else(|| "bad redirect".to_string())?;
             continue;
         }
         if code >= 400 {
-            return Err(format!("cannot fetch {cur}: HTTP {code}"));
+            return Err(format!("cannot fetch that address: HTTP {code}"));
         }
         r = Some(resp);
         break;
     }
-    let mut r = r.ok_or_else(|| format!("too many redirects from {url}"))?;
+    let mut r = r.ok_or_else(|| "too many redirects".to_string())?;
     let ctype = r
         .headers()
         .get("content-type")
@@ -164,9 +249,21 @@ pub fn fetch(url: &str) -> Result<(String, String), String> {
     let mut raw = Vec::new();
     r.body_mut()
         .as_reader()
-        .take(MAX_PAGE)
+        .take(max.saturating_add(1))
         .read_to_end(&mut raw)
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| "the page stopped answering".to_string())?;
+    Ok((raw, ctype))
+}
+
+/// Fetch a page and return (title, text). Loopback and private addresses are refused (also after redirects).
+pub fn fetch(url: &str) -> Result<(String, String), String> {
+    let (mut raw, ctype) = fetch_raw(
+        url,
+        MAX_PAGE,
+        60,
+        "CartaColibri-web-grab/0.2 (+local; https://github.com/chiuta/CartaColibri)",
+    )?;
+    raw.truncate(MAX_PAGE as usize);
     let body = decode(&raw);
     if ctype.contains("html") || body.trim_start().starts_with('<') {
         Ok((title_of(&body), html_to_text(&body)))
@@ -303,7 +400,7 @@ pub fn highlight_add(lib: &mut Library, url: &str, sel: &str) -> Result<usize, S
     if sel.chars().count() < 3 {
         return Err("select some text first".into());
     }
-    let _g = LOCK.lock().unwrap();
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let path = load_web(&lib.home)
         .get(url)
         .and_then(|e| e["path"].as_str().map(String::from))
@@ -346,6 +443,12 @@ pub fn save_with(
     text: &str,
     html: Option<&str>,
 ) -> Result<Value, String> {
+    // one line, no control characters: the title and address become Markdown header lines
+    let title = title.split_whitespace().collect::<Vec<_>>().join(" ");
+    let title = title.as_str();
+    if url.chars().any(|c| c.is_control()) {
+        return Err("that is not a web address".into());
+    }
     let clean = Regex::new(r"\n{3,}")
         .unwrap()
         .replace_all(
@@ -357,7 +460,7 @@ pub fn save_with(
     if clean.chars().count() < 20 {
         return Err("the page has no readable text".into());
     }
-    let _g = LOCK.lock().unwrap();
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let name = format!("{}.md", slug(if title.is_empty() { url } else { title }));
     let doc = format!(
         "# {}\n\nSource: {url}\n\n{clean}\n{}",

@@ -14,7 +14,7 @@
 Also: --sums writes dist/SHA256SUMS for every zip in dist/.
 Usage: python3 scripts/make_portable.py --version 0.2.0-alpha.1 --binary target/release/cartacolibri --target linux-x86_64 [--browser PATH]
        python3 scripts/make_portable.py --sums"""
-import argparse, glob, hashlib, os, zipfile
+import argparse, glob, hashlib, os, re, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PK = os.path.join(ROOT, "packaging")
@@ -28,7 +28,17 @@ def rd(name, mode="r"):
 
 def sums():
     zs = sorted(glob.glob(os.path.join(DIST, "*.zip")))
-    lines = [f"{hashlib.sha256(open(z, 'rb').read()).hexdigest()}  {os.path.basename(z)}" for z in zs]
+    if not zs:
+        raise SystemExit("no zip files in dist/ to checksum")
+
+    def digest(path):
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    lines = [f"{digest(z)}  {os.path.basename(z)}" for z in zs]
     out = os.path.join(DIST, "SHA256SUMS")
     with open(out, "w", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
@@ -47,6 +57,12 @@ def main():
         return sums()
     if not a.binary:
         ap.error("--binary is required")
+    # the version and target end up in a file name: no path separators, no surprises
+    if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z.+-]*", a.version) or not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z_.-]*", a.target):
+        ap.error("--version / --target may only contain letters, digits, . + - _")
+    for label, path in (("--binary", a.binary), ("--browser", a.browser)):
+        if path and not os.path.isfile(path):
+            ap.error(f"{label}: file not found: {path}")
     win = a.binary.endswith(".exe") or a.target.startswith("windows")
     mac = a.target.startswith("macos")
     os.makedirs(DIST, exist_ok=True)
@@ -97,7 +113,8 @@ def main():
             add(a.browser, f"App/CartaColibri/cartacolibri-browser{exe}", 0o755)
         for f in ("LICENSE", "README.md"):
             add(os.path.join(ROOT, f), "App/CartaColibri/" + f)
-        for dp, _, fn in os.walk(os.path.join(ROOT, "web-grab")):
+        for dp, dn, fn in os.walk(os.path.join(ROOT, "web-grab")):
+            dn.sort()
             for f in sorted(fn):
                 p = os.path.join(dp, f)
                 add(p, "App/CartaColibri/" + os.path.relpath(p, ROOT).replace(os.sep, "/"))

@@ -9,7 +9,10 @@ on:
         default: '0.2.0-alpha.1'
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  VERSION: ${{ inputs.version }}   # always used through the environment, never spliced into a script
 
 jobs:
   build:
@@ -23,8 +26,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - name: Version looks like a version
+        shell: bash
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "bad version: $VERSION"; exit 1; }
+          grep -q "^version = \"$VERSION\"" Cargo.toml || { echo "Cargo.toml version differs"; exit 1; }
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      # no rust-cache here: a release is built from scratch so a poisoned cache cannot reach the artifacts
       - run: cargo test --release
       - run: cargo build --release
       - name: System libraries for the browser (Linux)
@@ -36,7 +45,7 @@ jobs:
       - name: Check the launchers (Linux)
         if: runner.os == 'Linux'
         run: |
-          bash -n packaging/cartacolibri.sh packaging/install.sh packaging/CartaColibri.command
+          for f in packaging/cartacolibri.sh packaging/install.sh packaging/CartaColibri.command; do bash -n "$f"; done
           shellcheck -S warning packaging/cartacolibri.sh packaging/install.sh packaging/CartaColibri.command
       - uses: actions/setup-python@v5
         with: { python-version: '3.13' }
@@ -44,7 +53,7 @@ jobs:
         shell: bash
         run: |
           B=""; for f in target/release/cartacolibri-browser target/release/cartacolibri-browser.exe; do [ -f "$f" ] && B="--browser $f"; done
-          python scripts/make_portable.py --version ${{ inputs.version }} --binary target/release/${{ matrix.bin }} --target ${{ matrix.target }} $B
+          python scripts/make_portable.py --version "$VERSION" --binary target/release/${{ matrix.bin }} --target ${{ matrix.target }} $B
       - name: Smoke test the Linux package (launcher + local server)
         if: runner.os == 'Linux'
         shell: bash
@@ -60,8 +69,11 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with: { persist-credentials: false }
       - uses: actions/download-artifact@v4
         with: { pattern: 'portable-*', path: dist, merge-multiple: true }
       - name: Checksums
@@ -70,10 +82,10 @@ jobs:
           cat dist/SHA256SUMS
           (cd dist && sha256sum -c SHA256SUMS)
       - name: Release notes (8 languages)
-        run: sed 's/{version}/${{ inputs.version }}/g' packaging/release-notes.md | grep -v '^<!--' > dist/NOTES.md
+        run: sed "s/{version}/$VERSION/g" packaging/release-notes.md | grep -v '^<!--' > dist/NOTES.md
       - name: Draft pre-release
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
-          grep -q "^version = \"${{ inputs.version }}\"" Cargo.toml || { echo "Cargo.toml version differs"; exit 1; }
-          gh release create "v${{ inputs.version }}" dist/*.zip dist/SHA256SUMS --draft --prerelease \
-            --title "CartaColibri ${{ inputs.version }}" --notes-file dist/NOTES.md
+          grep -q "^version = \"$VERSION\"" Cargo.toml || { echo "Cargo.toml version differs"; exit 1; }
+          gh release create "v$VERSION" --target "$GITHUB_SHA" dist/*.zip dist/SHA256SUMS --draft --prerelease \
+            --title "CartaColibri $VERSION" --notes-file dist/NOTES.md

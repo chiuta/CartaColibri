@@ -44,19 +44,25 @@ size-capped. See `docs/threat-model.md` for the full picture.
 * Denial of service by a user against their own machine.
 * Vulnerabilities in third-party services you point the tool at.
 
-## Known gaps (tracked, with `#[ignore]` tests in `tests/security.rs`)
+## Hardening history and what remains
 
-These are documented rather than hidden. Run `cargo test --test security -- --ignored` to see
-their status.
+Earlier versions of this file listed five known gaps. All five now have a fix and a regression test in
+`tests/security.rs` (no `#[ignore]`d test is left):
 
-1. Web-grab does not block loopback / private / link-local targets or redirects to them (SSRF).
-   A page you grab can only be fetched by you or by a holder of the clip token.
-2. Request bodies are capped at 200 MiB and silently truncated rather than rejected with 413.
-3. The UI page has no `Content-Security-Policy` / `frame-ancestors` (clickjacking by a framing page).
-4. `clip.token` is created with the default umask (typically 0644), and on Windows its seed lacks
-   a strong random source.
-5. The browser overlay derives a global property name from the IPC nonce, so a hostile page can
-   discover the nonce and forge toolbar commands.
+| Former gap | Now |
+|---|---|
+| Web-grab could be pointed at loopback / private / link-local hosts (SSRF), also through redirects | Refused, including tricky address forms and every redirect hop; `CARTACOLIBRI_GRAB_LOCAL=1` opts in |
+| Request bodies silently truncated at the cap | Rejected with `413` |
+| No `Content-Security-Policy` / `frame-ancestors` | CSP, `X-Frame-Options: DENY`, `nosniff`, `no-store`, `Cross-Origin-Resource-Policy: same-origin` on every response |
+| `clip.token` created with the default umask; weak seed on Windows | `0600` on Unix, created from the OS random source |
+| Browser overlay nonce discoverable by a hostile page | Per-run secrets are not exposed as page globals; `--selftest-forge` (run in CI) proves forged IPC is ignored |
+
+Still accepted, by design or for lack of a better answer (see `docs/threat-model.md`):
+
+1. On Windows `clip.token` relies on the ACL of your user profile; no extra permission step is taken.
+2. Any local process running as you can call the API (`X-Colibri-UI` is a guard against web pages, not a secret).
+3. Indexing follows symlinks, including ones that point outside the chosen folder.
+4. One OS thread per connection: slow clients can exhaust threads on a shared machine.
 
 ## Dependencies
 

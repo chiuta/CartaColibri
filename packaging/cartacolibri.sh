@@ -25,7 +25,10 @@ open_url() {
 
 case "${1:-}" in
   stop)
-    if [ -f "$PIDF" ] && kill "$(cat "$PIDF")" 2>/dev/null; then echo "CartaColibri stopped."; else echo "CartaColibri was not running."; fi
+    # the pid file can be stale (the number may now belong to an unrelated program): check the name first
+    pid="$(cat "$PIDF" 2>/dev/null || true)"
+    case "$pid" in ''|*[!0-9]*) pid="" ;; esac
+    if [ -n "$pid" ] && ps -p "$pid" -o comm= 2>/dev/null | grep -q '^cartacolibri' && kill "$pid" 2>/dev/null; then echo "CartaColibri stopped."; else echo "CartaColibri was not running."; fi
     rm -f "$PIDF"; exit 0 ;;
   --desktop)
     D="${XDG_DATA_HOME:-$HOME/.local/share}/applications"; mkdir -p "$D"
