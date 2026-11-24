@@ -40,6 +40,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Share and safeguard** — export a group, tag or search as Markdown, CSV, JSON or zip, with citations; a Stats view with charts and a timeline; a one-file Backup with checksums; Check/Repair for the index.
 - **Bring things in** — import browser bookmarks, an Obsidian folder, Zotero/BibTeX, Pocket/Raindrop CSV or Evernote exports, and follow RSS/Atom feeds (OPML in and out): they become searchable notes. Email, calendar, subtitles and notebooks are indexed too.
 
+## New in 0.2.0-alpha.2
+
+- **The engine address just works** — `http://127.0.0.1:8000` and `http://127.0.0.1:8000/v1` are both fine. CartaColibri reads the model list from `/v1/models`, picks the loaded model by itself and no longer needs a `/health` page. That fixes the “AI engine not running (404)” message.
+- **It finds your AI by itself** — CartaColibri looks for a running engine on this computer: Colibri Companion’s own settings, a discovery file, then the usual local ports (8000, 8080, 11434, 1234, 8001, 5000). Only loopback addresses are ever probed. Open ⚙ to see what was found, or press “Start Colibri Companion”.
+- **Live status and speed** — The header shows the running model and whether it was found automatically, refreshed every few seconds. Under each answer you see the tokens used and the speed; below 3 tokens/s you get a hint to pick a smaller model. Requests go to the engine one at a time.
+- **Web pages from the import dialog** — In “Bring things from elsewhere” the news feeds gave way to web-grab: paste an address and save the page as one self-contained HTML or MHTML file in your library. Feeds are still there, folded away.
+- **Three buttons in the web-grab browser** — “Save to folder” keeps the text copy in your library, “Grab website HTML” saves the page (Shift+click for MHTML), “PDF” prints it to PDF. PDF is silent on Linux; on Windows and macOS the print dialog opens and you choose “Save as PDF”.
+- **Saved pages are searchable** — `.mhtml` and `.html` files are indexed with the right character set, so a saved page is found like any document. Pieces of a page that live on private addresses are never fetched or linked.
+
 ## Quick start
 
 Build it (or grab the portable zip) and start the local page. For the AI tasks also run the Colibrì engine with a model that fits your RAM (see its docs):
@@ -152,6 +161,7 @@ First try `cartacolibri doctor`: it checks your setup and tells you what to fix.
 | Your own script gets `403 missing X-Colibri-UI header` | This is a safety check, not a bug. | Send the header `X-Colibri-UI: 1` with every call to `/carta/*`. |
 | The index looks broken: odd results, missing files, an error about the database | The index file was damaged (for example by a crash or a full disk), or fell out of step with your folders. | Open **Stats**, press **Check the index** and then **Repair the index**, or run `cartacolibri verify --repair`. It rebuilds the index from your files; your tags, notes and groups are kept. |
 | A file was skipped because it was “too slow” | Reading it took longer than the time limit (default 120 seconds), usually a huge or damaged PDF or a very large scan. | Raise the limit, for example `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, then **Update index**. Or split / re-export the file. The reason is shown under “Files skipped”. |
+| “AI engine not running … (404)” | The address points at something that is not the engine, or no model is loaded. | Open ⚙, press “Find the engine” and choose the address it lists; both `…:8000` and `…:8000/v1` work. Make sure a model is loaded in Colibri Companion. |
 
 ## Plain-words glossary
 
@@ -174,7 +184,7 @@ First try `cartacolibri doctor`: it checks your setup and tells you what to fix.
 
 ## Honest status
 
-CartaColibri is **alpha** software (version 0.2.0-alpha): it works, but expect rough edges and keep backups of anything important. Linux is the best-tested platform: the web-grab browser is self-tested there in CI. On **Windows and macOS** the browser is compiled in CI but has **never been run by hand**. The automatic checks on GitHub (CI) are **not yet verified**: the jobs have been stuck in the queue. Your documents are safe either way, because they are only ever read. The pre-release **v0.2.0-alpha.2** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.
+CartaColibri is **alpha** software (version 0.2.0-alpha): it works, but expect rough edges and keep backups of anything important. Linux is the best-tested platform: the web-grab browser is self-tested there in CI. On **Windows and macOS** the browser is compiled in CI but has **never been run by hand**. The automatic checks on GitHub (CI) pass on Linux, Windows and macOS. Your documents are safe either way, because they are only ever read. The pre-release **v0.2.0-alpha.2** on GitHub is still a **draft**, so the portable downloads are not public yet; until then, build from source.
 
 ## Security
 

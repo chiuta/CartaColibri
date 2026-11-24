@@ -40,6 +40,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Megosztás és mentés** — exportálj egy csoportot, címkét vagy keresést Markdown, CSV, JSON vagy zip formátumban, hivatkozásokkal; Statisztika nézet diagramokkal és idővonallal; egyfájlos, ellenőrzőösszeges biztonsági mentés; Ellenőrzés/Javítás az indexhez.
 - **Behozatal** — importálj böngészőkönyvjelzőket, Obsidian-mappát, Zotero/BibTeX-et, Pocket/Raindrop CSV-t vagy Evernote-exportot, és kövess RSS/Atom-csatornákat (OPML be- és kimenet): kereshető jegyzetekké válnak. Az e-mailek, naptárak, feliratok és notebookok is bekerülnek az indexbe.
 
+## Újdonságok a 0.2.0-alpha.2-ben
+
+- **A motor címe magától működik** — A `http://127.0.0.1:8000` és a `http://127.0.0.1:8000/v1` is jó. A CartaColibri a `/v1/models` címről olvassa a modellek listáját, magától kiválasztja a betöltött modellt, és nincs szüksége `/health` oldalra. Ez megoldja az „AI engine not running (404)” üzenetet.
+- **Magától megtalálja az MI-det** — A CartaColibri keres egy futó motort ezen a gépen: a Colibri Companion saját beállításait, egy felfedezőfájlt, majd a szokásos helyi portokat (8000, 8080, 11434, 1234, 8001, 5000). Csak loopback címeket vizsgál. Nyisd meg a ⚙-t, hogy lásd, mit talált, vagy nyomd meg a „Colibri Companion indítása” gombot.
+- **Élő állapot és sebesség** — A fejléc mutatja a futó modellt és azt, hogy automatikusan találta-e meg, néhány másodpercenként frissítve. Minden válasz alatt látod a felhasznált tokeneket és a sebességet; 3 token/s alatt javaslatot kapsz kisebb modellre. A kérések egyenként mennek a motorhoz.
+- **Weboldalak az importálás ablakából** — A „Hozz át dolgokat máshonnan” ablakban a hírcsatornák helyét a web-grab vette át: illessz be egy címet, és mentsd az oldalt egyetlen önálló HTML- vagy MHTML-fájlként a könyvtárba. A csatornák továbbra is ott vannak, összecsukva.
+- **Három gomb a web-grab böngészőben** — A „Save to folder” a szöveges másolatot a könyvtárba menti, a „Grab website HTML” az oldalt menti (Shift+kattintás: MHTML), a „PDF” PDF-be nyomtatja. Linuxon a PDF csendben készül; Windowson és macOS-en megnyílik a nyomtatási ablak, és te választod a „Mentés PDF-ként” lehetőséget.
+- **A mentett oldalak kereshetők** — A `.mhtml` és `.html` fájlok a helyes karakterkészlettel kerülnek az indexbe, így a mentett oldal úgy található meg, mint bármely dokumentum. Az oldal privát címeken lévő részeit sosem tölti le és nem hivatkozza.
+
 ## Gyors kezdés
 
 Fordítsd le (vagy töltsd le a hordozható zipet), és indítsd el a helyi oldalt. Az MI-feladatokhoz indítsd el a Colibrì motort is a RAM-odba férő modellel (lásd a dokumentációját):
@@ -152,6 +161,7 @@ Először próbáld ki a `cartacolibri doctor` parancsot: ellenőrzi a beállít
 | A saját szkripted `403 missing X-Colibri-UI header` hibát kap | Ez biztonsági ellenőrzés, nem hiba. | Küldd el az `X-Colibri-UI: 1` fejlécet minden `/carta/*` hívással. |
 | Az index hibásnak tűnik: furcsa találatok, hiányzó fájlok, adatbázis-hiba | Az indexfájl megsérült (például összeomlás vagy tele lemez miatt), vagy elcsúszott a mappáidhoz képest. | Nyisd meg a **Statisztika → Ellenőrzés / Javítás** részt, vagy futtasd: `cartacolibri verify --repair`. A fájljaidból újraépíti az indexet; a címkéid, jegyzeteid és csoportjaid megmaradnak. |
 | Egy fájlt kihagyott, mert „túl lassú” volt | Az olvasása átlépte az időkorlátot (alapból 120 másodperc), általában egy hatalmas vagy sérült PDF, esetleg egy nagyon nagy szkennelés. | Emeld meg a korlátot, például `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, majd **Index frissítése**. Vagy darabold fel / exportáld újra a fájlt. Az ok a „Kihagyott fájlok” alatt látszik. |
+| „AI engine not running … (404)” | A cím valami másra mutat, nem a motorra, vagy nincs betöltött modell. | Nyisd meg a ⚙-t, nyomd meg a „Motor keresése” gombot, és válaszd a listázott címet; a `…:8000` és a `…:8000/v1` is jó. Ellenőrizd, hogy a Colibri Companionban be van töltve egy modell. |
 
 ## Szószedet egyszerű szavakkal
 
@@ -174,7 +184,7 @@ Először próbáld ki a `cartacolibri doctor` parancsot: ellenőrzi a beállít
 
 ## Őszinte állapotjelentés
 
-A CartaColibri **alfa** állapotú szoftver (0.2.0-alpha verzió): működik, de számíts apróbb hibákra, és a fontos dolgaidról tarts mentést. A Linux a legjobban tesztelt platform: ott a web-grab böngészőt a CI automatikusan kipróbálja. **Windowson és macOS-en** a böngészőt a CI lefordítja, de **kézzel még soha nem futtattuk**. A GitHubon az automatikus ellenőrzések (CI) **még nincsenek megerősítve**: a feladatok elakadtak a sorban. A dokumentumaid így is biztonságban vannak, mert csak olvassa őket. A GitHubon a **v0.2.0-alpha.2** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.
+A CartaColibri **alfa** állapotú szoftver (0.2.0-alpha verzió): működik, de számíts apróbb hibákra, és a fontos dolgaidról tarts mentést. A Linux a legjobban tesztelt platform: ott a web-grab böngészőt a CI automatikusan kipróbálja. **Windowson és macOS-en** a böngészőt a CI lefordítja, de **kézzel még soha nem futtattuk**. A GitHubon az automatikus ellenőrzések (CI) Linuxon, Windowson és macOS-en átmennek. A dokumentumaid így is biztonságban vannak, mert csak olvassa őket. A GitHubon a **v0.2.0-alpha.2** előzetes kiadás még **piszkozat**, így a hordozható letöltések még nem nyilvánosak; addig fordítsd le a forrásból.
 
 ## Biztonság
 

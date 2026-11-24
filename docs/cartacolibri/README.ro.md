@@ -40,6 +40,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Partajează și protejează** — exportă un grup, o etichetă sau o căutare ca Markdown, CSV, JSON sau zip, cu citări; o vedere Statistici cu grafice și cronologie; o copie de rezervă într-un singur fișier, cu sume de control; Verifică/Repară pentru index.
 - **Adu lucruri înăuntru** — importă marcaje de browser, un folder Obsidian, Zotero/BibTeX, CSV Pocket/Raindrop sau exporturi Evernote și urmărește fluxuri RSS/Atom (OPML import și export): devin notițe căutabile. Sunt indexate și e-mailurile, calendarele, subtitrările și caietele.
 
+## Noutăți în 0.2.0-alpha.2
+
+- **Adresa motorului merge direct** — `http://127.0.0.1:8000` și `http://127.0.0.1:8000/v1` sunt ambele bune. CartaColibri citește lista de modele din `/v1/models`, alege singur modelul încărcat și nu mai are nevoie de o pagină `/health`. Asta rezolvă mesajul „AI engine not running (404)”.
+- **Își găsește singur AI-ul** — CartaColibri caută un motor pornit pe acest calculator: setările proprii ale Colibri Companion, un fișier de descoperire, apoi porturile locale obișnuite (8000, 8080, 11434, 1234, 8001, 5000). Se verifică doar adrese loopback. Deschide ⚙ ca să vezi ce a găsit sau apasă „Pornește Colibri Companion”.
+- **Stare și viteză în direct** — Antetul arată modelul care rulează și dacă a fost găsit automat, reîmprospătat la câteva secunde. Sub fiecare răspuns vezi tokenii folosiți și viteza; sub 3 tokeni/s primești un sfat să alegi un model mai mic. Cererile merg la motor pe rând.
+- **Pagini web din dialogul de import** — În „Adu lucruri din altă parte” fluxurile de știri au lăsat locul web-grab: lipești o adresă și salvezi pagina ca un singur fișier HTML sau MHTML în bibliotecă. Fluxurile sunt tot acolo, pliate.
+- **Trei butoane în browserul web-grab** — „Save to folder” păstrează copia text în bibliotecă, „Grab website HTML” salvează pagina (Shift+clic pentru MHTML), „PDF” o tipărește în PDF. Pe Linux PDF-ul se face în tăcere; pe Windows și macOS se deschide dialogul de tipărire și alegi „Salvează ca PDF”.
+- **Paginile salvate sunt căutabile** — Fișierele `.mhtml` și `.html` sunt indexate cu setul de caractere corect, deci o pagină salvată se găsește ca orice document. Părțile unei pagini aflate pe adrese private nu sunt niciodată descărcate sau legate.
+
 ## Pornire rapidă
 
 Compilează-l (sau ia zip-ul portabil) și pornește pagina locală. Pentru taskurile AI pornește și motorul Colibrì cu un model care încape în RAM-ul tău (vezi documentația lui):
@@ -152,6 +161,7 @@ web-grab aduce doar pagini publice. Adresele de pe propriul calculator sau din r
 | Scriptul tău primește `403 missing X-Colibri-UI header` | E o verificare de siguranță, nu o greșeală. | Trimite antetul `X-Colibri-UI: 1` la fiecare apel către `/carta/*`. |
 | Indexul pare stricat: rezultate ciudate, fișiere lipsă, o eroare despre baza de date | Fișierul de index a fost deteriorat (de pildă de o cădere sau un disc plin) sau nu mai este sincron cu folderele tale. | Deschide **Statistici → Verifică / Repară** sau rulează `cartacolibri verify --repair`. Reface indexul din fișierele tale; etichetele, notele și grupurile rămân. |
 | Un fișier a fost sărit pentru că a fost „prea lent” | Citirea lui a depășit limita de timp (implicit 120 de secunde), de obicei un PDF uriaș sau deteriorat ori o scanare foarte mare. | Mărește limita, de exemplu `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, apoi **Actualizează indexul**. Sau împarte / reexportă fișierul. Motivul apare la „Fișiere sărite”. |
+| „AI engine not running … (404)” | Adresa duce la altceva decât motorul, sau nu e încărcat niciun model. | Deschide ⚙, apasă „Caută motorul” și alege adresa listată; merg și `…:8000`, și `…:8000/v1`. Verifică să fie încărcat un model în Colibri Companion. |
 
 ## Glosar pe înțelesul tuturor
 
@@ -174,7 +184,7 @@ web-grab aduce doar pagini publice. Adresele de pe propriul calculator sau din r
 
 ## Starea reală
 
-CartaColibri este un software **alfa** (versiunea 0.2.0-alpha): funcționează, dar așteaptă-te la asperități și păstrează copii de rezervă pentru ce e important. Linux e platforma cel mai bine testată: browserul web-grab e autotestat acolo în CI. Pe **Windows și macOS** browserul este compilat în CI, dar **n-a fost niciodată rulat manual**. Verificările automate de pe GitHub (CI) **nu sunt încă confirmate**: joburile au rămas blocate în coadă. Documentele tale sunt în siguranță oricum, fiindcă sunt doar citite. Pre-lansarea **v0.2.0-alpha.2** de pe GitHub este încă o **ciornă**, deci descărcările portabile nu sunt încă publice; până atunci, compilează din sursă.
+CartaColibri este un software **alfa** (versiunea 0.2.0-alpha): funcționează, dar așteaptă-te la asperități și păstrează copii de rezervă pentru ce e important. Linux e platforma cel mai bine testată: browserul web-grab e autotestat acolo în CI. Pe **Windows și macOS** browserul este compilat în CI, dar **n-a fost niciodată rulat manual**. Verificările automate de pe GitHub (CI) trec pe Linux, Windows și macOS. Documentele tale sunt în siguranță oricum, fiindcă sunt doar citite. Pre-lansarea **v0.2.0-alpha.2** de pe GitHub este încă o **ciornă**, deci descărcările portabile nu sunt încă publice; până atunci, compilează din sursă.
 
 ## Securitate
 

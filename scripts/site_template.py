@@ -254,6 +254,9 @@ footer{border-top:1px solid var(--line);padding:30px 5vw 50px;text-align:center;
 <div class="grid rv" id="pgrid"><div class="card p" id="p1"></div><div class="card p" id="p2"></div><div class="card p" id="p3"></div><div class="card p" id="p4"></div><div class="card p" id="p5"></div><div class="card p" id="p6"></div></div>
 <div class="rv"><h2 id="h_layers" style="margin-top:1.6em"></h2><div class="flow"><span>📁 Layer 0</span><i>→</i><span>RAG-fetch</span><i>→</i><span>RAG-CARTA</span><i>→</i><span>Colibrì</span></div><p id="layers" class="center sub"></p></div></section>
 
+<section class="sec" id="new"><div class="rv"><h2 id="h_new"></h2></div>
+<div class="grid rv" id="nwgrid"><div class="card p" id="nw1"></div><div class="card p" id="nw2"></div><div class="card p" id="nw3"></div><div class="card p" id="nw4"></div><div class="card p" id="nw5"></div><div class="card p" id="nw6"></div></div></section>
+
 <section class="sec rv" id="start"><h2 id="h_first"></h2><p class="sub" id="first_intro"></p><ol class="steps" id="steps"></ol><p id="first_note"></p>
 <div class="cb"><pre>__FIRST_CODE__</pre></div>
 <h2 id="h_start" style="margin-top:1.6em"></h2><p id="start1"></p><div class="cb"><pre>git clone __REPO__

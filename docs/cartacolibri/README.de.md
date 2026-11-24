@@ -40,6 +40,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Teilen und sichern** — exportiere eine Gruppe, ein Tag oder eine Suche als Markdown, CSV, JSON oder Zip, mit Quellenangaben; eine Statistik-Ansicht mit Diagrammen und Zeitleiste; ein Backup in einer einzigen Datei mit Prüfsummen; Prüfen/Reparieren für den Index.
 - **Importieren** — hole Browser-Lesezeichen, einen Obsidian-Ordner, Zotero/BibTeX, Pocket/Raindrop-CSV oder Evernote-Exporte herein und abonniere RSS/Atom-Feeds (OPML rein und raus): Sie werden zu durchsuchbaren Notizen. E-Mails, Kalender, Untertitel und Notebooks werden ebenfalls indiziert.
 
+## Neu in 0.2.0-alpha.2
+
+- **Die Engine-Adresse funktioniert einfach** — `http://127.0.0.1:8000` und `http://127.0.0.1:8000/v1` sind beide richtig. CartaColibri liest die Modellliste von `/v1/models`, wählt das geladene Modell selbst und braucht keine `/health`-Seite mehr. Das behebt die Meldung „AI engine not running (404)“.
+- **Er findet deine KI selbst** — CartaColibri sucht auf diesem Rechner nach einer laufenden Engine: die eigenen Einstellungen von Colibri Companion, eine Discovery-Datei, danach die üblichen lokalen Ports (8000, 8080, 11434, 1234, 8001, 5000). Geprüft werden nur Loopback-Adressen. Öffne ⚙, um zu sehen, was gefunden wurde, oder drücke „Colibri Companion starten“.
+- **Live-Status und Tempo** — Die Kopfzeile zeigt das laufende Modell und ob es automatisch gefunden wurde, alle paar Sekunden aktualisiert. Unter jeder Antwort siehst du die verbrauchten Tokens und die Geschwindigkeit; unter 3 Tokens/s gibt es den Hinweis auf ein kleineres Modell. Anfragen gehen nacheinander an die Engine.
+- **Webseiten aus dem Import-Dialog** — Unter „Von woanders holen“ haben die Nachrichten-Feeds web-grab Platz gemacht: Adresse einfügen und die Seite als eine einzige HTML- oder MHTML-Datei in der Bibliothek speichern. Die Feeds sind weiterhin da, eingeklappt.
+- **Drei Schaltflächen im web-grab-Browser** — „Save to folder“ legt die Textkopie in deiner Bibliothek ab, „Grab website HTML“ speichert die Seite (Umschalt+Klick für MHTML), „PDF“ druckt sie als PDF. Unter Linux läuft PDF lautlos; unter Windows und macOS öffnet sich der Druckdialog, und du wählst „Als PDF speichern“.
+- **Gespeicherte Seiten sind durchsuchbar** — `.mhtml`- und `.html`-Dateien werden mit dem richtigen Zeichensatz indiziert, eine gespeicherte Seite wird also wie jedes Dokument gefunden. Teile einer Seite auf privaten Adressen werden nie geladen oder verlinkt.
+
 ## Schnellstart
 
 Kompiliere sie (oder nimm das portable Zip) und starte die lokale Seite. Für die KI-Aufgaben starte außerdem die Colibrì-Engine mit einem Modell, das in deinen RAM passt (siehe deren Doku):
@@ -152,6 +161,7 @@ Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir,
 | Dein eigenes Skript bekommt `403 missing X-Colibri-UI header` | Das ist eine Sicherheitsprüfung, kein Fehler. | Sende den Header `X-Colibri-UI: 1` bei jedem Aufruf von `/carta/*`. |
 | Der Index wirkt kaputt: seltsame Treffer, fehlende Dateien, ein Fehler zur Datenbank | Die Indexdatei wurde beschädigt (etwa durch einen Absturz oder eine volle Festplatte) oder ist nicht mehr im Takt mit deinen Ordnern. | Öffne **Statistik → Prüfen / Reparieren** oder führe `cartacolibri verify --repair` aus. Der Index wird aus deinen Dateien neu aufgebaut; Tags, Notizen und Gruppen bleiben erhalten. |
 | Eine Datei wurde übersprungen, weil sie „zu langsam“ war | Das Lesen dauerte länger als das Zeitlimit (standardmäßig 120 Sekunden), meist bei einem riesigen oder beschädigten PDF oder einem sehr großen Scan. | Erhöhe das Limit, zum Beispiel `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, und klicke dann auf **Index aktualisieren**. Oder teile / exportiere die Datei neu. Der Grund steht unter „Übersprungene Dateien“. |
+| „AI engine not running … (404)“ | Die Adresse zeigt auf etwas, das nicht die Engine ist, oder es ist kein Modell geladen. | Öffne ⚙, drücke „Engine suchen“ und wähle die angezeigte Adresse; `…:8000` und `…:8000/v1` funktionieren beide. Prüfe, ob in Colibri Companion ein Modell geladen ist. |
 
 ## Glossar in einfachen Worten
 
@@ -174,7 +184,7 @@ Probiere zuerst `cartacolibri doctor`: Es prüft deine Einrichtung und sagt dir,
 
 ## Ehrlicher Stand
 
-CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) sind **noch nicht bestätigt**: Die Jobs hängen in der Warteschlange fest. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden. Das Pre-Release **v0.2.0-alpha.2** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.
+CartaColibri ist **Alpha**-Software (Version 0.2.0-alpha): Es funktioniert, aber rechne mit Ecken und Kanten und sichere Wichtiges extra. Linux ist die am besten getestete Plattform: Dort wird der web-grab-Browser in CI selbst getestet. Unter **Windows und macOS** wird der Browser in CI zwar kompiliert, wurde aber **noch nie von Hand ausgeführt**. Die automatischen Prüfungen auf GitHub (CI) laufen unter Linux, Windows und macOS durch. Deine Dokumente sind in jedem Fall sicher, weil sie nur gelesen werden. Das Pre-Release **v0.2.0-alpha.2** auf GitHub ist noch ein **Entwurf**, die portablen Downloads sind also noch nicht öffentlich; bis dahin baust du aus dem Quellcode.
 
 ## Sicherheit
 

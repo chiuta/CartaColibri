@@ -40,6 +40,15 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Condividi e proteggi** — esporta un gruppo, un’etichetta o una ricerca in Markdown, CSV, JSON o zip, con citazioni; una vista Statistiche con grafici e cronologia; un backup in un solo file con checksum; Controlla/Ripara per l’indice.
 - **Porta dentro le cose** — importa i segnalibri del browser, una cartella Obsidian, Zotero/BibTeX, CSV di Pocket/Raindrop o esportazioni di Evernote, e segui i feed RSS/Atom (OPML in entrata e in uscita): diventano note ricercabili. Anche email, calendari, sottotitoli e notebook vengono indicizzati.
 
+## Novità della 0.2.0-alpha.2
+
+- **L’indirizzo del motore funziona da solo** — `http://127.0.0.1:8000` e `http://127.0.0.1:8000/v1` vanno entrambi bene. CartaColibri legge l’elenco dei modelli da `/v1/models`, sceglie da solo il modello caricato e non ha più bisogno di una pagina `/health`. Questo risolve il messaggio «AI engine not running (404)».
+- **Trova da solo la tua IA** — CartaColibri cerca un motore in esecuzione su questo computer: le impostazioni di Colibri Companion, un file di scoperta, poi le solite porte locali (8000, 8080, 11434, 1234, 8001, 5000). Vengono sondati solo indirizzi loopback. Apri ⚙ per vedere cosa ha trovato, oppure premi «Avvia Colibri Companion».
+- **Stato e velocità in tempo reale** — L’intestazione mostra il modello in esecuzione e se è stato trovato in automatico, aggiornato ogni pochi secondi. Sotto ogni risposta vedi i token usati e la velocità; sotto i 3 token/s ricevi il consiglio di scegliere un modello più piccolo. Le richieste vanno al motore una alla volta.
+- **Pagine web dalla finestra di importazione** — In «Porta cose da altrove» i feed di notizie hanno lasciato il posto a web-grab: incolla un indirizzo e salva la pagina come un unico file HTML o MHTML nella biblioteca. I feed ci sono ancora, ripiegati.
+- **Tre pulsanti nel browser web-grab** — «Save to folder» conserva la copia di testo nella biblioteca, «Grab website HTML» salva la pagina (Maiusc+clic per MHTML), «PDF» la stampa in PDF. Il PDF è silenzioso su Linux; su Windows e macOS si apre la finestra di stampa e scegli «Salva come PDF».
+- **Le pagine salvate si possono cercare** — I file `.mhtml` e `.html` sono indicizzati con il set di caratteri giusto, così una pagina salvata si trova come qualsiasi documento. Le parti di una pagina su indirizzi privati non vengono mai scaricate né collegate.
+
 ## Avvio rapido
 
 Compilala (o prendi lo zip portatile) e avvia la pagina locale. Per i compiti IA avvia anche il motore Colibrì con un modello adatto alla tua RAM (vedi la sua documentazione):
@@ -152,6 +161,7 @@ Prova prima `cartacolibri doctor`: controlla la tua installazione e ti dice cosa
 | Il tuo script riceve `403 missing X-Colibri-UI header` | È un controllo di sicurezza, non un errore. | Invia l’intestazione `X-Colibri-UI: 1` a ogni chiamata a `/carta/*`. |
 | L’indice sembra rotto: risultati strani, file mancanti, un errore sul database | Il file dell’indice si è danneggiato (per esempio per un arresto anomalo o un disco pieno) o non è più allineato alle tue cartelle. | Apri **Statistiche → Controlla / Ripara**, oppure esegui `cartacolibri verify --repair`. L’indice viene ricostruito dai tuoi file; etichette, note e gruppi restano. |
 | Un file è stato saltato perché «troppo lento» | La lettura ha superato il limite di tempo (predefinito 120 secondi), di solito un PDF enorme o danneggiato, o una scansione molto grande. | Alza il limite, per esempio `CARTACOLIBRI_EXTRACT_TIMEOUT=600`, poi **Aggiorna indice**. Oppure dividi / riesporta il file. Il motivo compare sotto «File saltati». |
+| «AI engine not running … (404)» | L’indirizzo punta a qualcosa che non è il motore, oppure non c’è nessun modello caricato. | Apri ⚙, premi «Cerca il motore» e scegli l’indirizzo indicato; vanno bene sia `…:8000` sia `…:8000/v1`. Controlla che in Colibri Companion sia caricato un modello. |
 
 ## Glossario in parole semplici
 
@@ -174,7 +184,7 @@ Prova prima `cartacolibri doctor`: controlla la tua installazione e ti dice cosa
 
 ## Stato reale
 
-CartaColibri è un software **alfa** (versione 0.2.0-alpha): funziona, ma aspettati qualche spigolo e tieni copie di sicurezza di ciò che conta. Linux è la piattaforma meglio testata: lì il browser web-grab è autotestato in CI. Su **Windows e macOS** il browser viene compilato in CI ma **non è mai stato avviato a mano**. I controlli automatici su GitHub (CI) **non sono ancora verificati**: i job sono rimasti bloccati in coda. I tuoi documenti sono al sicuro comunque, perché vengono solo letti. La pre-release **v0.2.0-alpha.2** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.
+CartaColibri è un software **alfa** (versione 0.2.0-alpha): funziona, ma aspettati qualche spigolo e tieni copie di sicurezza di ciò che conta. Linux è la piattaforma meglio testata: lì il browser web-grab è autotestato in CI. Su **Windows e macOS** il browser viene compilato in CI ma **non è mai stato avviato a mano**. I controlli automatici su GitHub (CI) passano su Linux, Windows e macOS. I tuoi documenti sono al sicuro comunque, perché vengono solo letti. La pre-release **v0.2.0-alpha.2** su GitHub è ancora una **bozza**, quindi i download portatili non sono ancora pubblici; nel frattempo compila dai sorgenti.
 
 ## Sicurezza
 

@@ -6,6 +6,7 @@ import html, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import carta_docs_beginner as B
 import carta_docs_power as P
+import carta_docs_alpha2 as A2
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANGS = ["en", "ro", "fr", "it", "es", "pt", "de", "hu"]
 NAMES = {"en": "English", "ro": "Română", "fr": "Français", "it": "Italiano", "es": "Español", "pt": "Português", "de": "Deutsch", "hu": "Magyar"}
@@ -165,6 +166,13 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 ```"""
 
 
+for _l in LANGS:
+    B.TROUBLE[_l] = list(B.TROUBLE[_l]) + [A2.TROUBLE_ROW[_l]]
+X["h_new"] = dict(A2.H_NEW)
+for _i, _n in enumerate(A2.NEWS, 1):
+    X[f"nw{_i}"] = {_l: f"**{_n[_l][0]}** — {_n[_l][1]}" for _l in LANGS}
+
+
 def md_beginner(lang):
     """Markdown for the beginner sections (first 5 minutes, FAQ, troubleshooting, glossary, privacy, status)."""
     l = lambda k: B.L[k][lang]
@@ -198,6 +206,7 @@ def md_readme(lang, root=False):
                          for l in LANGS) if not root else " · ".join("<b>English</b>" if l == "en" else f"[{NAMES[l]}](docs/cartacolibri/README.{l}.md)" for l in LANGS)
     logo = "assets/cartacolibri-logo.png" if root else "../../assets/cartacolibri-logo.png"
     t_docs = t("docs")
+    news = "\n".join(f"- {t('nw' + str(i))}" for i in range(1, len(A2.NEWS) + 1))
     power, cli = md_power(lang)
     sec = f"## {P.H_SEC[lang]}\n\n" + (sec_text(lang, "SECURITY.md", "docs/threat-model.md") if root else sec_text(lang, "../../SECURITY.md", "../threat-model.md")) + "\n"
     if root: t_docs = t_docs.replace("](../cartacolibri.md)", "](docs/cartacolibri.md)").replace("](../../", "](")
@@ -219,6 +228,10 @@ def md_readme(lang, root=False):
 - {t('f5')}
 
 {power}
+## {t('h_new')}
+
+{news}
+
 ## {t('h_start')}
 
 {t('start1')}
@@ -276,7 +289,7 @@ def site():
     names = json.dumps(NAMES, ensure_ascii=False)
     first_code = html.escape(B.FIRST_CODE.strip("`").removeprefix("bash\n").strip("\n"), quote=False)
     ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
-           'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
+           'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     import site_template as T
     miss = [(k, l) for k in T.NEW for l in LANGS if not T.NEW[k].get(l)]
     if miss: sys.exit(f"missing site translations: {miss}")

@@ -55,3 +55,11 @@ See [`web-grab/README.md`](../web-grab/README.md).
 
 Also indexed now: `.eml .mbox .ics .vcf .tsv .srt .vtt .ipynb .tex .org .adoc .ndjson` and the text inside `.zip` files.
 Web-grab refuses loopback / private addresses unless `CARTACOLIBRI_GRAB_LOCAL=1` is set.
+
+## New in 0.2.0-alpha.2
+
+- **Engine address:** both `http://127.0.0.1:8000` and `…/v1` work; the model is read from `/v1/models` and picked automatically; no `/health` page is needed.
+- **Auto-detection:** Colibri Companion's `settings.json`, a discovery file, then local ports 8000, 8080, 11434, 1234, 8001, 5000 (loopback only) — see [engine-discovery.md](engine-discovery.md). The ⚙ dialog can also start Colibri Companion.
+- **Live status and usage:** running model in the header, tokens and tokens/s under each answer, one request at a time.
+- **web-grab pages:** `POST /carta/grab` accepts `"fmt": "html" | "mhtml"`; the import dialog has a web-grab section; `.mhtml` files are indexed.
+- **web-grab browser:** toolbar buttons *Save to folder*, *Grab website HTML* (Shift+click: MHTML) and *PDF* (silent on Linux; the print dialog on Windows and macOS).
