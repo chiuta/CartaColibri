@@ -102,7 +102,7 @@ fn lib_with(files: &[(&str, &str)]) -> (tempfile::TempDir, Library, String) {
 
 fn names(h: &[cartacolibri::library::Hit]) -> Vec<String> {
     h.iter()
-        .map(|h| h.path.rsplit('/').next().unwrap().to_string())
+        .map(|h| h.path.rsplit(['/', '\\']).next().unwrap().to_string())
         .collect()
 }
 

@@ -556,9 +556,10 @@ pub fn evaluate(
         for c in cases {
             let hits = lib.search_mode(be, model, &c.q, &f, mode)?.hits;
             let rank = hits.iter().position(|h| {
-                let p = h.path.to_lowercase();
+                // Windows paths use backslashes: compare with forward slashes on both sides
+                let p = h.path.to_lowercase().replace('\\', "/");
                 c.expect.iter().any(|e| {
-                    let e = e.to_lowercase();
+                    let e = e.to_lowercase().replace('\\', "/");
                     p == e || p.ends_with(&format!("/{e}"))
                 })
             });
