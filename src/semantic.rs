@@ -165,10 +165,11 @@ fn dot_blob(q: &[f32], b: &[u8]) -> Option<f32> {
     if b.len() != q.len() * 4 {
         return None;
     }
+    let (words, _) = b.as_chunks::<4>();
     Some(
         q.iter()
-            .zip(b.chunks_exact(4))
-            .map(|(x, c)| x * f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .zip(words)
+            .map(|(x, c)| x * f32::from_le_bytes(*c))
             .sum(),
     )
 }
