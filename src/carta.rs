@@ -603,8 +603,10 @@ fn blocks<'a>(
     limit: usize,
 ) -> Vec<Vec<(&'a Doc, String)>> {
     let mut pieces: Vec<(&Doc, String)> = vec![];
+    let ids: Vec<i64> = docs.iter().map(|d| d.id).collect();
+    let mut texts = lib.texts_of(&ids);
     for (i, d) in docs.iter().enumerate() {
-        let text = lib.text_of(d.id);
+        let text = texts.remove(&d.id).unwrap_or_default();
         let chars: Vec<char> = text.trim().chars().take(limit).collect();
         for part in chars.chunks(budget.max(1)) {
             let s: String = part.iter().collect();

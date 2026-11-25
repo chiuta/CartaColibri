@@ -782,8 +782,9 @@ fn inline_filters_in_the_query_box() {
     let _ = lib
         .search("lunii size:>abc ext:", &Filter::default())
         .unwrap();
-    // filters only: a clean "empty query" error, no crash
-    assert!(lib.search_friendly("ext:txt", &Filter::default()).is_err());
+    // filters only: they list what they select; nothing at all is a clean "empty query" error
+    assert!(lib.search_friendly("ext:txt", &Filter::default()).is_ok());
+    assert!(lib.search_friendly("   ", &Filter::default()).is_err());
     // the friendly search honours them too
     let fr = lib
         .search_friendly("lunii ext:md", &Filter::default())

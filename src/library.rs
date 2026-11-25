@@ -1062,11 +1062,26 @@ impl Library {
         Ok(hits)
     }
 
-    fn fetch(&self, m: &str) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
+    /// `limit` is 2000 passages normally, 50000 when a filter will thin the list afterwards (so a
+    /// filter never only sees the best 2000 passages of the whole library).
+    fn fetch(&self, m: &str, limit: usize) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
         let mut q = self.db.prepare_cached(
-            "SELECT doc_id, loc, text, bm25(chunks) FROM chunks WHERE chunks MATCH ?1 ORDER BY bm25(chunks) LIMIT 2000",
+            "SELECT doc_id, loc, text, bm25(chunks) FROM chunks WHERE chunks MATCH ?1 ORDER BY bm25(chunks) LIMIT ?2",
         )?;
-        let rows = q.query_map([m], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+        let rows = q.query_map(rusqlite::params![m, limit as i64], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+        })?;
+        rows.collect()
+    }
+
+    /// Passages in index order, for searches made only of filters (`ext:pdf`, `re:INV-\d+`, ...).
+    fn scan(&self, limit: usize) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
+        let mut q = self
+            .db
+            .prepare_cached("SELECT doc_id, loc, text, 0.0 FROM chunks LIMIT ?1")?;
+        let rows = q.query_map([limit as i64], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+        })?;
         rows.collect()
     }
 
@@ -1075,6 +1090,20 @@ impl Library {
         let (inline, fi) = parse_inline(query, f);
         let f = &fi;
         let query = clip(&inline);
+        let filtered = !f.ext.is_empty()
+            || f.min_size.is_some()
+            || f.max_size.is_some()
+            || f.path_like.is_some()
+            || f.group.is_some()
+            || f.after.is_some()
+            || f.before.is_some()
+            || f.regex.is_some();
+        if query.trim().is_empty() && filtered {
+            // only filters, no words: list what they select (a scan, capped)
+            let rows = self.scan(300_000).map_err(e)?;
+            return Ok((self.rows_to_hits(rows, &[], f)?, String::new()));
+        }
+        let limit = if filtered { 50_000 } else { 2_000 };
         let word = Regex::new(r"\w+").unwrap();
         let plain: Vec<&str> = word
             .find_iter(query)
@@ -1083,7 +1112,7 @@ impl Library {
             .take(MAX_QUERY_TERMS)
             .collect();
         let mut used = Self::fts_query(query)?;
-        let mut rows = match self.fetch(&used) {
+        let mut rows = match self.fetch(&used, limit) {
             Ok(r) => r,
             Err(_) => {
                 // e.g. a dangling AND/NOT: fall back to plain quoted words, never a crash
@@ -1095,7 +1124,7 @@ impl Library {
                     .map(|w| format!("\"{w}\""))
                     .collect::<Vec<_>>()
                     .join(" ");
-                self.fetch(&used).map_err(e)?
+                self.fetch(&used, limit).map_err(e)?
             }
         };
         if rows.is_empty() && fallback && !plain.is_empty() {
@@ -1121,7 +1150,7 @@ impl Library {
                 if tried.contains(&m) {
                     continue;
                 }
-                rows = self.fetch(&m).unwrap_or_default();
+                rows = self.fetch(&m, limit).unwrap_or_default();
                 tried.push(m.clone());
                 if !rows.is_empty() {
                     used = m;
@@ -1361,15 +1390,43 @@ impl Library {
                 Ok(it) => it.flatten().collect(),
                 Err(_) => return String::new(),
             };
-        let (mut out, mut last): (Vec<String>, Option<String>) = (vec![], None);
-        for (loc, text) in rows {
-            if !loc.is_empty() && last.as_deref() != Some(loc.as_str()) {
-                out.push(format!("\n[{loc}]"));
-                last = Some(loc);
+        join_chunks(rows)
+    }
+
+    /// The text of many documents in ONE pass over the passages. `chunks` is an FTS5 table whose
+    /// `doc_id` column is not indexed, so calling `text_of` once per document scans the whole
+    /// table every time (quadratic); whole-library analyses must use this instead.
+    pub fn texts_of(&self, ids: &[i64]) -> std::collections::HashMap<i64, String> {
+        use std::collections::{HashMap, HashSet};
+        let want: HashSet<i64> = ids.iter().copied().collect();
+        let Ok(mut q) = self
+            .db
+            .prepare("SELECT doc_id,CAST(seq AS INTEGER),loc,text FROM chunks")
+        else {
+            return HashMap::new();
+        };
+        let Ok(rows) = q.query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+            ))
+        }) else {
+            return HashMap::new();
+        };
+        let mut by: HashMap<i64, Vec<(i64, String, String)>> = HashMap::new();
+        for (id, seq, loc, text) in rows.flatten() {
+            if want.contains(&id) {
+                by.entry(id).or_default().push((seq, loc, text));
             }
-            out.push(text);
         }
-        out.join("\n")
+        by.into_iter()
+            .map(|(id, mut v)| {
+                v.sort_by_key(|x| x.0);
+                (id, join_chunks(v.into_iter().map(|x| (x.1, x.2)).collect()))
+            })
+            .collect()
     }
 
     // ---- groups
@@ -1680,4 +1737,16 @@ fn make_snippet(text: &str, terms: &[(String, bool)]) -> String {
         out.push_str(" …");
     }
     out
+}
+
+fn join_chunks(rows: Vec<(String, String)>) -> String {
+    let (mut out, mut last): (Vec<String>, Option<String>) = (vec![], None);
+    for (loc, text) in rows {
+        if !loc.is_empty() && last.as_deref() != Some(loc.as_str()) {
+            out.push(format!("\n[{loc}]"));
+            last = Some(loc);
+        }
+        out.push(text);
+    }
+    out.join("\n")
 }

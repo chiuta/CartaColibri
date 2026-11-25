@@ -4,6 +4,11 @@
 use regex::Regex;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::LazyLock;
+
+fn re(p: &str) -> Regex {
+    Regex::new(p).unwrap()
+}
 
 // ------------------------------------------------------------------ grounding of an answer
 
@@ -38,10 +43,10 @@ fn words(t: &str) -> BTreeSet<String> {
         .collect()
 }
 
+static NUM: LazyLock<Regex> = LazyLock::new(|| re(r"\d[\d.,]*\d|\d"));
+
 fn numbers(t: &str) -> Vec<String> {
-    Regex::new(r"\d[\d.,]*\d|\d")
-        .unwrap()
-        .find_iter(t)
+    NUM.find_iter(t)
         .map(|m| m.as_str().trim_end_matches(['.', ',']).to_string())
         .collect()
 }
@@ -73,8 +78,9 @@ fn sentences(answer: &str) -> Vec<String> {
 
 /// `sources` are `(label, text)` pairs, labels like `S1`.
 pub fn grounding(answer: &str, sources: &[(String, String)]) -> Grounding {
-    let cite = Regex::new(r"\[(S\d+(?:\s*[,;]\s*S\d+)*)\]").unwrap();
-    let lab = Regex::new(r"S\d+").unwrap();
+    static CITE: LazyLock<Regex> = LazyLock::new(|| re(r"\[(S\d+(?:\s*[,;]\s*S\d+)*)\]"));
+    static LAB: LazyLock<Regex> = LazyLock::new(|| re(r"S\d+"));
+    let (cite, lab) = (&*CITE, &*LAB);
     let all: BTreeSet<String> = sources.iter().flat_map(|(_, t)| words(t)).collect();
     let all_nums: BTreeSet<String> = sources.iter().flat_map(|(_, t)| numbers(t)).collect();
     let mut claims = vec![];
@@ -146,8 +152,8 @@ pub struct Entity {
 
 pub const KINDS: [&str; 5] = ["email", "url", "money", "date", "phone"];
 
-pub fn entities(text: &str) -> Vec<Entity> {
-    let pats: [(&str, &str); 5] = [
+static ENT: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
+    let pats: [(&'static str, &str); 5] = [
         (
             "email",
             r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}",
@@ -166,9 +172,14 @@ pub fn entities(text: &str) -> Vec<Entity> {
             r"\+\d{1,3}[\s.-]?\(?\d{1,4}\)?(?:[\s.-]?\d{2,4}){2,4}",
         ),
     ];
+    pats.iter().map(|(k, p)| (*k, re(p))).collect()
+});
+
+pub fn entities(text: &str) -> Vec<Entity> {
     let mut out = BTreeSet::new();
-    for (kind, p) in pats {
-        for m in Regex::new(p).unwrap().find_iter(text) {
+    for (kind, rx) in ENT.iter() {
+        let kind: &'static str = kind;
+        for m in rx.find_iter(text) {
             let v = m
                 .as_str()
                 .trim()
@@ -221,9 +232,9 @@ pub struct Compare {
 }
 
 fn norm_sentences(t: &str) -> Vec<(String, String)> {
+    static SPLIT: LazyLock<Regex> = LazyLock::new(|| re(r"[^.!?]+[.!?]?"));
     let flat = t.replace('\n', " ");
-    Regex::new(r"[^.!?]+[.!?]?")
-        .unwrap()
+    SPLIT
         .find_iter(&flat)
         .map(|m| m.as_str().trim().to_string())
         .filter(|s| s.chars().filter(|c| c.is_alphanumeric()).count() >= 12)
@@ -647,10 +658,15 @@ pub fn changes(
 
 /// All library texts as `(path, text)`, for the whole-library analyses.
 pub fn library_texts(lib: &Library, group: Option<&str>) -> Result<Vec<(String, String)>, String> {
-    Ok(lib
-        .documents(group)?
+    let docs = lib.documents(group)?;
+    let ids: Vec<i64> = docs.iter().map(|d| d.id).collect();
+    let mut texts = lib.texts_of(&ids);
+    Ok(docs
         .into_iter()
-        .map(|d| (d.path, lib.text_of(d.id)))
+        .map(|d| {
+            let t = texts.remove(&d.id).unwrap_or_default();
+            (d.path, t)
+        })
         .collect())
 }
 
@@ -858,10 +874,24 @@ fn ymd(y: u32, m: u32, d: u32) -> Option<String> {
 
 /// Dates written as 2025-03-12, 12.03.2025, 12/03/2025 (day first), "12 March 2025", "March 12,
 /// 2025", "12 martie 2025", "2025. március 12." (month names in the 8 languages) turned into ISO.
+static D_NUM: LazyLock<Regex> =
+    LazyLock::new(|| re(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b"));
+static D_DMY: LazyLock<Regex> = LazyLock::new(|| {
+    re(
+        r"\b(\d{1,2})(?:st|nd|rd|th)?\.?\s+(?:of\s+|de\s+|di\s+|d')?(\p{L}{3,12}),?\s+(?:de\s+)?(\d{4})\b",
+    )
+});
+static D_MDY: LazyLock<Regex> =
+    LazyLock::new(|| re(r"\b(\p{L}{3,12})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b"));
+static D_YMD: LazyLock<Regex> = LazyLock::new(|| re(r"\b(\d{4})\.?\s+(\p{L}{3,12})\s+(\d{1,2})\b"));
+static ORD: LazyLock<Regex> = LazyLock::new(|| re(r"\b(\d{1,4})\.(\s+)(\p{L}{3,12})\b"));
+
 fn date_matches(s: &str) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = vec![];
-    let num =
-        Regex::new(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b").unwrap();
+    if !s.bytes().any(|b| b.is_ascii_digit()) {
+        return out;
+    }
+    let num = &*D_NUM;
     for c in num.captures_iter(s) {
         let p = |i: usize| {
             c.get(i)
@@ -875,9 +905,7 @@ fn date_matches(s: &str) -> Vec<(String, String)> {
         };
         out.extend(d.map(|iso| (c[0].to_string(), iso)));
     }
-    let word = r"[\p{L}]{3,12}";
-    // 12 March 2025 / 12th of March, 2025 / 12. März 2025
-    let dmy = Regex::new(&format!(r"\b(\d{{1,2}})(?:st|nd|rd|th)?\.?\s+(?:of\s+|de\s+|di\s+|d')?({word}),?\s+(?:de\s+)?(\d{{4}})\b")).unwrap();
+    let dmy = &*D_DMY;
     for c in dmy.captures_iter(s) {
         if let Some(m) = month_of(&c[2]) {
             out.extend(
@@ -887,10 +915,7 @@ fn date_matches(s: &str) -> Vec<(String, String)> {
         }
     }
     // March 12, 2025
-    let mdy = Regex::new(&format!(
-        r"\b({word})\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(\d{{4}})\b"
-    ))
-    .unwrap();
+    let mdy = &*D_MDY;
     for c in mdy.captures_iter(s) {
         if let Some(m) = month_of(&c[1]) {
             out.extend(
@@ -900,7 +925,7 @@ fn date_matches(s: &str) -> Vec<(String, String)> {
         }
     }
     // 2025. március 12.
-    let ymd_hu = Regex::new(&format!(r"\b(\d{{4}})\.?\s+({word})\s+(\d{{1,2}})\b")).unwrap();
+    let ymd_hu = &*D_YMD;
     for c in ymd_hu.captures_iter(s) {
         if let Some(m) = month_of(&c[2]) {
             out.extend(
@@ -926,7 +951,7 @@ fn iso_dates(s: &str) -> Vec<String> {
 pub fn chronology(docs: &[(String, String)], limit: usize) -> Vec<Event> {
     let mut out: Vec<Event> = vec![];
     let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
-    let ord = Regex::new(r"\b(\d{1,4})\.(\s+)(\p{L}{3,12})\b").unwrap();
+    let ord = &*ORD;
     for (path, text) in docs {
         // "30. Oktober 2018" and "2017. szeptember 21" must not be cut after the ordinal dot
         let text = ord.replace_all(text, |c: &regex::Captures| {

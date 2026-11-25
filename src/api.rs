@@ -749,17 +749,14 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             if kind.is_some_and(|k| !crate::insight::KINDS.contains(&k)) {
                 return Err((400, "kind must be email, url, money, date or phone".into()));
             }
-            let docs: Vec<(String, String)> = lib
-                .documents(
-                    r.query
-                        .get("group")
-                        .map(String::as_str)
-                        .filter(|g| !g.is_empty()),
-                )
-                .map_err(bad)?
-                .into_iter()
-                .map(|d| (d.path, lib.text_of(d.id)))
-                .collect();
+            let docs = crate::insight::library_texts(
+                &lib,
+                r.query
+                    .get("group")
+                    .map(String::as_str)
+                    .filter(|g| !g.is_empty()),
+            )
+            .map_err(bad)?;
             let idx = crate::insight::entity_index(&docs, kind);
             let mut rows: Vec<Value> = idx
                 .into_iter()

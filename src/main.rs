@@ -792,11 +792,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             }
         }
         Cmd::Entities { kind, group, json } => {
-            let docs: Vec<(String, String)> = lib
-                .documents(group.as_deref())?
-                .into_iter()
-                .map(|d| (d.path, lib.text_of(d.id)))
-                .collect();
+            let docs = cartacolibri::insight::library_texts(&lib, group.as_deref())?;
             let idx = cartacolibri::insight::entity_index(&docs, kind.as_deref());
             if json {
                 let v: Vec<_> = idx
