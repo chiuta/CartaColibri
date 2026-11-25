@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizezi și conectezi** — `digest` reia o căutare salvată și raportează doar ce e nou (repetă, adaugă într-un fișier, rezumă sau salvează un fișier email); `mcp` lasă alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta, doar în citire.
 - **Copii și date** — “Duplicate” (documente copii sau aproape-copii, cu cât de asemănătoare sunt) și “Cronologie” (toate propozițiile cu dată, în ordine).
 
-## Noutăți în 0.2.0-alpha.4
+## Noutăți în 0.2.0-alpha.5
 
 - **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` sau `re:FACT-\d+` (expresie regulată) lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
 - **Căutare inteligentă** — Bifează „Căutare inteligentă” și AI-ul tău local adaugă câteva sinonime și cuvinte înrudite (ca un simplu OR, deci potrivirile exacte rămân primele). Cuvintele în plus apar sub căsuță. Fără motor pornit primești pur și simplu căutarea normală.

@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatiza y conecta** — `digest` repite una búsqueda guardada e informa solo de las novedades (se repite, añade a un archivo, resume o guarda un archivo de correo); `mcp` permite que otras apps de IA busquen, lean, pregunten, verifiquen y pidan dosieres en tu biblioteca, en solo lectura.
 - **Copias y fechas** — “Duplicados” (documentos copia o casi copia, con su parecido) y “Cronología” (todas las frases con fecha en orden temporal).
 
-## Novedades de la 0.2.0-alpha.4
+## Novedades de la 0.2.0-alpha.5
 
 - **Filtros directamente en la casilla de búsqueda** — Escribe `ext:pdf`, `path:contratos`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` o `re:FAC-\d+` (expresión regular) junto a tus palabras y los resultados se acotan. Funcionan en la página web, en la línea de comandos y a través de la API.
 - **Búsqueda inteligente** — Marca «Búsqueda inteligente» y tu IA local añade algunos sinónimos y palabras afines (como un simple OR: las coincidencias exactas siguen primero). Las palabras añadidas se muestran bajo la casilla. Sin motor en marcha obtienes la búsqueda normal.

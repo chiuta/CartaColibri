@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizálj és kapcsolódj** — a `digest` újra lefuttat egy mentett keresést, és csak az újdonságokat jelzi (ismétel, fájlhoz fűz, összefoglal vagy e-mail fájlt ment); az `mcp` lehetővé teszi, hogy más MI-alkalmazások keressenek, olvassanak, kérdezzenek, ellenőrizzenek és dossziét kérjenek a könyvtáradból, csak olvasásra.
 - **Másolatok és dátumok** — “Duplikátumok” (másolat vagy majdnem másolat dokumentumok, hasonlóságukkal) és “Kronológia” (az összes dátumos mondat időrendben).
 
-## Újdonságok a 0.2.0-alpha.4-ben
+## Újdonságok a 0.2.0-alpha.5-ben
 
 - **Szűrők közvetlenül a keresőmezőben** — Írd a szavaid mellé: `ext:pdf`, `path:szerzodesek`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` vagy `re:SZ-\d+` (reguláris kifejezés), és a találatok szűkülnek. Működnek a weboldalon, a parancssorban és az API-n keresztül.
 - **Okos keresés** — Jelöld be az „Okos keresés” négyzetet, és a helyi MI hozzáad néhány szinonimát és rokon szót (egyszerű OR-ként, így a pontos találatok maradnak elöl). A hozzáadott szavak a mező alatt látszanak. Futó motor nélkül a szokásos keresést kapod.

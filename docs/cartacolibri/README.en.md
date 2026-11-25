@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automate and connect** — `digest` re-runs a saved search and reports only what is new (repeat, append to a file, summarize, or save an e-mail file); `mcp` lets other AI apps search, read, ask, fact-check and look up dossiers in your library, read-only.
 - **Copies and dates** — “Duplicates” (documents that are copies or near-copies, with how alike they are) and “Chronology” (every dated sentence in time order).
 
-## New in 0.2.0-alpha.4
+## New in 0.2.0-alpha.5
 
 - **Filters right in the search box** — Type `ext:pdf`, `path:contracts`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` or `re:INV-\d+` (a regular expression) next to your words and the results narrow down. They work in the web page, on the command line and through the API.
 - **Smart search** — Tick “Smart search” and your local AI adds a few synonyms and related words (as a plain OR, so exact matches still rank first). The extra words are shown under the box. With no engine running, you simply get the normal search.
