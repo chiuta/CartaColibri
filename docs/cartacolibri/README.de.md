@@ -41,6 +41,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Importieren** — hole Browser-Lesezeichen, einen Obsidian-Ordner, Zotero/BibTeX, Pocket/Raindrop-CSV oder Evernote-Exporte herein und abonniere RSS/Atom-Feeds (OPML rein und raus): Sie werden zu durchsuchbaren Notizen. E-Mails, Kalender, Untertitel und Notebooks werden ebenfalls indiziert.
 - **Einblicke** — “Widersprüche” (gleicher Satz, andere Zahl oder anderes Datum), “Themenkarte” (Blasen), “Was ist neu” seit einem Datum, “2 vergleichen”, “Namen & Zahlen” (E-Mails, Links, Beträge, Daten, Telefonnummern), “Dossier” zu einem Namen und “Meinen Text prüfen” gegen die Bibliothek.
 - **Automatisieren und verbinden** — `digest` führt eine gespeicherte Suche erneut aus und meldet nur Neues (wiederholt, hängt an eine Datei an, fasst zusammen oder speichert eine E-Mail-Datei); `mcp` lässt andere KI-Apps in deiner Bibliothek suchen, lesen, fragen, prüfen und Dossiers abrufen, nur lesend.
+- **Kopien und Daten** — “Duplikate” (Dokumente, die Kopien oder fast Kopien sind, mit ihrer Ähnlichkeit) und “Chronologie” (alle datierten Sätze in zeitlicher Reihenfolge).
 
 ## Neu in 0.2.0-alpha.4
 
@@ -54,6 +55,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Widersprüche aufspüren, Themenkarte sehen, Änderungen verfolgen** — „Widersprüche“ listet Sätze aus verschiedenen Dokumenten, die bis auf eine Zahl oder ein Datum gleich sind (500 gegen 550). Die „Themenkarte“ gruppiert deine Dokumente nach Thema. „Was ist neu“ zeigt, was sich seit einem Datum geändert hat. In der Kommandozeile: `conflicts`, `topics`, `changes --since`.
 - **Den eigenen Text gegen deine Bibliothek prüfen** — Füge einen Entwurf in „Meinen Text prüfen“ ein, und jeder Satz wird als belegt, teilweise, Zahlen weichen ab oder nicht gefunden markiert, mit dem besten Beleg aus deinen Dokumenten. Das „Dossier“ sammelt alles, was deine Bibliothek zu einem Namen oder Begriff sagt, mit Daten und Beträgen. Andere KI-Apps erreichen beides über den MCP-Server.
 - **Zeitraum erfragen und Zusammenfassungen als E-Mail-Datei erhalten** — Wähle im Chat „Dokumente ab … bis …“, und die Antwort stammt nur aus Dokumenten, die in dieser Zeit geändert wurden (Kommandozeile: `chat --since --until`). Die Themenkarte ist jetzt ein Bild aus anklickbaren Blasen. `digest --mail-to du@example.org` speichert jeden Bericht auch als E-Mail-Datei im Ordner outbox; mit `--sendmail` übergibst du ihn dem Mailprogramm deines Rechners. Sonst verlässt nichts deinen Rechner.
+- **Kopien finden und die Bibliothek als Zeitleiste lesen** — „Duplikate“ listet Dokumente, die Kopien oder fast Kopien sind, mit ihrer Ähnlichkeit. „Chronologie“ ordnet alle datierten Sätze deiner Bibliothek zeitlich, mit ihrem Dokument. In der Kommandozeile: `dupes`, `chronology`.
 
 ## Neu in 0.2.0-alpha.2
 
@@ -117,6 +119,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Alle E-Mails, Links, Beträge, Daten und Telefonnummern deiner Dokumente, mit den Dokumenten, in denen sie vorkommen. |
 | `compare A B [--json]` | Vergleicht zwei Dokumente Satz für Satz: wie ähnlich sie sind und was nur in einem steht (A und B sind Pfade oder deren Ende). |
 | `conflicts [--group G] [--json]` | Satzpaare aus verschiedenen Dokumenten, die bis auf eine Zahl oder ein Datum gleich sind (500 gegen 550): Kandidaten zum Prüfen, keine Urteile. |
+| `dupes [--group G] [--min 0.6] [--json]` | Findet Dokumente, die Kopien oder fast Kopien voneinander sind (Exporte, Entwürfe, dieselbe Datei zweimal gespeichert), mit ihrer Ähnlichkeit und wie viel des kleineren im anderen steckt. |
+| `chronology [--group G] [--limit N] [--json]` | Alle datierten Sätze der Bibliothek in zeitlicher Reihenfolge, mit ihrem Dokument (Daten wie 2025-03-12, 12.03.2025 oder 12/03/2025, Tag zuerst). Die monatliche Dokumentzahl ist `timeline`. |
 | `topics [--json]` | Gruppiert die Dokumente nach Thema (ihre charakteristischsten Wörter). |
 | `dossier TERM [--json]` | Alles, was die Bibliothek zu einem Namen oder Begriff sagt: Passagen je Dokument, dazu gefundene Daten und Beträge. |
 | `changes --since DATE [--json]` | Seit einem Datum geänderte Dokumente (YYYY, YYYY-MM oder YYYY-MM-DD), neueste zuerst. |

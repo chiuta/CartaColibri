@@ -41,6 +41,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Fais entrer des choses** — importe les favoris du navigateur, un dossier Obsidian, Zotero/BibTeX, un CSV Pocket/Raindrop ou des exports Evernote, et suis des flux RSS/Atom (OPML en import et export) : ils deviennent des notes interrogeables. Les e-mails, agendas, sous-titres et notebooks sont aussi indexés.
 - **Analyses** — “Contradictions” (même phrase, autre nombre ou date), “Carte des sujets” (bulles), “Nouveautés” depuis une date, “Comparer 2” documents, “Noms et nombres” (e-mails, liens, montants, dates, téléphones), “Dossier” sur un nom et “Vérifier mon texte” face à la bibliothèque.
 - **Automatise et connecte** — `digest` relance une recherche enregistrée et ne signale que les nouveautés (répète, ajoute à un fichier, résume ou enregistre un fichier e-mail) ; `mcp` permet à d’autres applications d’IA de chercher, lire, interroger, vérifier et demander des dossiers dans ta bibliothèque, en lecture seule.
+- **Copies et dates** — “Doublons” (documents copies ou quasi-copies, avec leur ressemblance) et “Chronologie” (toutes les phrases datées dans l’ordre du temps).
 
 ## Nouveautés de la 0.2.0-alpha.4
 
@@ -54,6 +55,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Repère les contradictions, vois la carte des sujets, suis ce qui a changé** — « Contradictions » liste les phrases de documents différents identiques à un nombre ou une date près (500 contre 550). « Carte des sujets » regroupe tes documents par thème. « Nouveautés » liste ce qui a changé depuis une date. En ligne de commande : `conflicts`, `topics`, `changes --since`.
 - **Vérifie ton propre texte face à ta bibliothèque** — Colle un brouillon dans « Vérifier mon texte » : chaque phrase est marquée confirmée, en partie, nombres différents ou introuvable, avec la meilleure preuve de tes documents. « Dossier » rassemble tout ce que ta bibliothèque dit d’un nom ou d’un terme, avec ses dates et montants. Les autres applications d’IA y accèdent via le serveur MCP.
 - **Interroge sur une période et reçois les récapitulatifs en fichier e-mail** — Dans le chat, choisis « Documents depuis … jusqu’à … » et la réponse vient seulement des documents modifiés sur cette période (en ligne de commande : `chat --since --until`). La carte des sujets est désormais une image de bulles cliquables. `digest --mail-to toi@example.org` enregistre aussi chaque rapport comme fichier e-mail dans le dossier outbox ; ajoute `--sendmail` pour le confier au programme de messagerie de ton ordinateur. Rien d’autre ne quitte ton ordinateur.
+- **Trouve les copies, lis ta bibliothèque comme une chronologie** — « Doublons » liste les documents qui sont des copies ou quasi-copies, avec leur ressemblance. « Chronologie » range toutes les phrases datées de ta bibliothèque dans l’ordre du temps, avec leur document. En ligne de commande : `dupes`, `chronology`.
 
 ## Nouveautés de la 0.2.0-alpha.2
 
@@ -117,6 +119,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Tous les e-mails, liens, montants, dates et téléphones de tes documents, avec les documents où ils apparaissent. |
 | `compare A B [--json]` | Compare deux documents phrase par phrase : leur ressemblance et ce qui n’est que dans l’un (A et B sont des chemins ou leur fin). |
 | `conflicts [--group G] [--json]` | Paires de phrases de documents différents identiques à un nombre ou une date près (500 contre 550) : des candidats à vérifier, pas des verdicts. |
+| `dupes [--group G] [--min 0.6] [--json]` | Trouve les documents qui sont des copies ou quasi-copies les uns des autres (exports, brouillons, le même fichier enregistré deux fois), avec leur ressemblance et la part du plus petit contenue dans l’autre. |
+| `chronology [--group G] [--limit N] [--json]` | Toutes les phrases datées de la bibliothèque dans l’ordre du temps, avec leur document (dates comme 2025-03-12, 12.03.2025 ou 12/03/2025, jour d’abord). Le nombre mensuel de documents est `timeline`. |
 | `topics [--json]` | Regroupe les documents selon leur sujet (leurs mots les plus caractéristiques). |
 | `dossier TERM [--json]` | Tout ce que la bibliothèque dit d’un nom ou d’un terme : passages par document, plus les dates et montants trouvés. |
 | `changes --since DATE [--json]` | Documents modifiés depuis une date (YYYY, YYYY-MM ou YYYY-MM-DD), les plus récents d’abord. |

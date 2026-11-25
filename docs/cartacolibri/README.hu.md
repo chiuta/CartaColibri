@@ -41,6 +41,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Behozatal** — importálj böngészőkönyvjelzőket, Obsidian-mappát, Zotero/BibTeX-et, Pocket/Raindrop CSV-t vagy Evernote-exportot, és kövess RSS/Atom-csatornákat (OPML be- és kimenet): kereshető jegyzetekké válnak. Az e-mailek, naptárak, feliratok és notebookok is bekerülnek az indexbe.
 - **Betekintés** — “Ellentmondások” (ugyanaz a mondat, más szám vagy dátum), “Tématérkép” (buborékok), “Mi az új” egy dátum óta, “2 összehasonlítása”, “Nevek és számok” (e-mailek, linkek, összegek, dátumok, telefonszámok), “Dosszié” egy névről és “Szövegem ellenőrzése” a könyvtár alapján.
 - **Automatizálj és kapcsolódj** — a `digest` újra lefuttat egy mentett keresést, és csak az újdonságokat jelzi (ismétel, fájlhoz fűz, összefoglal vagy e-mail fájlt ment); az `mcp` lehetővé teszi, hogy más MI-alkalmazások keressenek, olvassanak, kérdezzenek, ellenőrizzenek és dossziét kérjenek a könyvtáradból, csak olvasásra.
+- **Másolatok és dátumok** — “Duplikátumok” (másolat vagy majdnem másolat dokumentumok, hasonlóságukkal) és “Kronológia” (az összes dátumos mondat időrendben).
 
 ## Újdonságok a 0.2.0-alpha.4-ben
 
@@ -54,6 +55,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Találd meg az ellentmondásokat, nézd a tématérképet, kövesd a változásokat** — Az „Ellentmondások” felsorolja a különböző dokumentumok azon mondatait, amelyek egy számban vagy dátumban térnek el (500 és 550). A „Tématérkép” téma szerint csoportosítja a dokumentumokat. A „Mi az új” megmutatja, mi változott egy dátum óta. Parancssorban: `conflicts`, `topics`, `changes --since`.
 - **Ellenőrizd a saját szövegedet a könyvtárad alapján** — Illessz be egy vázlatot a „Szövegem ellenőrzése” ablakba, és minden mondatot megjelölök: alátámasztva, részben, a számok eltérnek vagy nincs meg, a dokumentumaid legjobb bizonyítékával. A „Dosszié” összegyűjt mindent, amit a könyvtár egy névről vagy fogalomról mond, dátumokkal és összegekkel. Más MI-alkalmazások az MCP-szerveren át érik el mindkettőt.
 - **Kérdezz egy időszakról, és kapd az összefoglalókat e-mail fájlként** — A csevegésben válaszd a „Dokumentumok innen … eddig …” mezőket, és a válasz csak az adott időszakban módosult dokumentumokból származik (parancssorban: `chat --since --until`). A tématérkép mostantól kattintható buborékokból álló kép. A `digest --mail-to te@example.org` minden jelentést e-mail fájlként is elment az outbox mappába; a `--sendmail` átadja a gép saját levelezőprogramjának. Más nem hagyja el a gépedet.
+- **Találd meg a másolatokat, és olvasd a könyvtárat idővonalként** — A „Duplikátumok” felsorolja a másolatnak vagy majdnem másolatnak számító dokumentumokat, hasonlóságukkal. A „Kronológia” időrendbe teszi a könyvtár összes dátumos mondatát, a dokumentumukkal. Parancssorban: `dupes`, `chronology`.
 
 ## Újdonságok a 0.2.0-alpha.2-ben
 
@@ -117,6 +119,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | A dokumentumaid összes e-mailje, linkje, összege, dátuma és telefonszáma, azokkal a dokumentumokkal, ahol szerepelnek. |
 | `compare A B [--json]` | Mondatonként összehasonlít két dokumentumot: mennyire hasonlók, és mi van csak az egyikben (A és B útvonal vagy annak vége). |
 | `conflicts [--group G] [--json]` | Különböző dokumentumok olyan mondatpárjai, amelyek egy számban vagy dátumban térnek el (500 és 550): ellenőrizendő jelöltek, nem ítéletek. |
+| `dupes [--group G] [--min 0.6] [--json]` | Megkeresi azokat a dokumentumokat, amelyek egymás másolatai vagy majdnem másolatai (exportok, piszkozatok, kétszer mentett fájl), hasonlóságukkal és azzal, hogy a kisebbik mekkora része van a másikban. |
+| `chronology [--group G] [--limit N] [--json]` | A könyvtár összes dátumos mondata időrendben, a dokumentumukkal (dátumok: 2025-03-12, 12.03.2025 vagy 12/03/2025, előbb a nap). A havi dokumentumszám a `timeline`. |
 | `topics [--json]` | Téma szerint csoportosítja a dokumentumokat (legjellemzőbb szavaik alapján). |
 | `dossier TERM [--json]` | Mindaz, amit a könyvtár egy névről vagy fogalomról mond: szövegrészek dokumentumonként, a bennük talált dátumokkal és összegekkel. |
 | `changes --since DATE [--json]` | Egy dátum óta módosult dokumentumok (YYYY, YYYY-MM vagy YYYY-MM-DD), a legfrissebbek elöl. |

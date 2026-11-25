@@ -88,7 +88,9 @@ fn protocol_and_tools() {
             "ask",
             "factcheck",
             "dossier",
-            "conflicts"
+            "conflicts",
+            "dupes",
+            "chronology"
         ]
     );
     let (fc, err) = tool(
@@ -100,6 +102,8 @@ fn protocol_and_tools() {
     assert!(tool(&l, "factcheck", json!({"text": " "})).1);
     assert!(tool(&l, "dossier", json!({"term": ""})).1);
     assert!(!tool(&l, "conflicts", json!({})).1);
+    assert!(!tool(&l, "dupes", json!({})).1);
+    assert!(!tool(&l, "chronology", json!({})).1);
 
     // search -> read by the id it returned; inline filters work
     let (s, err) = tool(&l, "search", json!({"query": "rent"}));

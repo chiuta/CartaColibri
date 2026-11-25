@@ -41,6 +41,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Trae cosas** — importa los marcadores del navegador, una carpeta de Obsidian, Zotero/BibTeX, CSV de Pocket/Raindrop o exportaciones de Evernote, y sigue fuentes RSS/Atom (OPML de entrada y salida): se convierten en notas con búsqueda. También se indexan correos, calendarios, subtítulos y cuadernos.
 - **Análisis** — “Contradicciones” (misma frase, otro número o fecha), “Mapa de temas” (burbujas), “Novedades” desde una fecha, “Comparar 2” documentos, “Nombres y números” (correos, enlaces, importes, fechas, teléfonos), “Dosier” sobre un nombre y “Verificar mi texto” frente a la biblioteca.
 - **Automatiza y conecta** — `digest` repite una búsqueda guardada e informa solo de las novedades (se repite, añade a un archivo, resume o guarda un archivo de correo); `mcp` permite que otras apps de IA busquen, lean, pregunten, verifiquen y pidan dosieres en tu biblioteca, en solo lectura.
+- **Copias y fechas** — “Duplicados” (documentos copia o casi copia, con su parecido) y “Cronología” (todas las frases con fecha en orden temporal).
 
 ## Novedades de la 0.2.0-alpha.4
 
@@ -54,6 +55,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Detecta contradicciones, mira el mapa de temas, sigue lo que cambió** — «Contradicciones» lista frases de documentos distintos iguales salvo un número o una fecha (500 frente a 550). «Mapa de temas» agrupa tus documentos por tema. «Novedades» lista lo que cambió desde una fecha. En la línea de comandos: `conflicts`, `topics`, `changes --since`.
 - **Verifica tu propio texto frente a tu biblioteca** — Pega un borrador en «Verificar mi texto» y cada frase se marca como respaldada, en parte, números distintos o no encontrada, con la mejor prueba de tus documentos. «Dosier» reúne todo lo que tu biblioteca dice de un nombre o término, con sus fechas e importes. Otras apps de IA acceden a ambos por el servidor MCP.
 - **Pregunta sobre un periodo y recibe los resúmenes como archivo de correo** — En el chat elige «Documentos desde … hasta …» y la respuesta sale solo de documentos modificados en ese periodo (línea de comandos: `chat --since --until`). El mapa de temas es ahora una imagen de burbujas en las que puedes pulsar. `digest --mail-to tu@example.org` guarda además cada informe como archivo de correo en la carpeta outbox; añade `--sendmail` para entregarlo al programa de correo de tu ordenador. Nada más sale de tu ordenador.
+- **Encuentra copias y lee tu biblioteca como una cronología** — «Duplicados» lista los documentos que son copias o casi copias, con su parecido. «Cronología» ordena en el tiempo todas las frases con fecha de tu biblioteca, con su documento. En la línea de comandos: `dupes`, `chronology`.
 
 ## Novedades de la 0.2.0-alpha.2
 
@@ -117,6 +119,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Todos los correos, enlaces, importes, fechas y teléfonos de tus documentos, con los documentos donde aparecen. |
 | `compare A B [--json]` | Compara dos documentos frase a frase: cuánto se parecen y qué hay solo en uno (A y B son rutas o su final). |
 | `conflicts [--group G] [--json]` | Pares de frases de documentos distintos iguales salvo un número o una fecha (500 frente a 550): candidatos para revisar, no veredictos. |
+| `dupes [--group G] [--min 0.6] [--json]` | Encuentra documentos que son copias o casi copias entre sí (exportaciones, borradores, el mismo archivo guardado dos veces), con su parecido y cuánto del más pequeño está dentro del otro. |
+| `chronology [--group G] [--limit N] [--json]` | Todas las frases con fecha de la biblioteca en orden temporal, con su documento (fechas como 2025-03-12, 12.03.2025 o 12/03/2025, primero el día). El recuento mensual de documentos es `timeline`. |
 | `topics [--json]` | Agrupa los documentos por tema (sus palabras más características). |
 | `dossier TERM [--json]` | Todo lo que la biblioteca dice de un nombre o término: pasajes por documento, más las fechas e importes hallados. |
 | `changes --since DATE [--json]` | Documentos modificados desde una fecha (YYYY, YYYY-MM o YYYY-MM-DD), los más recientes primero. |

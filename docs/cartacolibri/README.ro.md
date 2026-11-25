@@ -41,6 +41,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Adu lucruri înăuntru** — importă marcaje de browser, un folder Obsidian, Zotero/BibTeX, CSV Pocket/Raindrop sau exporturi Evernote și urmărește fluxuri RSS/Atom (OPML import și export): devin notițe căutabile. Sunt indexate și e-mailurile, calendarele, subtitrările și caietele.
 - **Perspicacitate** — “Contradicții” (aceeași propoziție, alt număr sau altă dată), “Harta subiectelor” (bule), “Ce e nou” de la o dată, “Compară 2” documente, “Nume și numere” (emailuri, linkuri, sume, date, telefoane), “Dosar” despre un nume și “Verifică textul meu” față de bibliotecă.
 - **Automatizezi și conectezi** — `digest` reia o căutare salvată și raportează doar ce e nou (repetă, adaugă într-un fișier, rezumă sau salvează un fișier email); `mcp` lasă alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta, doar în citire.
+- **Copii și date** — “Duplicate” (documente copii sau aproape-copii, cu cât de asemănătoare sunt) și “Cronologie” (toate propozițiile cu dată, în ordine).
 
 ## Noutăți în 0.2.0-alpha.4
 
@@ -54,6 +55,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Găsești contradicții, vezi harta subiectelor, urmărești ce s-a schimbat** — „Contradicții” listează propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550). „Harta subiectelor” grupează documentele după ce tratează. „Ce e nou” arată ce s-a schimbat de la o dată. În linia de comandă: `conflicts`, `topics`, `changes --since`.
 - **Verifici textul tău față de bibliotecă** — Lipește o ciornă în „Verifică textul meu” și fiecare propoziție e marcată: susținută, parțial, numerele diferă sau negăsită, cu cea mai bună dovadă din documentele tale. „Dosar” adună tot ce spune biblioteca despre un nume sau termen, cu datele și sumele lui. Alte aplicații AI le primesc pe ambele prin serverul MCP.
 - **Întrebi pe un interval de timp și primești rezumatele ca fișier email** — În chat alegi „Documente din … până în …” și răspunsul vine doar din documentele modificate în perioada aceea (în linia de comandă: `chat --since --until`). Harta subiectelor e acum o imagine cu bule pe care poți apăsa. `digest --mail-to tu@example.org` salvează fiecare raport și ca fișier email în folderul outbox; adaugă `--sendmail` ca să-l dai programului de poștă al calculatorului tău. Nimic altceva nu iese din calculator.
+- **Găsești copiile și citești biblioteca ca o cronologie** — „Duplicate” listează documentele care sunt copii sau aproape-copii, cu cât de asemănătoare sunt. „Cronologie” pune toate propozițiile cu dată din bibliotecă în ordine, cu documentul din care vin. În linia de comandă: `dupes`, `chronology`.
 
 ## Noutăți în 0.2.0-alpha.2
 
@@ -117,6 +119,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Toate emailurile, linkurile, sumele, datele și telefoanele din documente, cu documentele în care apar. |
 | `compare A B [--json]` | Compară două documente propoziție cu propoziție: cât de asemănătoare sunt și ce e doar într-unul dintre ele (A și B sunt căi sau terminațiile lor). |
 | `conflicts [--group G] [--json]` | Perechi de propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550): candidate de verificat, nu verdicte. |
+| `dupes [--group G] [--min 0.6] [--json]` | Găsește documente care sunt copii sau aproape-copii unele ale altora (exporturi, ciorne, același fișier salvat de două ori), cu cât de asemănătoare sunt și cât din cel mai mic se află în celălalt. |
+| `chronology [--group G] [--limit N] [--json]` | Toate propozițiile cu dată din bibliotecă, în ordine cronologică, cu documentul din care vin (date ca 2025-03-12, 12.03.2025 sau 12/03/2025, ziua întâi). Numărul lunar de documente este `timeline`. |
 | `topics [--json]` | Grupează documentele după ce tratează (cele mai caracteristice cuvinte ale lor). |
 | `dossier TERM [--json]` | Tot ce spune biblioteca despre un nume sau termen: pasaje pe documente, plus datele și sumele găsite în ele. |
 | `changes --since DATE [--json]` | Documentele modificate de la o dată (YYYY, YYYY-MM sau YYYY-MM-DD), cele mai noi întâi. |

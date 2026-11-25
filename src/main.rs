@@ -130,6 +130,25 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// documents that are copies or near-copies of each other
+    Dupes {
+        #[arg(long)]
+        group: Option<String>,
+        /// smallest similarity to report, 0..1
+        #[arg(long, default_value_t = 0.6)]
+        min: f64,
+        #[arg(long)]
+        json: bool,
+    },
+    /// every dated sentence of the library in time order
+    Chronology {
+        #[arg(long)]
+        group: Option<String>,
+        #[arg(long, default_value_t = 200)]
+        limit: usize,
+        #[arg(long)]
+        json: bool,
+    },
     /// group the library by what the documents are about
     Topics {
         #[arg(long)]
@@ -824,6 +843,38 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                 c.only_in_b
                     .iter()
                     .for_each(|s| println!("+ only in {pb}: {s}"));
+            }
+        }
+        Cmd::Dupes { group, min, json } => {
+            let docs = cartacolibri::insight::library_texts(&lib, group.as_deref())?;
+            let d = cartacolibri::insight::dupes(&docs, min.clamp(0.0, 1.0));
+            if json {
+                println!("{}", serde_json::to_string_pretty(&d).unwrap());
+            } else if d.is_empty() {
+                println!("no duplicate documents found");
+            } else {
+                for x in d {
+                    println!(
+                        "{:>3.0}%  {}  =  {}  (smaller one {:.0}% inside the other)",
+                        x.similarity * 100.0,
+                        x.a_path,
+                        x.b_path,
+                        x.contained * 100.0
+                    );
+                }
+            }
+        }
+        Cmd::Chronology { group, limit, json } => {
+            let docs = cartacolibri::insight::library_texts(&lib, group.as_deref())?;
+            let t = cartacolibri::insight::chronology(&docs, limit);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&t).unwrap());
+            } else if t.is_empty() {
+                println!("no dated sentences found");
+            } else {
+                for e in t {
+                    println!("{}  {}\n    {}", e.date, e.path, e.sentence);
+                }
             }
         }
         Cmd::Conflicts { group, json } => {

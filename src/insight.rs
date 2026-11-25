@@ -644,3 +644,147 @@ pub fn library_texts(lib: &Library, group: Option<&str>) -> Result<Vec<(String, 
         .map(|d| (d.path, lib.text_of(d.id)))
         .collect())
 }
+
+// ------------------------------------------------------------------ near-duplicate documents
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Dupe {
+    pub a_path: String,
+    pub b_path: String,
+    /// shared share of all 5-word phrases (0..1): 1.0 means the same text
+    pub similarity: f64,
+    /// share of the smaller document's phrases found in the other: 1.0 means one is inside the other
+    pub contained: f64,
+}
+
+fn shingles(text: &str) -> BTreeSet<u64> {
+    let w: Vec<String> = text
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|x| !x.is_empty())
+        .map(String::from)
+        .collect();
+    let mut out = BTreeSet::new();
+    if w.len() < 5 {
+        return out;
+    }
+    for win in w.windows(5) {
+        // FNV-1a over the phrase
+        let mut h: u64 = 0xcbf29ce484222325;
+        for x in win {
+            for b in x.bytes().chain(std::iter::once(b' ')) {
+                h ^= b as u64;
+                h = h.wrapping_mul(0x100000001b3);
+            }
+        }
+        out.insert(h);
+    }
+    out
+}
+
+/// Pairs of documents that are the same text or largely overlap (copies, exports, drafts). A pair is
+/// reported when its similarity is at least `min` or one document is almost inside the other.
+pub fn dupes(docs: &[(String, String)], min: f64) -> Vec<Dupe> {
+    let sets: Vec<BTreeSet<u64>> = docs.iter().take(2000).map(|d| shingles(&d.1)).collect();
+    let mut index: BTreeMap<u64, Vec<usize>> = BTreeMap::new();
+    for (i, s) in sets.iter().enumerate() {
+        // a bottom-k sketch is enough to find candidate pairs
+        for h in s.iter().take(64) {
+            index.entry(*h).or_default().push(i);
+        }
+    }
+    let mut pairs: BTreeSet<(usize, usize)> = BTreeSet::new();
+    for v in index.values() {
+        if v.len() > 50 {
+            continue;
+        }
+        for (x, &i) in v.iter().enumerate() {
+            for &j in &v[x + 1..] {
+                pairs.insert((i, j));
+            }
+        }
+    }
+    let mut out: Vec<Dupe> = vec![];
+    for (i, j) in pairs {
+        let inter = sets[i].intersection(&sets[j]).count() as f64;
+        let union = (sets[i].len() + sets[j].len()) as f64 - inter;
+        let small = sets[i].len().min(sets[j].len()) as f64;
+        if union == 0.0 || small == 0.0 {
+            continue;
+        }
+        let sim = inter / union;
+        let cont = inter / small;
+        if sim >= min || cont >= 0.9 {
+            out.push(Dupe {
+                a_path: docs[i].0.clone(),
+                b_path: docs[j].0.clone(),
+                similarity: (sim * 100.0).round() / 100.0,
+                contained: (cont * 100.0).round() / 100.0,
+            });
+        }
+    }
+    out.sort_by(|a, b| {
+        b.similarity
+            .partial_cmp(&a.similarity)
+            .unwrap()
+            .then(a.a_path.cmp(&b.a_path))
+    });
+    out.truncate(200);
+    out
+}
+
+// ------------------------------------------------------------------ chronology
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Event {
+    /// ISO date, YYYY-MM-DD
+    pub date: String,
+    pub path: String,
+    pub sentence: String,
+}
+
+/// Dates written as 2025-03-12, 12.03.2025 or 12/03/2025 (day first) turned into ISO.
+fn iso_dates(s: &str) -> Vec<String> {
+    let re =
+        Regex::new(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b").unwrap();
+    let mut out = vec![];
+    for c in re.captures_iter(s) {
+        let (y, m, d) = if let Some(y) = c.get(1) {
+            (y.as_str(), c[2].to_string(), c[3].to_string())
+        } else {
+            (&c[6], c[5].to_string(), c[4].to_string())
+        };
+        let (yn, mn, dn): (u32, u32, u32) = (
+            y.parse().unwrap_or(0),
+            m.parse().unwrap_or(0),
+            d.parse().unwrap_or(0),
+        );
+        if (1000..=2999).contains(&yn) && (1..=12).contains(&mn) && (1..=31).contains(&dn) {
+            out.push(format!("{yn:04}-{mn:02}-{dn:02}"));
+        }
+    }
+    out
+}
+
+/// Every dated sentence of the library in time order: what happened (or is due) when, and where it
+/// is written. Ties keep the document order.
+pub fn chronology(docs: &[(String, String)], limit: usize) -> Vec<Event> {
+    let mut out: Vec<Event> = vec![];
+    let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
+    for (path, text) in docs {
+        for s in sentences(text) {
+            for d in iso_dates(&s) {
+                if seen.insert((d.clone(), s.clone())) {
+                    out.push(Event {
+                        date: d,
+                        path: path.clone(),
+                        sentence: s.chars().take(400).collect(),
+                    });
+                }
+            }
+        }
+    }
+    out.sort_by(|a, b| a.date.cmp(&b.date));
+    out.truncate(limit);
+    out
+}

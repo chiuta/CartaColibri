@@ -796,6 +796,30 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             let docs = crate::insight::library_texts(&lib, group).map_err(bad)?;
             json!({"conflicts": crate::insight::conflicts(&docs)})
         }
+        ("GET", "dupes") => {
+            let group = r
+                .query
+                .get("group")
+                .map(String::as_str)
+                .filter(|g| !g.is_empty());
+            let min = r
+                .query
+                .get("min")
+                .and_then(|m| m.parse::<f64>().ok())
+                .unwrap_or(0.6)
+                .clamp(0.0, 1.0);
+            let docs = crate::insight::library_texts(&lib, group).map_err(bad)?;
+            json!({"dupes": crate::insight::dupes(&docs, min)})
+        }
+        ("GET", "chronology") => {
+            let group = r
+                .query
+                .get("group")
+                .map(String::as_str)
+                .filter(|g| !g.is_empty());
+            let docs = crate::insight::library_texts(&lib, group).map_err(bad)?;
+            json!({"chronology": crate::insight::chronology(&docs, 500)})
+        }
         ("GET", "topics") => {
             let docs = crate::insight::library_texts(&lib, None).map_err(bad)?;
             json!({"topics": crate::insight::topics(&docs)})

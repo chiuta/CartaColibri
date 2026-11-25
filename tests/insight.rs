@@ -170,3 +170,50 @@ fn factcheck_dossier_and_changes_on_a_real_library() {
     assert_eq!(changes(&lib, 0, 10).unwrap().len(), 2);
     assert!(changes(&lib, 32503680000, 10).unwrap().is_empty());
 }
+
+#[test]
+fn dupes_find_copies_and_contained_documents() {
+    let a = "The supplier delivers the goods within thirty days after the order is confirmed in writing by the buyer and pays the invoice in sixty days.";
+    let docs = vec![
+        ("a.txt".to_string(), a.to_string()),
+        ("copy.txt".to_string(), a.to_uppercase()),
+        (
+            "inside.txt".to_string(),
+            format!("Cover note. {a} Signed."),
+        ),
+        (
+            "other.txt".to_string(),
+            "Completely different text about the migration of birds across the northern sea in autumn and spring seasons.".to_string(),
+        ),
+    ];
+    let d = dupes(&docs, 0.6);
+    assert!(
+        d.iter()
+            .any(|x| x.a_path == "a.txt" && x.b_path == "copy.txt" && x.similarity == 1.0)
+    );
+    assert!(
+        d.iter()
+            .any(|x| x.b_path == "inside.txt" && x.contained >= 0.9)
+    );
+    assert!(
+        !d.iter()
+            .any(|x| x.a_path == "other.txt" || x.b_path == "other.txt")
+    );
+    assert!(dupes(&[], 0.6).is_empty());
+}
+
+#[test]
+fn chronology_orders_dated_sentences_and_rejects_bad_dates() {
+    let docs = vec![
+        (
+            "a.txt".to_string(),
+            "The deadline is 15.03.2025 for everyone. Signed on 2024-11-02 by both parties. Not a date: 45.13.2025 here.".to_string(),
+        ),
+        ("b.txt".to_string(), "Meeting on 01/02/2025 at noon.".to_string()),
+    ];
+    let t = chronology(&docs, 50);
+    let dates: Vec<_> = t.iter().map(|e| e.date.as_str()).collect();
+    assert_eq!(dates, vec!["2024-11-02", "2025-02-01", "2025-03-15"]);
+    assert!(t[0].sentence.contains("Signed"));
+    assert_eq!(chronology(&docs, 1).len(), 1);
+}

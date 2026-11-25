@@ -734,6 +734,10 @@ fn grounding_entities_and_compare_routes() {
 fn conflicts_topics_dossier_changes_factcheck_routes() {
     let (s, _ids) = indexed();
     assert!(get(&s, "/carta/conflicts").json()["conflicts"].is_array());
+    assert!(get(&s, "/carta/dupes?min=0.5").json()["dupes"].is_array());
+    assert!(get(&s, "/carta/chronology").json()["chronology"].is_array());
+    // the monthly count keeps its own route
+    assert!(get(&s, "/carta/timeline").json()["months"].is_array());
     assert!(get(&s, "/carta/topics").json()["topics"].is_array());
     let d = get(&s, "/carta/dossier?q=payment").json();
     assert!(d["docs"].as_array().is_some_and(|a| !a.is_empty()));

@@ -41,6 +41,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Bring things in** — import browser bookmarks, an Obsidian folder, Zotero/BibTeX, Pocket/Raindrop CSV or Evernote exports, and follow RSS/Atom feeds (OPML in and out): they become searchable notes. Email, calendar, subtitles and notebooks are indexed too.
 - **Insight** — “Conflicts” (same sentence, different number or date), “Topic map” (bubbles), “What's new” since a date, “Compare 2” documents, “Names & numbers” (emails, links, amounts, dates, phones), “Dossier” on a name, and “Fact-check my text” against your library.
 - **Automate and connect** — `digest` re-runs a saved search and reports only what is new (repeat, append to a file, summarize, or save an e-mail file); `mcp` lets other AI apps search, read, ask, fact-check and look up dossiers in your library, read-only.
+- **Copies and dates** — “Duplicates” (documents that are copies or near-copies, with how alike they are) and “Chronology” (every dated sentence in time order).
 
 ## New in 0.2.0-alpha.4
 
@@ -54,6 +55,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Spot contradictions, see the map of topics, track what changed** — “Conflicts” lists sentences in different documents that agree except for a number or a date (500 vs 550). “Topic map” groups your documents by what they are about. “What's new” lists what changed since a date. On the command line: `conflicts`, `topics`, `changes --since`.
 - **Fact-check your own text against your library** — Paste a draft into “Fact-check my text” and every sentence is marked supported, partly supported, numbers differ or not found, with the best evidence from your documents. “Dossier” gathers everything your library says about a name or term, with its dates and amounts. Other AI apps get both through the MCP server.
 - **Ask about a time range, and get digests by e-mail file** — In the chat, pick “Documents from … to …” and the answer comes only from documents modified in that period (CLI: `chat --since --until`). The topic map is now a picture of bubbles you can click. `digest --mail-to you@example.org` also saves each report as an e-mail file in the outbox folder; add `--sendmail` to hand it to your computer's own mail program. Nothing else leaves your computer.
+- **Find copies, and read your library as a timeline** — “Duplicates” lists documents that are copies or near-copies of each other, with how alike they are. “Chronology” puts every dated sentence of your library in time order, with the document it comes from. On the command line: `dupes`, `chronology`.
 
 ## New in 0.2.0-alpha.2
 
@@ -117,6 +119,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `entities [--kind email\|url\|money\|date\|phone] [--group G] [--json]` | Every e-mail, link, money amount, date and phone number your documents mention, with the documents they appear in. |
 | `compare A B [--json]` | Compares two documents sentence by sentence: how alike they are and what is only in one of them (A and B are paths or their endings). |
 | `conflicts [--group G] [--json]` | Pairs of sentences in different documents that agree except for a number or a date (500 vs 550): candidates to check, not verdicts. |
+| `dupes [--group G] [--min 0.6] [--json]` | Finds documents that are copies or near-copies of each other (exports, drafts, the same file saved twice), with how alike they are and how much of the smaller one is inside the other. |
+| `chronology [--group G] [--limit N] [--json]` | Every dated sentence of the library in time order, with the document it comes from (dates as 2025-03-12, 12.03.2025 or 12/03/2025, day first). The monthly document count is `timeline`. |
 | `topics [--json]` | Groups the documents by what they are about (their most characteristic words). |
 | `dossier TERM [--json]` | Everything the library says about a name or term: passages per document, plus the dates and amounts found in them. |
 | `changes --since DATE [--json]` | Documents modified since a date (YYYY, YYYY-MM or YYYY-MM-DD), newest first. |

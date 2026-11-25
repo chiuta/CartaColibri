@@ -24,6 +24,10 @@ fn tools() -> Value {
       {"name": "dossier", "description": "Everything the library says about one term: passages per document plus the dates and amounts found in them.",
        "inputSchema": {"type": "object", "properties": {"term": {"type": "string"}}, "required": ["term"]}},
       {"name": "conflicts", "description": "Pairs of sentences in different documents that agree except for their numbers or dates (candidates to check, not verdicts).",
+       "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "dupes", "description": "Documents that are copies or near-copies of each other (similarity and how much of the smaller one is inside the other).",
+       "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "chronology", "description": "Every dated sentence of the library in time order (dates as 2025-03-12, 12.03.2025 or 12/03/2025, day first), with the document it comes from.",
        "inputSchema": {"type": "object", "properties": {}}}
     ])
 }
@@ -94,6 +98,28 @@ fn call(lib: &Library, be: &Backend, name: &str, a: &Value) -> Value {
             Err(e) => err_result(&e),
             Ok(d) if d.docs.is_empty() => text_result("nothing about that term".into()),
             Ok(d) => text_result(serde_json::to_string_pretty(&d).unwrap()),
+        },
+        "dupes" => match crate::insight::library_texts(lib, None) {
+            Err(e) => err_result(&e),
+            Ok(docs) => {
+                let d = crate::insight::dupes(&docs, 0.6);
+                if d.is_empty() {
+                    text_result("no duplicate documents found".into())
+                } else {
+                    text_result(serde_json::to_string_pretty(&d).unwrap())
+                }
+            }
+        },
+        "chronology" => match crate::insight::library_texts(lib, None) {
+            Err(e) => err_result(&e),
+            Ok(docs) => {
+                let t = crate::insight::chronology(&docs, 200);
+                if t.is_empty() {
+                    text_result("no dated sentences found".into())
+                } else {
+                    text_result(serde_json::to_string_pretty(&t).unwrap())
+                }
+            }
         },
         "conflicts" => match crate::insight::library_texts(lib, None) {
             Err(e) => err_result(&e),
