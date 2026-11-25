@@ -179,6 +179,15 @@ pub fn entities(text: &str) -> Vec<Entity> {
             }
         }
     }
+    // dates written with a month name (12 March 2025, 12 martie 2025, 2025. március 12.)
+    for (raw, _) in date_matches(text) {
+        if raw.chars().any(char::is_alphabetic) {
+            out.insert(Entity {
+                kind: "date",
+                value: raw.trim().to_string(),
+            });
+        }
+    }
     out.into_iter().collect()
 }
 
@@ -849,8 +858,8 @@ fn ymd(y: u32, m: u32, d: u32) -> Option<String> {
 
 /// Dates written as 2025-03-12, 12.03.2025, 12/03/2025 (day first), "12 March 2025", "March 12,
 /// 2025", "12 martie 2025", "2025. március 12." (month names in the 8 languages) turned into ISO.
-fn iso_dates(s: &str) -> Vec<String> {
-    let mut out = vec![];
+fn date_matches(s: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = vec![];
     let num =
         Regex::new(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b").unwrap();
     for c in num.captures_iter(s) {
@@ -864,14 +873,17 @@ fn iso_dates(s: &str) -> Vec<String> {
         } else {
             ymd(p(6), p(5), p(4))
         };
-        out.extend(d);
+        out.extend(d.map(|iso| (c[0].to_string(), iso)));
     }
     let word = r"[\p{L}]{3,12}";
     // 12 March 2025 / 12th of March, 2025 / 12. März 2025
     let dmy = Regex::new(&format!(r"\b(\d{{1,2}})(?:st|nd|rd|th)?\.?\s+(?:of\s+|de\s+|di\s+|d')?({word}),?\s+(?:de\s+)?(\d{{4}})\b")).unwrap();
     for c in dmy.captures_iter(s) {
         if let Some(m) = month_of(&c[2]) {
-            out.extend(ymd(c[3].parse().unwrap_or(0), m, c[1].parse().unwrap_or(0)));
+            out.extend(
+                ymd(c[3].parse().unwrap_or(0), m, c[1].parse().unwrap_or(0))
+                    .map(|i| (c[0].to_string(), i)),
+            );
         }
     }
     // March 12, 2025
@@ -881,19 +893,32 @@ fn iso_dates(s: &str) -> Vec<String> {
     .unwrap();
     for c in mdy.captures_iter(s) {
         if let Some(m) = month_of(&c[1]) {
-            out.extend(ymd(c[3].parse().unwrap_or(0), m, c[2].parse().unwrap_or(0)));
+            out.extend(
+                ymd(c[3].parse().unwrap_or(0), m, c[2].parse().unwrap_or(0))
+                    .map(|i| (c[0].to_string(), i)),
+            );
         }
     }
     // 2025. március 12.
     let ymd_hu = Regex::new(&format!(r"\b(\d{{4}})\.?\s+({word})\s+(\d{{1,2}})\b")).unwrap();
     for c in ymd_hu.captures_iter(s) {
         if let Some(m) = month_of(&c[2]) {
-            out.extend(ymd(c[1].parse().unwrap_or(0), m, c[3].parse().unwrap_or(0)));
+            out.extend(
+                ymd(c[1].parse().unwrap_or(0), m, c[3].parse().unwrap_or(0))
+                    .map(|i| (c[0].to_string(), i)),
+            );
         }
     }
     out.sort();
     out.dedup();
     out
+}
+
+fn iso_dates(s: &str) -> Vec<String> {
+    let mut v: Vec<String> = date_matches(s).into_iter().map(|x| x.1).collect();
+    v.sort();
+    v.dedup();
+    v
 }
 
 /// Every dated sentence of the library in time order: what happened (or is due) when, and where it

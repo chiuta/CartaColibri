@@ -143,8 +143,10 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
         # ---- insight dialogs (conflicts, topics, what's new, fact-check, dossier, compare, entities) ----
         with rep.check(L, "insight dialogs open with real content", pg):
             pg.click('.rb[data-view=library]'); pg.wait_for_selector("#libRows tr", timeout=15000)
-            for b in ("#cfBtn", "#tpBtn", "#entBtn", "#chBtn"):
-                pg.click(b); pg.wait_for_selector("#insDlg.on", timeout=8000); pg.wait_for_timeout(400)
+            for b in ("#cfBtn", "#tpBtn", "#entBtn", "#chBtn", "#nearBtn", "#chrBtn"):
+                try: pg.click(b, timeout=5000)
+                except Exception as e: raise AssertionError(f"cannot click {b}: " + str(pg.evaluate("(s)=>{const e=document.querySelector(s);if(!e)return 'missing';const r=e.getBoundingClientRect();const t=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return JSON.stringify([r.x,r.y,r.width,r.height,t&&(t.id||t.className||t.tagName),!!document.querySelector('#insDlg.on')])}", b)))
+                pg.wait_for_selector("#insDlg.on", timeout=8000); pg.wait_for_timeout(400)
                 assert pg.inner_text("#insTitle").strip(), f"empty title for {b}"
                 bad = raw_keys(pg); assert not bad, f"raw keys in {b}: {bad}"
                 pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")

@@ -351,7 +351,7 @@ def main():
         from PIL import Image
     except ImportError:
         Image = None
-    names = [str(n) for n in range(1, 15)] + ["m1", "m2", "m3", "t1"]
+    names = [str(n) for n in range(1, 20)] + ["m1", "m2", "m3", "t1"]
     for l in LANGS:
         for n in names:
             src, dst = f"{ROOT}/docs/cartacolibri/img/{l}-{n}.png", f"{ROOT}/site-carta/img/{l}-{n}.webp"

@@ -16,5 +16,8 @@ const formal = /dumneavoastră|\bvous\b|\bSie\b|\bIhre?\b|\bLei\b|\busted\b|\bvo
 for (const [k, v] of Object.entries(D)) for (const l of langs) if (formal.test(v[l])) { console.error('formal address', k, l); bad++; }
 const site = fs.readFileSync(path.join(root, 'site-carta', 'index.html'), 'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 new Function(site);
+// an id used twice makes the second handler silently replace the first (a real bug once)
+const seen = {};
+for (const m of html.split('<script>')[0].matchAll(/\bid="([^"]+)"/g)) { if (seen[m[1]]) { console.error('duplicate id', m[1]); bad++; } seen[m[1]] = 1; }
 if (bad) process.exit(1);
 console.log(`carta.html ok: ${Object.keys(D).length} strings x ${langs.length} languages`);

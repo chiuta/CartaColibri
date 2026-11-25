@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Captures the CartaColibri screens in all 8 languages (playwright + a system Chrome), driving the real UI of the Rust
 server against a generated sample library and the offline `mock` mode.
-Output: docs/cartacolibri/img/<lang>-<n>.png   n = 1 library, 10 filters+facets, 11 topic map, 12 conflicts, 13 fact-check, 14 compare, 2 search, 3 group, 4 task, 5 document drawer, 6 chat, 7 stats, 8 engine dialog, 9 import dialog (web-grab)
+Output: docs/cartacolibri/img/<lang>-<n>.png   n = 15 duplicates, 16 chronology, 17 names & numbers, 18 dossier, 19 what's new, 1 library, 10 filters+facets, 11 topic map, 12 conflicts, 13 fact-check, 14 compare, 2 search, 3 group, 4 task, 5 document drawer, 6 chat, 7 stats, 8 engine dialog, 9 import dialog (web-grab)
 Usage: python3 scripts/capture_carta_demo.py [--lib DIR] [--bin PATH] [--only en,ro]   (without --lib a sample library is generated)"""
 import argparse, os, shutil, socket, subprocess, sys, tempfile, time
 from playwright.sync_api import sync_playwright
@@ -24,6 +24,8 @@ SAMPLE = {
     "contracts/lease.txt": "Lease of the warehouse in Ploiesti. Monthly rent 3,200 EUR, payable by the 5th. Term: 36 months. Notice period: 90 days. Payment by bank transfer only.\n",
     "contracts/lease-draft-v1.txt": "Draft lease of the warehouse in Ploiesti.\nThe monthly rent for the warehouse is 3,200 EUR payable by the fifth day.\nThe notice period is ninety days.\n",
     "contracts/lease-draft-v2.txt": "Draft lease of the warehouse in Ploiesti.\nThe monthly rent for the warehouse is 3,500 EUR payable by the fifth day.\nThe notice period is ninety days.\n",
+    "contracts/lease-copy.txt": "Lease of the warehouse in Ploiesti. Monthly rent 3,200 EUR, payable by the 5th. Term: 36 months. Notice period: 90 days. Payment by bank transfer only.\n",
+    "contracts/signing-log.txt": "Signing log. The supply contract was signed on 12 March 2025 in Bucharest. The lease was signed on 2024-11-02. The service agreement starts on 01.02.2025. Contact: legal@beta-logistics.example or +40 721 555 010.\n",
     "notes/project-notes.md": "# Project notes\n\nKick-off on Monday. Review the contracts: the payment terms differ between the supply contract and the service agreement. Ask legal about the penalty.\n",
     "articles/hummingbirds.md": "# Hummingbirds\n\nHummingbirds hover in front of flowers and drink nectar. Their wings beat dozens of times per second.\n",
 }
@@ -131,6 +133,16 @@ def main():
                 pg.click("#cmpBtn"); pg.wait_for_selector("#insDlg.on"); pg.wait_for_selector("#insBody li"); pg.wait_for_timeout(300)
                 pg.screenshot(path=f"{out}/{lang}-14.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
                 for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').uncheck()
+                for btn, n in (("#nearBtn", 15), ("#chrBtn", 16)):
+                    pg.click(btn); pg.wait_for_selector("#insDlg.on"); pg.wait_for_selector("#insBody .snip, #insBody p"); pg.wait_for_timeout(400)
+                    pg.screenshot(path=f"{out}/{lang}-{n}.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                pg.click("#entBtn"); pg.wait_for_selector("#insDlg.on"); pg.wait_for_selector("#insBody li, #insBody tr, #insBody .snip"); pg.wait_for_timeout(400)
+                pg.screenshot(path=f"{out}/{lang}-17.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                pg.click('.rb[data-view=fetch]'); pg.fill("#q", "lease"); pg.click('.rb[data-view=library]'); pg.wait_for_selector("#libRows tr")
+                pg.click("#dsBtn"); pg.wait_for_selector("#insDlg.on"); pg.wait_for_selector("#insBody h3"); pg.wait_for_timeout(400)
+                pg.screenshot(path=f"{out}/{lang}-18.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
+                pg.click("#chBtn"); pg.wait_for_selector("#insDlg.on"); pg.fill("#chDate", "2000-01-01"); pg.click("#chGo"); pg.wait_for_selector("#chOut li"); pg.wait_for_timeout(400)
+                pg.screenshot(path=f"{out}/{lang}-19.png"); pg.click("#insX"); pg.wait_for_function("()=>!document.querySelector('#insDlg').classList.contains('on')")
                 # clean up so the next language starts alike
                 pg.evaluate("async n=>{const h={'X-Colibri-UI':'1','Content-Type':'application/json'};await fetch('/carta/groups',{method:'DELETE',headers:h,body:JSON.stringify({name:n})})}", GROUP[lang])
                 print(lang, "ok", "JS errors:" + str(errs) if errs else "")

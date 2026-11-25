@@ -65,7 +65,7 @@ S = [
 ]
 for _n in (8, 9):
     S.append({"img": _n, "title": {_l: _t.replace(f"{_n} ·", f"{_n - 3} ·", 1) for _l, _t in A2.STEPS[_n]["title"].items()}, "cap": A2.STEPS[_n]["cap"], "text": A2.STEPS[_n]["text"]})
-for _n in (10, 11, 12, 13, 14):
+for _n in (10, 11, 12, 13, 14, 15, 16, 17, 18, 19):
     S.append({"img": _n, "title": {_l: _t.replace(f"{_n} ·", f"{_n - 3} ·", 1) for _l, _t in ALPHA4.STEPS[_n]["title"].items()}, "cap": ALPHA4.STEPS[_n]["cap"], "text": ALPHA4.STEPS[_n]["text"]})
 END = {  # closing card: command line + portable
  "title": {"en": "5 · Command line and portable", "ro": "5 · Linia de comandă și versiunea portabilă", "fr": "5 · Ligne de commande et version portable", "it": "5 · Riga di comando e versione portatile", "es": "5 · Línea de comandos y versión portátil", "pt": "5 · Linha de comandos e versão portátil", "de": "5 · Kommandozeile und portable Version", "hu": "5 · Parancssor és hordozható változat"},

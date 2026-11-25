@@ -306,12 +306,12 @@ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).
 c.textContent=D.copy[L]})}
 /* tour */
 let cur=0,timer=null,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,userStopped=false;const DUR=6500;
-function buildTabs(){$('tabs').innerHTML=[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map((n,i)=>'<button type="button" role="tab" id="tab'+n+'" aria-selected="'+(i===cur)+'" aria-controls="tour_img" tabindex="'+(i===cur?0:-1)+'"><em>'+n+'</em>'+X['t'+n][L]+'<span class="pg"></span></button>').join('');
+function buildTabs(){$('tabs').innerHTML=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19].map((n,i)=>'<button type="button" role="tab" id="tab'+n+'" aria-selected="'+(i===cur)+'" aria-controls="tour_img" tabindex="'+(i===cur?0:-1)+'"><em>'+n+'</em>'+X['t'+n][L]+'<span class="pg"></span></button>').join('');
 document.querySelectorAll('#tabs button').forEach((b,i)=>{b.onclick=()=>{userStopped=true;show(i)};b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();userStopped=true;show((cur+(e.key==='ArrowRight'?1:13))%14);$('tab'+(cur+1)).focus()}}})}
 function show(i,auto){cur=i;const n=i+1;const im=$('tour_img');im.style.opacity=.15;im.onload=()=>{im.style.opacity=1};im.src='img/'+L+'-'+n+'.webp';im.alt=X['c'+n][L];$('tour_cap').textContent=X['c'+n][L];
 document.querySelectorAll('#tabs button').forEach((b,j)=>{b.setAttribute('aria-selected',j===i);b.tabIndex=j===i?0:-1;b.classList.remove('run');void b.offsetWidth});
 const b=$('tab'+n);if(b&&b.scrollIntoView&&!auto)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
-clearTimeout(timer);if(playing&&!userStopped&&inView){b.style.setProperty('--dur',DUR+'ms');b.classList.add('run');timer=setTimeout(()=>show((cur+1)%14,true),DUR)}}
+clearTimeout(timer);if(playing&&!userStopped&&inView){b.style.setProperty('--dur',DUR+'ms');b.classList.add('run');timer=setTimeout(()=>show((cur+1)%19,true),DUR)}}
 let inView=false;
 $('play').onclick=()=>{playing=!playing;userStopped=false;show(cur,true)};
 /* language */

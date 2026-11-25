@@ -282,3 +282,16 @@ fn chronology_reads_month_names_in_eight_languages() {
         ]
     );
 }
+
+#[test]
+fn entities_include_dates_with_month_names() {
+    let e = entities("Signed on 12 March 2025 and again on 2024-11-02, also 3 martie 2023.");
+    let dates: Vec<_> = e
+        .iter()
+        .filter(|x| x.kind == "date")
+        .map(|x| x.value.as_str())
+        .collect();
+    for want in ["12 March 2025", "2024-11-02", "3 martie 2023"] {
+        assert!(dates.contains(&want), "{want} in {dates:?}");
+    }
+}

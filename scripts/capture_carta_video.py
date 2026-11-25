@@ -75,7 +75,7 @@ def load(ctx, base, lib, first):
 
 
 def demo(b, base, lib, lang, vdir, crf, first):
-    G, C = D.GROUP[lang], CAP[lang] + [A2.STEPS[8]["cap"][lang], A2.STEPS[9]["cap"][lang]] + [A4.STEPS[n]["cap"][lang] for n in (10, 11, 12, 13, 14)]
+    G, C = D.GROUP[lang], CAP[lang] + [A2.STEPS[8]["cap"][lang], A2.STEPS[9]["cap"][lang]] + [A4.STEPS[n]["cap"][lang] for n in (10, 11, 12, 13, 14, 15, 16, 17, 18, 19)]
     ctx = b.new_context(viewport={"width": 1280, "height": 720}, record_video_dir=vdir, record_video_size={"width": 1280, "height": 720})
     ctx.add_init_script(INIT % lang); t0 = time.time()
     pg, errs = load(ctx, base, lib, first); T0[0] = time.time(); pg.mouse.move(640, 400); start = time.time() - t0 - 0.3
@@ -115,6 +115,13 @@ def demo(b, base, lib, lang, vdir, crf, first):
     for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').check(); pg.wait_for_timeout(300)
     click(pg, "#cmpBtn", 400); pg.wait_for_selector("#insBody li"); pg.wait_for_timeout(2600); closeins()
     for v in ("v1", "v2"): pg.locator(f'#libRows tr:has-text("lease-draft-{v}") input[type=checkbox]').uncheck()
+    cap(pg, C[14]); click(pg, "#nearBtn", 500); pg.wait_for_selector("#insBody .snip, #insBody p"); pg.wait_for_timeout(2600); closeins()
+    cap(pg, C[15]); click(pg, "#chrBtn", 500); pg.wait_for_selector("#insBody .snip, #insBody p"); pg.wait_for_timeout(2600); closeins()
+    cap(pg, C[16]); click(pg, "#entBtn", 500); pg.wait_for_selector("#insBody tr, #insBody p"); pg.wait_for_timeout(2600); closeins()
+    cap(pg, C[17]); click(pg, '.rb[data-view=fetch]', 400); typ(pg, "#q", "lease"); click(pg, '.rb[data-view=library]', 400); click(pg, "#dsBtn", 500); pg.wait_for_selector("#insBody h3"); pg.wait_for_timeout(2800); closeins()
+    cap(pg, C[18]); click(pg, "#chBtn", 500); pg.fill("#chDate", "2000-01-01"); click(pg, "#chGo", 300); pg.wait_for_selector("#chOut li"); pg.wait_for_timeout(2600); closeins()
+    # the cleanup below needs the same first result row as when the tag was added
+    pg.click('.rb[data-view=fetch]'); pg.fill("#q", "payment after:2020"); pg.press("#q", "Enter"); pg.wait_for_selector("#resRows tr"); pg.wait_for_timeout(300)
     cap(pg, ""); pg.wait_for_timeout(400)
     dur = time.time() - t0 - start
     # undo the demo tag/star/note (not recorded: the video is cut at `dur`) so the next language starts alike
