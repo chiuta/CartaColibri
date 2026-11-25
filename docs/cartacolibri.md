@@ -27,6 +27,13 @@ Brute-force cosine over all passages: fine for hundreds of thousands, not for te
 
 `cartacolibri eval FILE` measures retrieval on your own questions (`question<TAB>file1,file2` or JSON) per mode: hit@1/5/10 and MRR, plus the missed questions.
 
+## Other engines (Ollama, LM Studio, any OpenAI-compatible server)
+Colibrì is the reference engine, but every call is plain OpenAI-style HTTP (`/v1/models`, `/v1/chat/completions`, `/v1/embeddings`), so:
+`--url http://127.0.0.1:11434 --model llama3.2` (Ollama; `ollama pull nomic-embed-text` for `embed`) or `--url http://127.0.0.1:1234` (LM Studio; load an embedding model there).
+`COLI_URL` / `COLI_API_KEY` / `COLI_EMBED_MODEL` set them once. `cartacolibri doctor` finds a running engine on the usual ports.
+Honest status: the protocol is tested against fake servers (good answers, 401/403/500, broken JSON, empty and null content, timeouts, wrong vector counts);
+it has not been run against every real Ollama / LM Studio build, so tell us what breaks.
+
 ## Measured speed (scripts/bench.py, synthetic 20,000 documents, 30 MB of text, one core)
 first index 6.4 s · re-index with no change 0.13 s · word / phrase / prefix / boolean search 0.02–0.07 s · regex search 0.3 s ·
 entities, chronology, duplicates, conflicts, topics 0.3–0.5 s each · index 53 MB · about 25 MB of memory for searching (67 MB for stats).
