@@ -814,3 +814,27 @@ fn truncated_json_bodies_are_not_processed() {
     let t = String::from_utf8_lossy(&out);
     assert!(!t.contains("\"added\""), "half a body was acted on: {t}");
 }
+
+#[test]
+fn a_huge_announced_body_does_not_take_the_server_down() {
+    // a Content-Length of ~100 GB used to make the HTTP library allocate that much while dropping
+    // the unread request, which aborted the whole process
+    let s = start();
+    for path in ["/carta/note", "/carta/upload", "/carta/status", "/nope"] {
+        let mut c = TcpStream::connect(("127.0.0.1", s.port)).unwrap();
+        c.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        let _ = c.write_all(
+            format!(
+                "POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Colibri-UI: 1\r\nContent-Length: 99999999999\r\n\r\nx"
+            )
+            .as_bytes(),
+        );
+        let mut out = vec![];
+        let _ = c.read_to_end(&mut out);
+        assert!(
+            String::from_utf8_lossy(&out).starts_with("HTTP/1.1 4"),
+            "{path}"
+        );
+    }
+    assert_eq!(ui(&s, "GET", "/carta/status", &[], b"").code, 200);
+}

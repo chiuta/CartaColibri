@@ -522,3 +522,49 @@ fn related_with_huge_k_does_not_overflow() {
     let id = lib.documents(None).unwrap()[0].id;
     let _ = related(&lib, id, usize::MAX).unwrap();
 }
+
+#[test]
+fn hostile_backups_are_refused_before_anything_is_written() {
+    use std::io::Write;
+    let t = tempfile::tempdir().unwrap();
+    let mk = |name: &str, files: serde_json::Value| {
+        let p = t.path().join(name);
+        let mut z = zip::ZipWriter::new(std::fs::File::create(&p).unwrap());
+        let o = zip::write::SimpleFileOptions::default();
+        z.start_file("manifest.json", o).unwrap();
+        z.write_all(
+            serde_json::json!({"format":"cartacolibri-backup","version":1,"app_version":"x","created":"x","includes_index":false,"files":files})
+                .to_string()
+                .as_bytes(),
+        )
+        .unwrap();
+        z.start_file("state/x.txt", o).unwrap();
+        z.write_all(b"x").unwrap();
+        z.finish().unwrap();
+        p
+    };
+    let home = t.path().join("home");
+    for (n, files) in [
+        (
+            "slip",
+            serde_json::json!([{"name":"../../evil","size":1,"sha1":"x"}]),
+        ),
+        (
+            "abs",
+            serde_json::json!([{"name":"/tmp/evil","size":1,"sha1":"x"}]),
+        ),
+        (
+            "win",
+            serde_json::json!([{"name":"..\\evil","size":1,"sha1":"x"}]),
+        ),
+        (
+            "big",
+            serde_json::json!([{"name":"a","size":3_000_000_000u64,"sha1":"x"},{"name":"b","size":1,"sha1":"x"}]),
+        ),
+    ] {
+        let z = mk(n, files);
+        assert!(cartacolibri::organize::backup_verify(&z).is_err(), "{n}");
+        assert!(cartacolibri::organize::restore(&z, &home).is_err(), "{n}");
+    }
+    assert!(!t.path().join("evil").exists() && !home.join("x.txt").exists());
+}

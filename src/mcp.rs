@@ -27,7 +27,7 @@ fn tools() -> Value {
        "inputSchema": {"type": "object", "properties": {}}},
       {"name": "dupes", "description": "Documents that are copies or near-copies of each other (similarity and how much of the smaller one is inside the other).",
        "inputSchema": {"type": "object", "properties": {}}},
-      {"name": "chronology", "description": "Every dated sentence of the library in time order (dates as 2025-03-12, 12.03.2025 or 12/03/2025, day first), with the document it comes from.",
+      {"name": "chronology", "description": "Every dated sentence of the library in time order (dates as 2025-03-12, 12.03.2025 or 12/03/2025, day first; or with a month name in any of the 8 languages: 12 March 2025, 12 martie 2025), with the document it comes from.",
        "inputSchema": {"type": "object", "properties": {}}}
     ])
 }

@@ -38,3 +38,8 @@ tempfile = "3"
 [profile.release]
 lto = "thin"
 strip = true
+
+# tiny_http 0.12.0 with one fix (see vendor/tiny_http/src/util/equal_reader.rs): a huge announced
+# Content-Length no longer makes the server allocate that much memory and abort.
+[patch.crates-io]
+tiny_http = { path = "vendor/tiny_http" }

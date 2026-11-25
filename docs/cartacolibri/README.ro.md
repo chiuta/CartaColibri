@@ -120,7 +120,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `compare A B [--json]` | Compară două documente propoziție cu propoziție: cât de asemănătoare sunt și ce e doar într-unul dintre ele (A și B sunt căi sau terminațiile lor). |
 | `conflicts [--group G] [--json]` | Perechi de propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550): candidate de verificat, nu verdicte. |
 | `dupes [--group G] [--min 0.6] [--json]` | Găsește documente care sunt copii sau aproape-copii unele ale altora (exporturi, ciorne, același fișier salvat de două ori), cu cât de asemănătoare sunt și cât din cel mai mic se află în celălalt. |
-| `chronology [--group G] [--limit N] [--json]` | Toate propozițiile cu dată din bibliotecă, în ordine cronologică, cu documentul din care vin (date ca 2025-03-12, 12.03.2025 sau 12/03/2025, ziua întâi). Numărul lunar de documente este `timeline`. |
+| `chronology [--group G] [--limit N] [--json]` | Toate propozițiile cu dată din bibliotecă, în ordine cronologică, cu documentul din care vin (date ca 2025-03-12, 12.03.2025 sau 12/03/2025, ziua întâi; sau cu numele lunii în oricare din cele 8 limbi: 12 March 2025, 12 martie 2025). Numărul lunar de documente este `timeline`. |
 | `topics [--json]` | Grupează documentele după ce tratează (cele mai caracteristice cuvinte ale lor). |
 | `dossier TERM [--json]` | Tot ce spune biblioteca despre un nume sau termen: pasaje pe documente, plus datele și sumele găsite în ele. |
 | `changes --since DATE [--json]` | Documentele modificate de la o dată (YYYY, YYYY-MM sau YYYY-MM-DD), cele mai noi întâi. |

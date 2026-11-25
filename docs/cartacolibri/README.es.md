@@ -120,7 +120,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `compare A B [--json]` | Compara dos documentos frase a frase: cuánto se parecen y qué hay solo en uno (A y B son rutas o su final). |
 | `conflicts [--group G] [--json]` | Pares de frases de documentos distintos iguales salvo un número o una fecha (500 frente a 550): candidatos para revisar, no veredictos. |
 | `dupes [--group G] [--min 0.6] [--json]` | Encuentra documentos que son copias o casi copias entre sí (exportaciones, borradores, el mismo archivo guardado dos veces), con su parecido y cuánto del más pequeño está dentro del otro. |
-| `chronology [--group G] [--limit N] [--json]` | Todas las frases con fecha de la biblioteca en orden temporal, con su documento (fechas como 2025-03-12, 12.03.2025 o 12/03/2025, primero el día). El recuento mensual de documentos es `timeline`. |
+| `chronology [--group G] [--limit N] [--json]` | Todas las frases con fecha de la biblioteca en orden temporal, con su documento (fechas como 2025-03-12, 12.03.2025 o 12/03/2025, primero el día; o con el nombre del mes en cualquiera de los 8 idiomas: 12 de marzo de 2025, 12 March 2025). El recuento mensual de documentos es `timeline`. |
 | `topics [--json]` | Agrupa los documentos por tema (sus palabras más características). |
 | `dossier TERM [--json]` | Todo lo que la biblioteca dice de un nombre o término: pasajes por documento, más las fechas e importes hallados. |
 | `changes --since DATE [--json]` | Documentos modificados desde una fecha (YYYY, YYYY-MM o YYYY-MM-DD), los más recientes primero. |

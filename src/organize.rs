@@ -971,6 +971,10 @@ fn read_backup(zip_path: &Path) -> Res<BackupData> {
             man.version
         ));
     }
+    // a crafted backup must not make us load gigabytes into memory
+    if man.files.iter().fold(0u64, |t, f| t.saturating_add(f.size)) > 2 << 30 {
+        return Err("backup is larger than 2 GB: refusing to load it".into());
+    }
     let mut data = vec![];
     for bf in &man.files {
         let safe = !bf.name.starts_with('/')

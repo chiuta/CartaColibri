@@ -688,8 +688,10 @@ pub fn dupes(docs: &[(String, String)], min: f64) -> Vec<Dupe> {
     let sets: Vec<BTreeSet<u64>> = docs.iter().take(2000).map(|d| shingles(&d.1)).collect();
     let mut index: BTreeMap<u64, Vec<usize>> = BTreeMap::new();
     for (i, s) in sets.iter().enumerate() {
-        // a bottom-k sketch is enough to find candidate pairs
-        for h in s.iter().take(64) {
+        // every phrase finds candidate pairs, so a short document inside a long one is never missed;
+        // only very long documents are sampled (the same 1 in 4 phrases everywhere)
+        let sample = s.len() > 20_000;
+        for h in s.iter().filter(|h| !sample || **h % 4 == 0) {
             index.entry(*h).or_default().push(i);
         }
     }
@@ -714,7 +716,8 @@ pub fn dupes(docs: &[(String, String)], min: f64) -> Vec<Dupe> {
         }
         let sim = inter / union;
         let cont = inter / small;
-        if sim >= min || cont >= 0.9 {
+        // a tiny document is "inside" anything: containment only counts from 10 phrases up
+        if sim >= min || (cont >= 0.9 && small >= 10.0) {
             out.push(Dupe {
                 a_path: docs[i].0.clone(),
                 b_path: docs[j].0.clone(),
@@ -743,26 +746,153 @@ pub struct Event {
     pub sentence: String,
 }
 
-/// Dates written as 2025-03-12, 12.03.2025 or 12/03/2025 (day first) turned into ISO.
+const MONTHS: &[(&str, u32)] = &[
+    // en
+    ("january", 1),
+    ("february", 2),
+    ("march", 3),
+    ("april", 4),
+    ("may", 5),
+    ("june", 6),
+    ("july", 7),
+    ("august", 8),
+    ("september", 9),
+    ("october", 10),
+    ("november", 11),
+    ("december", 12),
+    // ro
+    ("ianuarie", 1),
+    ("februarie", 2),
+    ("martie", 3),
+    ("aprilie", 4),
+    ("mai", 5),
+    ("iunie", 6),
+    ("iulie", 7),
+    ("septembrie", 9),
+    ("octombrie", 10),
+    ("noiembrie", 11),
+    ("decembrie", 12),
+    // fr
+    ("janvier", 1),
+    ("février", 2),
+    ("mars", 3),
+    ("avril", 4),
+    ("juin", 6),
+    ("juillet", 7),
+    ("août", 8),
+    ("septembre", 9),
+    ("octobre", 10),
+    ("novembre", 11),
+    ("décembre", 12),
+    // it
+    ("gennaio", 1),
+    ("febbraio", 2),
+    ("marzo", 3),
+    ("aprile", 4),
+    ("maggio", 5),
+    ("giugno", 6),
+    ("luglio", 7),
+    ("agosto", 8),
+    ("settembre", 9),
+    ("ottobre", 10),
+    ("dicembre", 12),
+    // es / pt
+    ("enero", 1),
+    ("febrero", 2),
+    ("abril", 4),
+    ("mayo", 5),
+    ("junio", 6),
+    ("julio", 7),
+    ("septiembre", 9),
+    ("octubre", 10),
+    ("noviembre", 11),
+    ("diciembre", 12),
+    ("janeiro", 1),
+    ("fevereiro", 2),
+    ("março", 3),
+    ("maio", 5),
+    ("junho", 6),
+    ("julho", 7),
+    ("setembro", 9),
+    ("outubro", 10),
+    ("novembro", 11),
+    ("dezembro", 12),
+    // de
+    ("januar", 1),
+    ("februar", 2),
+    ("märz", 3),
+    ("juni", 6),
+    ("juli", 7),
+    ("oktober", 10),
+    ("dezember", 12),
+    // hu
+    ("január", 1),
+    ("február", 2),
+    ("március", 3),
+    ("április", 4),
+    ("május", 5),
+    ("június", 6),
+    ("július", 7),
+    ("augusztus", 8),
+    ("szeptember", 9),
+];
+
+fn month_of(w: &str) -> Option<u32> {
+    let w = w.to_lowercase();
+    MONTHS.iter().find(|(n, _)| *n == w).map(|x| x.1)
+}
+
+fn ymd(y: u32, m: u32, d: u32) -> Option<String> {
+    ((1000..=2999).contains(&y) && (1..=12).contains(&m) && (1..=31).contains(&d))
+        .then(|| format!("{y:04}-{m:02}-{d:02}"))
+}
+
+/// Dates written as 2025-03-12, 12.03.2025, 12/03/2025 (day first), "12 March 2025", "March 12,
+/// 2025", "12 martie 2025", "2025. március 12." (month names in the 8 languages) turned into ISO.
 fn iso_dates(s: &str) -> Vec<String> {
-    let re =
-        Regex::new(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b").unwrap();
     let mut out = vec![];
-    for c in re.captures_iter(s) {
-        let (y, m, d) = if let Some(y) = c.get(1) {
-            (y.as_str(), c[2].to_string(), c[3].to_string())
-        } else {
-            (&c[6], c[5].to_string(), c[4].to_string())
+    let num =
+        Regex::new(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b").unwrap();
+    for c in num.captures_iter(s) {
+        let p = |i: usize| {
+            c.get(i)
+                .and_then(|m| m.as_str().parse::<u32>().ok())
+                .unwrap_or(0)
         };
-        let (yn, mn, dn): (u32, u32, u32) = (
-            y.parse().unwrap_or(0),
-            m.parse().unwrap_or(0),
-            d.parse().unwrap_or(0),
-        );
-        if (1000..=2999).contains(&yn) && (1..=12).contains(&mn) && (1..=31).contains(&dn) {
-            out.push(format!("{yn:04}-{mn:02}-{dn:02}"));
+        let d = if c.get(1).is_some() {
+            ymd(p(1), p(2), p(3))
+        } else {
+            ymd(p(6), p(5), p(4))
+        };
+        out.extend(d);
+    }
+    let word = r"[\p{L}]{3,12}";
+    // 12 March 2025 / 12th of March, 2025 / 12. März 2025
+    let dmy = Regex::new(&format!(r"\b(\d{{1,2}})(?:st|nd|rd|th)?\.?\s+(?:of\s+|de\s+|di\s+|d')?({word}),?\s+(?:de\s+)?(\d{{4}})\b")).unwrap();
+    for c in dmy.captures_iter(s) {
+        if let Some(m) = month_of(&c[2]) {
+            out.extend(ymd(c[3].parse().unwrap_or(0), m, c[1].parse().unwrap_or(0)));
         }
     }
+    // March 12, 2025
+    let mdy = Regex::new(&format!(
+        r"\b({word})\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(\d{{4}})\b"
+    ))
+    .unwrap();
+    for c in mdy.captures_iter(s) {
+        if let Some(m) = month_of(&c[1]) {
+            out.extend(ymd(c[3].parse().unwrap_or(0), m, c[2].parse().unwrap_or(0)));
+        }
+    }
+    // 2025. március 12.
+    let ymd_hu = Regex::new(&format!(r"\b(\d{{4}})\.?\s+({word})\s+(\d{{1,2}})\b")).unwrap();
+    for c in ymd_hu.captures_iter(s) {
+        if let Some(m) = month_of(&c[2]) {
+            out.extend(ymd(c[1].parse().unwrap_or(0), m, c[3].parse().unwrap_or(0)));
+        }
+    }
+    out.sort();
+    out.dedup();
     out
 }
 
@@ -771,8 +901,19 @@ fn iso_dates(s: &str) -> Vec<String> {
 pub fn chronology(docs: &[(String, String)], limit: usize) -> Vec<Event> {
     let mut out: Vec<Event> = vec![];
     let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
+    let ord = Regex::new(r"\b(\d{1,4})\.(\s+)(\p{L}{3,12})\b").unwrap();
     for (path, text) in docs {
-        for s in sentences(text) {
+        // "30. Oktober 2018" and "2017. szeptember 21" must not be cut after the ordinal dot
+        let text = ord.replace_all(text, |c: &regex::Captures| {
+            let dot = if month_of(&c[3]).is_some() {
+                "\u{2024}"
+            } else {
+                "."
+            };
+            format!("{}{}{}{}", &c[1], dot, &c[2], &c[3])
+        });
+        for s in sentences(&text) {
+            let s = s.replace('\u{2024}', ".");
             for d in iso_dates(&s) {
                 if seen.insert((d.clone(), s.clone())) {
                     out.push(Event {

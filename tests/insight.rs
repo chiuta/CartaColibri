@@ -217,3 +217,68 @@ fn chronology_orders_dated_sentences_and_rejects_bad_dates() {
     assert!(t[0].sentence.contains("Signed"));
     assert_eq!(chronology(&docs, 1).len(), 1);
 }
+
+#[test]
+fn dupes_find_a_short_document_inside_a_long_one() {
+    let words = |seed: u64, n: usize| -> String {
+        let mut x = seed;
+        (0..n)
+            .map(|_| {
+                x = x
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                format!("w{}", (x >> 33) % 5000)
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let short = words(1, 60);
+    let long = format!("{} {} {}", words(2, 3000), short, words(3, 3000));
+    let docs = vec![
+        ("long.txt".to_string(), long),
+        ("short.txt".to_string(), short),
+        ("unrelated.txt".to_string(), words(9, 500)),
+        (
+            "tiny.txt".to_string(),
+            "just five little words here".to_string(),
+        ),
+    ];
+    let d = dupes(&docs, 0.6);
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].contained >= 0.99 && d[0].similarity < 0.1);
+}
+
+#[test]
+fn chronology_reads_month_names_in_eight_languages() {
+    let docs = vec![(
+        "m.txt".to_string(),
+        [
+            "Due on 12 March 2025 for all.",
+            "Signed March 5, 2024 by both.",
+            "Termen: 3 martie 2023 la sediu.",
+            "Le 14 février 2022 il a signé.",
+            "Il 9 maggio 2021 abbiamo firmato.",
+            "El 1 de enero de 2020 se firmó.",
+            "Assinado em 7 de março de 2019 ontem.",
+            "Am 30. Oktober 2018 wurde es unterschrieben.",
+            "A szerződés 2017. szeptember 21 napján kelt.",
+            "Nonsense 31 Blorp 2025 is not a date.",
+        ]
+        .join(" "),
+    )];
+    let d: Vec<String> = chronology(&docs, 50).into_iter().map(|e| e.date).collect();
+    assert_eq!(
+        d,
+        vec![
+            "2017-09-21",
+            "2018-10-30",
+            "2019-03-07",
+            "2020-01-01",
+            "2021-05-09",
+            "2022-02-14",
+            "2023-03-03",
+            "2024-03-05",
+            "2025-03-12"
+        ]
+    );
+}

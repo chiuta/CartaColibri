@@ -120,7 +120,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `compare A B [--json]` | Mondatonként összehasonlít két dokumentumot: mennyire hasonlók, és mi van csak az egyikben (A és B útvonal vagy annak vége). |
 | `conflicts [--group G] [--json]` | Különböző dokumentumok olyan mondatpárjai, amelyek egy számban vagy dátumban térnek el (500 és 550): ellenőrizendő jelöltek, nem ítéletek. |
 | `dupes [--group G] [--min 0.6] [--json]` | Megkeresi azokat a dokumentumokat, amelyek egymás másolatai vagy majdnem másolatai (exportok, piszkozatok, kétszer mentett fájl), hasonlóságukkal és azzal, hogy a kisebbik mekkora része van a másikban. |
-| `chronology [--group G] [--limit N] [--json]` | A könyvtár összes dátumos mondata időrendben, a dokumentumukkal (dátumok: 2025-03-12, 12.03.2025 vagy 12/03/2025, előbb a nap). A havi dokumentumszám a `timeline`. |
+| `chronology [--group G] [--limit N] [--json]` | A könyvtár összes dátumos mondata időrendben, a dokumentumukkal (dátumok: 2025-03-12, 12.03.2025 vagy 12/03/2025, előbb a nap; vagy hónapnévvel a 8 nyelv bármelyikén: 2025. március 12., 12 March 2025). A havi dokumentumszám a `timeline`. |
 | `topics [--json]` | Téma szerint csoportosítja a dokumentumokat (legjellemzőbb szavaik alapján). |
 | `dossier TERM [--json]` | Mindaz, amit a könyvtár egy névről vagy fogalomról mond: szövegrészek dokumentumonként, a bennük talált dátumokkal és összegekkel. |
 | `changes --since DATE [--json]` | Egy dátum óta módosult dokumentumok (YYYY, YYYY-MM vagy YYYY-MM-DD), a legfrissebbek elöl. |
