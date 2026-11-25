@@ -1,3 +1,4 @@
+#![cfg(unix)]
 //! Old binary Office files (.doc/.xls/.ppt) are read through a converter that is already on the
 //! computer; without one they are left alone instead of failing one by one.
 use cartacolibri::library::{Filter, Library};
