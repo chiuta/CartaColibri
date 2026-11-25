@@ -246,7 +246,7 @@ impl Backend {
         Ok(t)
     }
 
-    fn agent(&self, t: Duration, status_error: bool) -> ureq::Agent {
+    pub(crate) fn agent(&self, t: Duration, status_error: bool) -> ureq::Agent {
         ureq::Agent::config_builder()
             .timeout_global(Some(t))
             .http_status_as_error(status_error)

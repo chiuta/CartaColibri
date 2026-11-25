@@ -601,11 +601,32 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                     .and_then(|v| crate::library::parse_date(v)),
                 regex: r.query.get("re").cloned().filter(|p| !p.is_empty()),
             };
-            serde_json::to_value(
-                lib.search(r.query.get("q").map(String::as_str).unwrap_or(""), &f)
-                    .map_err(bad)?,
-            )
-            .unwrap()
+            let q = r.query.get("q").map(String::as_str).unwrap_or("");
+            let mode =
+                crate::semantic::Mode::parse(r.query.get("mode").map(String::as_str).unwrap_or(""))
+                    .map_err(bad)?;
+            if mode == crate::semantic::Mode::Bm25 {
+                serde_json::to_value(lib.search(q, &f).map_err(bad)?).unwrap()
+            } else {
+                let be = if r.query.get("mock").is_some_and(|m| m == "1") {
+                    carta::Backend::mock()
+                } else {
+                    carta::Backend::gateway(r.backend_url, None)
+                };
+                let m = crate::semantic::embed_model_name(&be, None);
+                let s = lib.search_mode(&be, &m, q, &f, mode).map_err(bad)?;
+                serde_json::to_value(s.hits).unwrap()
+            }
+        }
+        ("GET", "embed") => {
+            let be = carta::Backend::gateway(r.backend_url, None);
+            let m = if r.query.get("mock").is_some_and(|m| m == "1") {
+                "mock".to_string()
+            } else {
+                crate::semantic::embed_model_name(&be, None)
+            };
+            let (have, total) = lib.vector_counts(&m);
+            json!({"model": m, "embedded": have, "total": total})
         }
         ("GET", "doc") => {
             let id: i64 = r

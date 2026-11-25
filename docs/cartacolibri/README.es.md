@@ -56,6 +56,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Verifica tu propio texto frente a tu biblioteca** — Pega un borrador en «Verificar mi texto» y cada frase se marca como respaldada, en parte, números distintos o no encontrada, con la mejor prueba de tus documentos. «Dosier» reúne todo lo que tu biblioteca dice de un nombre o término, con sus fechas e importes. Otras apps de IA acceden a ambos por el servidor MCP.
 - **Pregunta sobre un periodo y recibe los resúmenes como archivo de correo** — En el chat elige «Documentos desde … hasta …» y la respuesta sale solo de documentos modificados en ese periodo (línea de comandos: `chat --since --until`). El mapa de temas es ahora una imagen de burbujas en las que puedes pulsar. `digest --mail-to tu@example.org` guarda además cada informe como archivo de correo en la carpeta outbox; añade `--sendmail` para entregarlo al programa de correo de tu ordenador. Nada más sale de tu ordenador.
 - **Encuentra copias y lee tu biblioteca como una cronología** — «Duplicados» lista los documentos que son copias o casi copias, con su parecido. «Cronología» ordena en el tiempo todas las frases con fecha de tu biblioteca, con su documento. En la línea de comandos: `dupes`, `chronology`.
+- **Búsqueda por significado, medir la búsqueda, más formatos** — `embed` prepara la búsqueda por significado con el modelo de embeddings de tu motor local; luego `search --mode hybrid` encuentra textos que usan otras palabras que tu pregunta, y `eval` mide qué tan bien cada modo encuentra lo que esperas. Formatos nuevos: tar y tar.gz, hojas y presentaciones OpenDocument, archivos de Office con macros y los antiguos doc, xls y ppt mediante antiword, catdoc o LibreOffice. Las herramientas sobre toda la biblioteca (nombres y números, copias, conflictos, temas) pasaron de minutos a menos de un segundo con 20.000 documentos, y los filtros ahora ven toda la biblioteca.
 
 ## Novedades de la 0.2.0-alpha.2
 
@@ -97,7 +98,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `doctor` | Comprueba el motor, el OCR, las herramientas PDF, el disco y el puerto, e indica la solución exacta de cada problema. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Añade u olvida una carpeta (los archivos nunca se tocan), lista las carpetas, reindexa y lista los archivos que no se pudieron leer. |
 | `watch [--interval S]` | Mantiene el índice al día: reescanea las carpetas cada S segundos. |
-| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Busca en la biblioteca. Palabras, «frases», prefijo*, AND/OR/NOT y filtros en la propia consulta: `ext:pdf` `path:contratos` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FAC-\d+`. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Busca en la biblioteca. Palabras, «frases», prefijo*, AND/OR/NOT y filtros en la propia consulta: `ext:pdf` `path:contratos` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FAC-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Lista los documentos; los grupos son conjuntos de documentos con nombre donde buscar o sobre los que preguntar. |
 | `summarize`, `extract`, `synthesize` (same options as `task`) | Atajos para las tres tareas principales: resumir cada documento, extraer campos o combinar varios en una respuesta. |
 | `grab URL`, `bookmarklet` | Guarda una página web en la biblioteca (HTML, MHTML o PDF); el bookmarklet lo hace desde cualquier navegador. |
@@ -121,6 +122,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Pares de frases de documentos distintos iguales salvo un número o una fecha (500 frente a 550): candidatos para revisar, no veredictos. |
 | `dupes [--group G] [--min 0.6] [--json]` | Encuentra documentos que son copias o casi copias entre sí (exportaciones, borradores, el mismo archivo guardado dos veces), con su parecido y cuánto del más pequeño está dentro del otro. |
 | `chronology [--group G] [--limit N] [--json]` | Todas las frases con fecha de la biblioteca en orden temporal, con su documento (fechas como 2025-03-12, 12.03.2025 o 12/03/2025, primero el día; o con el nombre del mes en cualquiera de los 8 idiomas: 12 de marzo de 2025, 12 March 2025). El recuento mensual de documentos es `timeline`. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Prepara la búsqueda por significado: el modelo de embeddings de tu motor local convierte cada pasaje en un vector guardado en el índice de la biblioteca. Incremental (solo pasajes nuevos o cambiados), reanudable (`--limit`), y nada sale de tu equipo. Luego `search --mode semantic` o `--mode hybrid` (palabras y significado juntos) encuentra textos que usan otras palabras que tu pregunta. |
+| `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Mide qué tan bien la búsqueda encuentra lo que esperas. FILE tiene una pregunta por línea con los archivos esperados (`pregunta<TAB>archivo1,archivo2`) o es JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Muestra hit@1, hit@5, hit@10 y MRR por modo, y las preguntas no encontradas. |
 | `topics [--json]` | Agrupa los documentos por tema (sus palabras más características). |
 | `dossier TERM [--json]` | Todo lo que la biblioteca dice de un nombre o término: pasajes por documento, más las fechas e importes hallados. |
 | `changes --since DATE [--json]` | Documentos modificados desde una fecha (YYYY, YYYY-MM o YYYY-MM-DD), los más recientes primero. |
@@ -146,7 +149,7 @@ Sí. La Biblioteca y la búsqueda nunca necesitan un modelo. Para resumir, extra
 [Colibrì](https://github.com/JustVugg/colibri) es un motor local aparte que ejecuta el modelo de lenguaje. Solo lo necesitas para las respuestas de IA. Elige un modelo cuyo archivo sea menor que tu RAM libre y empieza por uno pequeño. Mira la documentación de Colibrì.
 
 **¿Qué archivos puede leer?**  
-Texto y notas (txt, md, rst, log, csv, json, yaml, html, rtf), PDF, archivos de Word, OpenDocument, PowerPoint y Excel (docx, odt, pptx, xlsx), epub y, con el OCR activado, imágenes y PDF escaneados.
+Texto y notas (txt, md, rst, log, csv, json, yaml, html, rtf), PDF, archivos de Word, OpenDocument, PowerPoint y Excel (docx, odt, pptx, xlsx), epub y, con el OCR activado, imágenes y PDF escaneados. También correo (eml, mbox), calendarios y contactos (ics, vcf), archivos zip, tar y tar.gz, hojas y presentaciones OpenDocument (ods, odp) y los antiguos doc, xls y ppt si tienes instalado antiword, catdoc o LibreOffice.
 
 **¿Y los escaneos y fotos de documentos?**  
 Activa el OCR (`--ocr` o `CARTACOLIBRI_OCR=1`). Necesita `tesseract` instalado en tu ordenador, y `pdftoppm` para los PDF escaneados. La página te avisa cuando falta tesseract.
@@ -162,6 +165,12 @@ El zip portátil existe para ambos, pero Linux es el sistema mejor probado. El n
 
 **¿Por qué «alfa»?**  
 Porque es joven: el núcleo funciona y está probado, pero no en todos los sistemas, y las comprobaciones automáticas de GitHub aún no están verificadas. Espera algunas asperezas y cuéntanoslas.
+
+**¿Puede buscar por significado, no solo por palabras?**  
+Sí, de forma opcional. Ejecuta una vez `cartacolibri embed`: el modelo de embeddings de tu motor local convierte cada pasaje en números, guardados en tu propio archivo de índice (después solo se rehacen los pasajes nuevos o cambiados). Luego `search --mode hybrid` (o `semantic`) encuentra un texto aunque use otras palabras que tu pregunta. Necesita un modelo de embeddings en el motor (con Ollama: `ollama pull nomic-embed-text`). Sin él, la búsqueda por palabras funciona igual que antes. `cartacolibri eval` mide qué tan bien cada modo encuentra lo que esperas.
+
+**¿Qué no puede hacer?**  
+No tiene agentes que actúen solos, búsqueda web, cuentas de usuario, app para el móvil ni sincronización entre ordenadores. La búsqueda por palabras es exacta, pero las herramientas de análisis (conflictos, duplicados, cronología, nombres y números) usan reglas sobre palabras y números, no comprensión: señalan cosas que revisar, no son veredictos. Las respuestas valen lo que valga el modelo que ejecutes en local. Las 8 traducciones no las han revisado hablantes nativos y el proyecto está en alfa. El correo .msg y .pst no se lee (expórtalo a .eml o .mbox), y el audio y el vídeo no se transcriben.
 
 **¿Cómo sobreviven las etiquetas, estrellas y notas a la reindexación?**  
 No se guardan en el índice de búsqueda, sino en un pequeño archivo aparte, `organize.json`, en tu carpeta `<home>`, ligado a la ruta de cada documento. Así que **Actualizar índice**, una reindexación completa e incluso **Comprobar/Reparar** (que reconstruye el índice) no las tocan. Si renombras o mueves un archivo, cuenta como un documento nuevo y las etiquetas se quedan con la ruta antigua.

@@ -226,6 +226,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "encoding_rs",
+ "flate2",
  "getrandom 0.3.4",
  "glob",
  "hex",

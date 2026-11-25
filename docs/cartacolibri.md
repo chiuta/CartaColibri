@@ -9,10 +9,34 @@ State lives in one folder: `$CARTACOLIBRI_HOME` (default `~/.cartacolibri`) — 
 `library/uploads/`, `outputs/` (never indexed), `clip.token`.
 
 ## Formats
-txt md markdown rst log csv json jsonl yaml yml html htm rtf · pdf · docx odt pptx xlsx epub ·
+txt md markdown rst log csv json jsonl yaml yml html htm rtf · pdf · docx odt ods odp pptx xlsx epub (and the macro/template variants docm dotx xlsm pptm ppsx …) ·
+eml mbox ics vcf mhtml · zip, tar, tgz / tar.gz (listing plus the text inside) ·
+old `.doc` `.xls` `.ppt` only when `antiword`/`catdoc`/`xls2csv`/`catppt` or LibreOffice (`soffice`) is installed (otherwise they are skipped, not failed) ·
 images (png jpg tif bmp webp) and scanned PDF pages when OCR is on (`--ocr` / `CARTACOLIBRI_OCR=1`, needs `tesseract`, and `pdftoppm` for PDFs).
 Legacy 8-bit text is read as Windows-1250 (Romanian / Central-European). A broken or hostile file (zip bomb, corrupt PDF)
 is reported under `problems` and never stops the folder.
+
+## Search by meaning (optional)
+`cartacolibri embed` asks the engine's embedding model (`POST /v1/embeddings`: Colibrì, Ollama, LM Studio) for a vector per
+passage and stores it in the same SQLite index; it is incremental and restartable (`--limit`). Then
+`search QUERY --mode semantic|hybrid` compares the question's vector with the passages (cosine); `hybrid` fuses the BM25 and the
+vector ranking with reciprocal rank fusion (k=60), so an exact word match still wins. The same `mode` is a parameter of
+`GET /carta/search` and of the MCP `search` tool. Without vectors or without an embedding model, `hybrid` falls back to words with a note.
+`--embed-model` / `COLI_EMBED_MODEL` choose the model; changing it replaces the vectors. `--mock` is a lexical stand-in for trying the pipeline offline.
+Brute-force cosine over all passages: fine for hundreds of thousands, not for tens of millions.
+
+`cartacolibri eval FILE` measures retrieval on your own questions (`question<TAB>file1,file2` or JSON) per mode: hit@1/5/10 and MRR, plus the missed questions.
+
+## Measured speed (scripts/bench.py, synthetic 20,000 documents, 30 MB of text, one core)
+first index 6.4 s · re-index with no change 0.13 s · word / phrase / prefix / boolean search 0.02–0.07 s · regex search 0.3 s ·
+entities, chronology, duplicates, conflicts, topics 0.3–0.5 s each · index 53 MB · about 25 MB of memory for searching (67 MB for stats).
+Synthetic text is not your text: run `python3 scripts/bench.py --docs N` on your machine.
+
+## Limits (honest)
+No agents, no web search, no accounts or multi-user mode, no phone app, no sync. The insight tools (conflicts, duplicates, chronology, entities,
+fact-check, grounding) are word and number heuristics with caps, not understanding: they point at things to check. Answer quality is the quality of the
+local model. `.msg` and `.pst` mail, audio and video are not read. Translations are not reviewed by native speakers. The project is alpha; the engine
+protocol is tested against fakes of Colibrì/Ollama/LM Studio, not against every real build.
 
 ## Search syntax
 `word`, `"exact phrase"`, `prefix*`, `AND` / `OR` / `NOT`. Diacritics are folded (`bilanț` finds `bilant`).

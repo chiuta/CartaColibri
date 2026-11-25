@@ -956,8 +956,18 @@ pub fn extract(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
 }
 
 fn extract_inner(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
+    // macro-enabled and template variants are the same containers
+    let ext = match ext {
+        ".docm" | ".dotx" | ".dotm" => ".docx",
+        ".xlsm" | ".xltx" | ".xltm" => ".xlsx",
+        ".pptm" | ".ppsx" | ".ppsm" | ".potx" | ".potm" => ".pptx",
+        ".ott" => ".odt",
+        e => e,
+    };
     match ext {
         ".pdf" => return pdf_pages(path, ocr),
+        ".tar" | ".tgz" => return tar_parts(path, ext == ".tgz"),
+        ".doc" | ".xls" | ".ppt" => return legacy_parts(path, ext),
         ".xlsx" => return xlsx_text(&mut open_zip(path)?),
         ".zip" => return zip_parts(&mut open_zip(path)?),
         ".epub" => {
@@ -999,14 +1009,14 @@ fn extract_inner(path: &Path, ext: &str, ocr: bool) -> Res<Parts> {
                 )?,
             )]);
         }
-        ".odt" => {
+        ".odt" | ".ods" | ".odp" | ".odg" => {
             let mut z = open_zip(path)?;
             return Ok(vec![(
                 String::new(),
                 xml_text(
                     &zip_read(&mut z, "content.xml")?,
                     &[],
-                    &["p", "h", "line-break"],
+                    &["p", "h", "line-break", "table-row"],
                 )?,
             )]);
         }
@@ -2046,25 +2056,277 @@ fn zip_walk<R: Read + std::io::Seek>(
             }
             continue;
         }
-        let r = match text_parts(ext, &buf) {
-            Some(r) => r.ok(),
-            None => {
-                let t = decode(&buf);
-                Some(vec![(String::new(), t)])
-            }
-        };
-        for (loc, t) in r.unwrap_or_default() {
-            if !t.trim().is_empty() {
-                parts.push((
-                    if loc.is_empty() {
-                        p.clone()
-                    } else {
-                        format!("{p} {loc}")
-                    },
-                    t,
-                ));
-            }
-        }
+        push_member(parts, &p, ext, &buf);
     }
     Ok(())
+}
+
+/// The text of one archive member, added under the member's path.
+fn push_member(parts: &mut Parts, p: &str, ext: &str, buf: &[u8]) {
+    let r = match text_parts(ext, buf) {
+        Some(r) => r.ok(),
+        None => Some(vec![(String::new(), decode(buf))]),
+    };
+    for (loc, t) in r.unwrap_or_default() {
+        if !t.trim().is_empty() {
+            parts.push((
+                if loc.is_empty() {
+                    p.to_string()
+                } else {
+                    format!("{p} {loc}")
+                },
+                t,
+            ));
+        }
+    }
+}
+
+// ---- tar and tar.gz
+
+/// Most bytes read from a tar stream (after decompression), so a gzip bomb costs bounded time.
+const TAR_MAX_STREAM: u64 = 1024 * 1024 * 1024;
+
+fn tar_octal(b: &[u8]) -> Option<u64> {
+    if b.first().is_some_and(|x| x & 0x80 != 0) {
+        // base-256 (GNU) for very large sizes
+        let mut v: u64 = 0;
+        for (i, x) in b.iter().enumerate() {
+            let x = if i == 0 { x & 0x7f } else { *x };
+            v = v.checked_mul(256)?.checked_add(x as u64)?;
+        }
+        return Some(v);
+    }
+    let t: String = b
+        .iter()
+        .take_while(|c| **c != 0)
+        .map(|c| *c as char)
+        .collect();
+    let t = t.trim();
+    if t.is_empty() {
+        return Some(0);
+    }
+    u64::from_str_radix(t, 8).ok()
+}
+
+fn tar_name(b: &[u8]) -> String {
+    let cut = |s: &[u8]| {
+        String::from_utf8_lossy(&s[..s.iter().position(|c| *c == 0).unwrap_or(s.len())])
+            .into_owned()
+    };
+    let name = cut(&b[0..100]);
+    if &b[257..262] == b"ustar" {
+        let prefix = cut(&b[345..500]);
+        if !prefix.is_empty() {
+            return format!("{prefix}/{name}");
+        }
+    }
+    name
+}
+
+fn tar_parts(path: &Path, gz: bool) -> Res<Parts> {
+    let f = open_regular(path).map_err(|e| e.to_string())?;
+    if gz {
+        tar_read(flate2::read::GzDecoder::new(f).take(TAR_MAX_STREAM))
+    } else {
+        tar_read(f.take(TAR_MAX_STREAM))
+    }
+}
+
+fn tar_read<R: Read>(mut r: R) -> Res<Parts> {
+    let mut parts = Parts::new();
+    let mut listing = String::new();
+    let mut members: Vec<(String, Vec<u8>)> = vec![];
+    let mut budget = ZIP_MAX_TOTAL;
+    let (mut count, mut first, mut long_name) = (0usize, true, None::<String>);
+    let skip = |r: &mut R, n: u64| -> bool {
+        std::io::copy(&mut r.by_ref().take(n), &mut std::io::sink()).is_ok_and(|c| c == n)
+    };
+    loop {
+        let mut h = [0u8; 512];
+        if r.read_exact(&mut h).is_err() {
+            if first {
+                return Err("not a valid tar archive (empty or damaged)".into());
+            }
+            break;
+        }
+        if h.iter().all(|b| *b == 0) {
+            break;
+        }
+        let sum: u64 = h
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                if (148..156).contains(&i) {
+                    32
+                } else {
+                    *b as u64
+                }
+            })
+            .sum();
+        if tar_octal(&h[148..156]) != Some(sum) {
+            if first {
+                return Err("not a valid tar archive (bad header checksum)".into());
+            }
+            break;
+        }
+        first = false;
+        let Some(size) = tar_octal(&h[124..136]) else {
+            break;
+        };
+        let padded = size.div_ceil(512).saturating_mul(512);
+        let kind = h[156];
+        match kind {
+            b'L' if size <= 4096 => {
+                let mut b = vec![0u8; size as usize];
+                if r.read_exact(&mut b).is_err() || !skip(&mut r, padded - size) {
+                    break;
+                }
+                long_name = Some(
+                    String::from_utf8_lossy(&b)
+                        .trim_end_matches('\0')
+                        .to_string(),
+                );
+                continue;
+            }
+            b'0' | 0 => {}
+            _ => {
+                if !skip(&mut r, padded) {
+                    break;
+                }
+                long_name = None;
+                continue;
+            }
+        }
+        let name = long_name.take().unwrap_or_else(|| tar_name(&h));
+        count += 1;
+        if count <= ZIP_MAX_MEMBERS {
+            listing.push_str(&format!("{name} ({size} bytes)\n"));
+        }
+        let lower = name.to_lowercase();
+        let ext = lower.rfind('.').map(|p| &lower[p..]).unwrap_or("");
+        if count <= ZIP_MAX_MEMBERS
+            && ZIP_TEXT_EXT.contains(&ext)
+            && size <= ZIP_MAX_MEMBER
+            && size <= budget
+        {
+            let mut buf = vec![0u8; size as usize];
+            if r.read_exact(&mut buf).is_err() || !skip(&mut r, padded - size) {
+                break;
+            }
+            budget -= size;
+            members.push((name, buf));
+        } else if !skip(&mut r, padded) {
+            break;
+        }
+    }
+    if count > ZIP_MAX_MEMBERS {
+        listing.push_str(&format!(
+            "... and {} more entries\n",
+            count - ZIP_MAX_MEMBERS
+        ));
+    }
+    parts.push(("listing".into(), format!("Files in archive:\n{listing}")));
+    for (name, buf) in members {
+        let lower = name.to_lowercase();
+        let ext = lower.rfind('.').map(|p| &lower[p..]).unwrap_or("");
+        push_member(&mut parts, &name, ext, &buf);
+    }
+    Ok(parts)
+}
+
+// ---- old binary Office files (.doc, .xls, .ppt) through a converter that is already installed
+
+/// The old Office extensions that this computer can read, i.e. a converter is installed.
+pub fn legacy_readable() -> Vec<&'static str> {
+    [".doc", ".xls", ".ppt"]
+        .into_iter()
+        .filter(|e| legacy_tool(e).is_some())
+        .collect()
+}
+
+fn legacy_tool(ext: &str) -> Option<&'static str> {
+    let list: &[&str] = match ext {
+        ".doc" => &["antiword", "catdoc", "soffice", "libreoffice"],
+        ".xls" => &["xls2csv", "soffice", "libreoffice"],
+        ".ppt" => &["catppt", "soffice", "libreoffice"],
+        _ => return None,
+    };
+    list.iter().copied().find(|t| which(t))
+}
+
+fn legacy_parts(path: &Path, ext: &str) -> Res<Parts> {
+    read_regular_meta(path)?;
+    let Some(tool) = legacy_tool(ext) else {
+        return Err(format!(
+            "Reading old {ext} files needs antiword, catdoc or LibreOffice (apt install antiword catdoc); or save the file as a newer format or a PDF."
+        ));
+    };
+    let ok = |o: std::process::Output| -> Res<String> {
+        if o.status.success() {
+            Ok(decode(&o.stdout))
+        } else {
+            Err(format!(
+                "{tool} could not read this file: {}",
+                String::from_utf8_lossy(&o.stderr)
+                    .chars()
+                    .take(200)
+                    .collect::<String>()
+            ))
+        }
+    };
+    let text = match tool {
+        "antiword" => {
+            let mut c = Command::new("antiword");
+            c.args(["-m", "UTF-8"]).arg(safe_arg(path));
+            ok(run_cmd(c, extract_timeout())?)?
+        }
+        "catdoc" | "xls2csv" | "catppt" => {
+            let mut c = Command::new(tool);
+            c.args(["-d", "utf-8"]).arg(safe_arg(path));
+            ok(run_cmd(c, extract_timeout())?)?
+        }
+        _ => {
+            // LibreOffice: convert in a private folder with its own profile
+            let d = tempdir().map_err(|e| e.to_string())?;
+            let fmt = match ext {
+                ".doc" => "txt:Text (encoded):UTF8",
+                ".xls" => "csv:Text - txt - csv (StarCalc):44,34,76,1",
+                _ => "pdf",
+            };
+            let mut c = Command::new(tool);
+            c.arg(format!(
+                "-env:UserInstallation=file://{}/profile",
+                d.display()
+            ))
+            .args(["--headless", "--norestore", "--convert-to", fmt, "--outdir"])
+            .arg(&d)
+            .arg(safe_arg(path));
+            let r = run_cmd(c, extract_timeout());
+            let out = std::fs::read_dir(&d).ok().and_then(|rd| {
+                rd.flatten()
+                    .map(|e| e.path())
+                    .find(|p| p.is_file() && p.extension().is_some_and(|e| e != "tmp"))
+            });
+            let res = match (r, out) {
+                (Ok(o), Some(f)) if o.status.success() => {
+                    if ext == ".ppt" {
+                        let pages = pdf_pages(&f, false);
+                        let _ = std::fs::remove_dir_all(&d);
+                        return pages;
+                    }
+                    std::fs::read(&f)
+                        .map(|b| decode(&b))
+                        .map_err(|e| e.to_string())
+                }
+                (Err(e), _) => Err(e),
+                _ => Err(format!("{tool} could not convert this file")),
+            };
+            let _ = std::fs::remove_dir_all(&d);
+            res?
+        }
+    };
+    if ext == ".xls" {
+        return Ok(vec![(String::new(), cap(table_text(&text, b',')))]);
+    }
+    Ok(vec![(String::new(), cap(text))])
 }

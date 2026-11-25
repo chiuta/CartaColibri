@@ -56,6 +56,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Ellenőrizd a saját szövegedet a könyvtárad alapján** — Illessz be egy vázlatot a „Szövegem ellenőrzése” ablakba, és minden mondatot megjelölök: alátámasztva, részben, a számok eltérnek vagy nincs meg, a dokumentumaid legjobb bizonyítékával. A „Dosszié” összegyűjt mindent, amit a könyvtár egy névről vagy fogalomról mond, dátumokkal és összegekkel. Más MI-alkalmazások az MCP-szerveren át érik el mindkettőt.
 - **Kérdezz egy időszakról, és kapd az összefoglalókat e-mail fájlként** — A csevegésben válaszd a „Dokumentumok innen … eddig …” mezőket, és a válasz csak az adott időszakban módosult dokumentumokból származik (parancssorban: `chat --since --until`). A tématérkép mostantól kattintható buborékokból álló kép. A `digest --mail-to te@example.org` minden jelentést e-mail fájlként is elment az outbox mappába; a `--sendmail` átadja a gép saját levelezőprogramjának. Más nem hagyja el a gépedet.
 - **Találd meg a másolatokat, és olvasd a könyvtárat idővonalként** — A „Duplikátumok” felsorolja a másolatnak vagy majdnem másolatnak számító dokumentumokat, hasonlóságukkal. A „Kronológia” időrendbe teszi a könyvtár összes dátumos mondatát, a dokumentumukkal. Parancssorban: `dupes`, `chronology`.
+- **Keresés jelentés szerint, a keresés mérése, több formátum** — Az `embed` a helyi motorod embedding-modelljével előkészíti a jelentés szerinti keresést; utána a `search --mode hybrid` olyan szövegeket is megtalál, amelyek más szavakat használnak, mint a kérdésed, az `eval` pedig megméri, mennyire találja meg az egyes mód azt, amit vársz. Új formátumok: tar és tar.gz, OpenDocument táblázatok és prezentációk, makrós Office-fájlok, valamint a régi doc, xls és ppt az antiword, catdoc vagy LibreOffice segítségével. A teljes könyvtáron dolgozó eszközök (nevek és számok, másolatok, ellentmondások, témák) 20 000 dokumentumnál percekről egy másodperc alá gyorsultak, a szűrők pedig most már az egész könyvtárat látják.
 
 ## Újdonságok a 0.2.0-alpha.2-ben
 
@@ -97,7 +98,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `doctor` | Ellenőrzi a motort, az OCR-t, a PDF-eszközöket, a lemezt és a portot, és minden hibához megadja a pontos megoldást. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Mappa felvétele vagy elfelejtése (a fájlokhoz soha nem nyúl), mappák listázása, újraindexelés és az olvashatatlan fájlok listája. |
 | `watch [--interval S]` | Naprakészen tartja az indexet: S másodpercenként újraolvassa a mappákat. |
-| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Keres a könyvtárban. Szavak, „kifejezések”, előtag*, AND/OR/NOT és szűrők közvetlenül a lekérdezésben: `ext:pdf` `path:szerzodesek` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:SZ-\d+`. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Keres a könyvtárban. Szavak, „kifejezések”, előtag*, AND/OR/NOT és szűrők közvetlenül a lekérdezésben: `ext:pdf` `path:szerzodesek` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:SZ-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Listázza a dokumentumokat; a csoportok elnevezett dokumentumhalmazok, amelyekben kereshetsz vagy kérdezhetsz. |
 | `summarize`, `extract`, `synthesize` (same options as `task`) | Gyorsparancsok a három fő feladathoz: minden dokumentum összefoglalása, mezők kinyerése, vagy több dokumentum egy válaszba vonása. |
 | `grab URL`, `bookmarklet` | Weboldalt ment a könyvtárba (HTML, MHTML vagy PDF); a bookmarklet bármely böngészőből megteszi. |
@@ -121,6 +122,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Különböző dokumentumok olyan mondatpárjai, amelyek egy számban vagy dátumban térnek el (500 és 550): ellenőrizendő jelöltek, nem ítéletek. |
 | `dupes [--group G] [--min 0.6] [--json]` | Megkeresi azokat a dokumentumokat, amelyek egymás másolatai vagy majdnem másolatai (exportok, piszkozatok, kétszer mentett fájl), hasonlóságukkal és azzal, hogy a kisebbik mekkora része van a másikban. |
 | `chronology [--group G] [--limit N] [--json]` | A könyvtár összes dátumos mondata időrendben, a dokumentumukkal (dátumok: 2025-03-12, 12.03.2025 vagy 12/03/2025, előbb a nap; vagy hónapnévvel a 8 nyelv bármelyikén: 2025. március 12., 12 March 2025). A havi dokumentumszám a `timeline`. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Előkészíti a jelentés szerinti keresést: a helyi motorod embedding-modellje vektort készít minden szövegrészből, és a könyvtár saját indexében tárolja. Inkrementális (csak az új vagy módosult részek), folytatható (`--limit`), és semmi nem hagyja el a gépedet. Ezután a `search --mode semantic` vagy `--mode hybrid` (szavak és jelentés együtt) olyan szövegeket is megtalál, amelyek más szavakat használnak, mint a kérdésed. |
+| `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Megméri, mennyire találja meg a keresés azt, amit vársz. A FILE soronként egy kérdést tartalmaz a várt fájlokkal (`kérdés<TAB>fájl1,fájl2`), vagy JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Módonként kiírja a hit@1, hit@5, hit@10 és MRR értékeket, és a nem talált kérdéseket. |
 | `topics [--json]` | Téma szerint csoportosítja a dokumentumokat (legjellemzőbb szavaik alapján). |
 | `dossier TERM [--json]` | Mindaz, amit a könyvtár egy névről vagy fogalomról mond: szövegrészek dokumentumonként, a bennük talált dátumokkal és összegekkel. |
 | `changes --since DATE [--json]` | Egy dátum óta módosult dokumentumok (YYYY, YYYY-MM vagy YYYY-MM-DD), a legfrissebbek elöl. |
@@ -146,7 +149,7 @@ Igen. A Könyvtárhoz és a kereséshez soha nincs szükség modellre. Az össze
 A [Colibrì](https://github.com/JustVugg/colibri) egy különálló helyi motor, amely a nyelvi modellt futtatja. Csak az MI-válaszokhoz kell. Olyan modellt válassz, amelynek a fájlja kisebb a szabad RAM-odnál, és kezdj egy kicsivel. Lásd a Colibrì saját dokumentációját.
 
 **Milyen fájlokat tud olvasni?**  
-Szöveget és jegyzeteket (txt, md, rst, log, csv, json, yaml, html, rtf), PDF-et, Word-, OpenDocument-, PowerPoint- és Excel-fájlokat (docx, odt, pptx, xlsx), epubot, bekapcsolt OCR mellett pedig képeket és beszkennelt PDF-eket.
+Szöveget és jegyzeteket (txt, md, rst, log, csv, json, yaml, html, rtf), PDF-et, Word-, OpenDocument-, PowerPoint- és Excel-fájlokat (docx, odt, pptx, xlsx), epubot, bekapcsolt OCR mellett pedig képeket és beszkennelt PDF-eket. Valamint e-mailt (eml, mbox), naptárat és névjegyet (ics, vcf), zip-, tar- és tar.gz-archívumot, OpenDocument táblázatot és prezentációt (ods, odp), továbbá a régi doc, xls és ppt fájlokat, ha az antiword, a catdoc vagy a LibreOffice telepítve van.
 
 **És a szkennelt vagy lefényképezett dokumentumok?**  
 Kapcsold be az OCR-t (`--ocr`, vagy `CARTACOLIBRI_OCR=1`). Ehhez a gépeden telepítve kell lennie a `tesseract`-nak, a szkennelt PDF-ekhez pedig a `pdftoppm`-nek is. Az oldal szól, ha a tesseract hiányzik.
@@ -162,6 +165,12 @@ A hordozható zip mindkettőre létezik, de a Linux a legjobban tesztelt rendsze
 
 **Miért „alfa”?**  
 Mert fiatal: a mag működik és tesztelt, de nem minden rendszeren, és a GitHub automatikus ellenőrzései még nincsenek megerősítve. Számíts apróbb hibákra, és jelezd nekünk őket.
+
+**Tud jelentés alapján keresni, nem csak szavak szerint?**  
+Igen, opcionálisan. Futtasd egyszer a `cartacolibri embed` parancsot: a helyi motorod embedding-modellje számokká alakít minden szövegrészt, és a saját indexfájlodban tárolja (később csak az új vagy módosult részeket készíti újra). Ezután a `search --mode hybrid` (vagy `semantic`) akkor is megtalál egy szöveget, ha más szavakat használ, mint a kérdésed. Ehhez a motorban embedding-modell kell (Ollamánál: `ollama pull nomic-embed-text`). Nélküle a szószerinti keresés ugyanúgy működik, mint eddig. A `cartacolibri eval` megméri, mennyire találja meg az egyes módok azt, amit vársz.
+
+**Mit nem tud?**  
+Nincsenek önállóan cselekvő ügynökei, nincs webes keresés, felhasználói fiók, telefonos app és számítógépek közti szinkron. A szószerinti keresés pontos, de az elemző eszközök (ellentmondások, duplikátumok, kronológia, nevek és számok) szó- és számszabályokat használnak, nem megértést: ellenőrizendő dolgokra mutatnak, nem ítéletek. A válaszok annyit érnek, amennyit a helyben futtatott modell. A 8 fordítást nem nézték át anyanyelvi beszélők, a projekt pedig alfa. A .msg és .pst levelek nem olvashatók (exportáld .eml vagy .mbox formátumba), a hang és a videó nincs átírva.
 
 **Hogyan élik túl a címkék, csillagok és jegyzetek az újraindexelést?**  
 Nem a keresőindexben vannak, hanem egy külön kis fájlban, az `organize.json`-ban, a `<home>` mappádban, minden dokumentum útvonalához kötve. Az **Index frissítése**, a teljes újraindexelés és még az **Ellenőrzés/Javítás** (amely újraépíti az indexet) sem nyúl hozzájuk. Ha átnevezel vagy áthelyezel egy fájlt, új dokumentumnak számít, a címkék pedig a régi útvonalnál maradnak.

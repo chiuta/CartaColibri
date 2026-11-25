@@ -242,7 +242,54 @@ enum Cmd {
         group: Option<String>,
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// bm25 = words (default), semantic = by meaning, hybrid = both fused (needs `embed` first)
+        #[arg(long, default_value = "bm25", value_parser = ["bm25", "semantic", "hybrid"])]
+        mode: String,
+        /// engine used to embed the question (semantic and hybrid modes)
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
+        url: String,
+        /// embedding model name (default: COLI_EMBED_MODEL, else the engine's)
+        #[arg(long)]
+        embed_model: Option<String>,
+        /// offline stand-in embeddings (lexical, for trying the pipeline)
+        #[arg(long)]
+        mock: bool,
         /// machine-readable output
+        #[arg(long)]
+        json: bool,
+    },
+    /// embed the passages so that `search --mode semantic|hybrid` can find them by meaning (incremental)
+    Embed {
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
+        url: String,
+        /// embedding model name (default: COLI_EMBED_MODEL, else the engine's)
+        #[arg(long)]
+        embed_model: Option<String>,
+        /// offline stand-in embeddings (lexical, for trying the pipeline)
+        #[arg(long)]
+        mock: bool,
+        /// passages per request
+        #[arg(long, default_value_t = 32)]
+        batch: usize,
+        /// stop after this many passages (run again to continue)
+        #[arg(long)]
+        limit: Option<usize>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// measure how well search finds what you expect: a file of questions with the documents that should answer them
+    Eval {
+        /// JSON `[{"q": "...", "expect": ["lease.txt"]}]` or lines of `question<TAB>file1,file2`
+        file: String,
+        /// modes to compare, comma-separated
+        #[arg(long, default_value = "bm25,semantic,hybrid")]
+        modes: String,
+        #[arg(long, env = "COLI_URL", hide_env_values = true, default_value = carta::DEFAULT_URL)]
+        url: String,
+        #[arg(long)]
+        embed_model: Option<String>,
+        #[arg(long)]
+        mock: bool,
         #[arg(long)]
         json: bool,
     },
@@ -1004,6 +1051,10 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             path,
             group,
             limit,
+            mode,
+            url,
+            embed_model,
+            mock,
             json,
         } => {
             let f = Filter {
@@ -1015,7 +1066,22 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                 limit: Some(limit),
                 ..Default::default()
             };
-            let hits = lib.search(&query, &f)?;
+            let mode = cartacolibri::semantic::Mode::parse(&mode)?;
+            let hits = if mode == cartacolibri::semantic::Mode::Bm25 {
+                lib.search(&query, &f)?
+            } else {
+                let be = if mock {
+                    carta::Backend::mock()
+                } else {
+                    carta::Backend::gateway(&url, None)
+                };
+                let m = cartacolibri::semantic::embed_model_name(&be, embed_model.as_deref());
+                let r = lib.search_mode(&be, &m, &query, &f, mode)?;
+                if let Some(n) = &r.note {
+                    eprintln!("note: {n}");
+                }
+                r.hits
+            };
             if json {
                 println!("{}", serde_json::to_string_pretty(&hits).unwrap());
                 return Ok(());
@@ -1036,6 +1102,90 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                     println!("{} {}", t(lang, "try", &[]), t(lang, "no_docs_hint", &[]));
                 } else {
                     println!("{} {}", t(lang, "try", &[]), t(lang, "loosen_hint", &[]));
+                }
+            }
+        }
+        Cmd::Embed {
+            url,
+            embed_model,
+            mock,
+            batch,
+            limit,
+            json,
+        } => {
+            let be = if mock {
+                carta::Backend::mock()
+            } else {
+                carta::Backend::gateway(&url, None)
+            };
+            let m = cartacolibri::semantic::embed_model_name(&be, embed_model.as_deref());
+            let mut last = 0usize;
+            let st =
+                lib.embed_missing(&be, &m, batch, limit.unwrap_or(usize::MAX), &mut |d, t| {
+                    if !json && d / 500 != last / 500 {
+                        eprintln!("· {d}/{t} passages");
+                    }
+                    last = d;
+                })?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&st).unwrap());
+            } else {
+                println!(
+                    "model {}: {} new vectors, {} already there, {} still to do ({} passages)",
+                    st.model, st.embedded, st.already, st.pending, st.total
+                );
+            }
+        }
+        Cmd::Eval {
+            file,
+            modes,
+            url,
+            embed_model,
+            mock,
+            json,
+        } => {
+            let text =
+                std::fs::read_to_string(&file).map_err(|e| format!("cannot read {file}: {e}"))?;
+            let cases = cartacolibri::semantic::load_cases(&text)?;
+            let modes: Vec<cartacolibri::semantic::Mode> = modes
+                .split(',')
+                .filter(|m| !m.trim().is_empty())
+                .map(cartacolibri::semantic::Mode::parse)
+                .collect::<Result<_, _>>()?;
+            let be = if mock {
+                carta::Backend::mock()
+            } else {
+                carta::Backend::gateway(&url, None)
+            };
+            let m = cartacolibri::semantic::embed_model_name(&be, embed_model.as_deref());
+            let (rows, notes) = cartacolibri::semantic::evaluate(&lib, &be, &m, &cases, &modes)?;
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(
+                        &serde_json::json!({"results": rows, "notes": notes})
+                    )
+                    .unwrap()
+                );
+            } else {
+                println!("{} questions", cases.len());
+                println!(
+                    "{:<10} {:>6} {:>6} {:>6} {:>6}",
+                    "mode", "hit@1", "hit@5", "hit@10", "MRR"
+                );
+                for r in &rows {
+                    println!(
+                        "{:<10} {:>6.2} {:>6.2} {:>6.2} {:>6.2}",
+                        r.mode, r.hit_at_1, r.hit_at_5, r.hit_at_10, r.mrr
+                    );
+                }
+                for r in &rows {
+                    for q in &r.misses {
+                        println!("  not found ({}): {q}", r.mode);
+                    }
+                }
+                for n in &notes {
+                    println!("note: {n}");
                 }
             }
         }

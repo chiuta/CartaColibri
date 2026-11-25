@@ -47,6 +47,19 @@ pub const DEFAULT_EXT: &[&str] = &[
     ".pptx",
     ".epub",
     ".xlsx",
+    ".ods",
+    ".odp",
+    ".odg",
+    ".ott",
+    ".tar",
+    ".tgz",
+    ".docm",
+    ".dotx",
+    ".xlsm",
+    ".xltx",
+    ".pptm",
+    ".ppsx",
+    ".potx",
 ];
 const SKIP_DIRS: &[&str] = &[
     STATE_DIR_NAME,
@@ -62,7 +75,6 @@ const SKIP_DIRS: &[&str] = &[
 const HEAVY_EXT: &[&str] = &[
     ".7z",
     ".rar",
-    ".tar",
     ".gz",
     ".iso",
     ".exe",
@@ -363,7 +375,7 @@ pub struct Library {
     pub home: PathBuf,
     pub exts: BTreeSet<String>,
     pub ocr: bool,
-    db: Connection,
+    pub(crate) db: Connection,
 }
 
 impl Library {
@@ -375,6 +387,8 @@ impl Library {
         if ocr {
             exts.extend(IMG_EXT.iter().map(|s| s.to_string()));
         }
+        // old binary Office files, only when a converter is installed (else they would all fail)
+        exts.extend(extract::legacy_readable().iter().map(|s| s.to_string()));
         let db = init_db(&home)?;
         Ok(Library {
             home,
@@ -700,10 +714,13 @@ impl Library {
                     .file_name()
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                let ext = p
+                let mut ext = p
                     .extension()
                     .map(|x| format!(".{}", x.to_string_lossy().to_lowercase()))
                     .unwrap_or_default();
+                if name.to_lowercase().ends_with(".tar.gz") {
+                    ext = ".tgz".into();
+                }
                 if name.starts_with('.')
                     || name.starts_with("~$")
                     || name.ends_with('~')
@@ -1162,7 +1179,7 @@ impl Library {
         Ok((self.rows_to_hits(rows, &terms, f)?, used))
     }
 
-    fn rows_to_hits(
+    pub(crate) fn rows_to_hits(
         &self,
         rows: Vec<(i64, String, String, f64)>,
         terms: &[(String, bool)],

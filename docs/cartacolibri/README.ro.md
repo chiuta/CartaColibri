@@ -56,6 +56,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Verifici textul tău față de bibliotecă** — Lipește o ciornă în „Verifică textul meu” și fiecare propoziție e marcată: susținută, parțial, numerele diferă sau negăsită, cu cea mai bună dovadă din documentele tale. „Dosar” adună tot ce spune biblioteca despre un nume sau termen, cu datele și sumele lui. Alte aplicații AI le primesc pe ambele prin serverul MCP.
 - **Întrebi pe un interval de timp și primești rezumatele ca fișier email** — În chat alegi „Documente din … până în …” și răspunsul vine doar din documentele modificate în perioada aceea (în linia de comandă: `chat --since --until`). Harta subiectelor e acum o imagine cu bule pe care poți apăsa. `digest --mail-to tu@example.org` salvează fiecare raport și ca fișier email în folderul outbox; adaugă `--sendmail` ca să-l dai programului de poștă al calculatorului tău. Nimic altceva nu iese din calculator.
 - **Găsești copiile și citești biblioteca ca o cronologie** — „Duplicate” listează documentele care sunt copii sau aproape-copii, cu cât de asemănătoare sunt. „Cronologie” pune toate propozițiile cu dată din bibliotecă în ordine, cu documentul din care vin. În linia de comandă: `dupes`, `chronology`.
+- **Căutare după sens, măsurarea căutării, mai multe formate** — `embed` pregătește căutarea după sens cu modelul de embeddings al motorului tău local; apoi `search --mode hybrid` găsește texte care folosesc alte cuvinte decât întrebarea ta, iar `eval` măsoară cât de bine găsește fiecare mod ce te aștepți. Formate noi: tar și tar.gz, foi și prezentări OpenDocument, fișiere Office cu macrouri și vechile doc, xls și ppt prin antiword, catdoc sau LibreOffice. Uneltele pe toată biblioteca (nume și numere, copii, conflicte, subiecte) au trecut de la minute la sub o secundă la 20.000 de documente, iar filtrele văd acum toată biblioteca.
 
 ## Noutăți în 0.2.0-alpha.2
 
@@ -97,7 +98,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `doctor` | Verifică motorul, OCR-ul, uneltele PDF, discul și portul și îți spune exact cum repari fiecare problemă. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Adaugi sau uiți un folder (fișierele nu sunt atinse niciodată), listezi folderele, reindexezi și vezi fișierele care n-au putut fi citite. |
 | `watch [--interval S]` | Ține indexul la zi: rescanează folderele la fiecare S secunde. |
-| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--json]` | Caută în bibliotecă. Cuvinte, „fraze”, prefix*, AND/OR/NOT și filtre direct în interogare: `ext:pdf` `path:contracte` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FACT-\d+`. |
+| `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Caută în bibliotecă. Cuvinte, „fraze”, prefix*, AND/OR/NOT și filtre direct în interogare: `ext:pdf` `path:contracte` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FACT-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Listează documentele; grupurile sunt seturi de documente cu nume, în care poți căuta sau despre care poți întreba. |
 | `summarize`, `extract`, `synthesize` (same options as `task`) | Scurtături pentru cele trei sarcini principale: rezumi fiecare document, extragi câmpuri sau combini mai multe într-un singur răspuns. |
 | `grab URL`, `bookmarklet` | Salvează o pagină web în bibliotecă (HTML, MHTML sau PDF); bookmarklet-ul face asta din orice browser. |
@@ -121,6 +122,8 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Perechi de propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550): candidate de verificat, nu verdicte. |
 | `dupes [--group G] [--min 0.6] [--json]` | Găsește documente care sunt copii sau aproape-copii unele ale altora (exporturi, ciorne, același fișier salvat de două ori), cu cât de asemănătoare sunt și cât din cel mai mic se află în celălalt. |
 | `chronology [--group G] [--limit N] [--json]` | Toate propozițiile cu dată din bibliotecă, în ordine cronologică, cu documentul din care vin (date ca 2025-03-12, 12.03.2025 sau 12/03/2025, ziua întâi; sau cu numele lunii în oricare din cele 8 limbi: 12 March 2025, 12 martie 2025). Numărul lunar de documente este `timeline`. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Pregătește căutarea după sens: modelul de embeddings al motorului tău local transformă fiecare pasaj într-un vector păstrat în indexul bibliotecii. Incremental (doar pasajele noi sau schimbate), reluabil (`--limit`), iar nimic nu iese de pe calculator. Apoi `search --mode semantic` sau `--mode hybrid` (cuvinte și sens împreună) găsește texte care folosesc alte cuvinte decât întrebarea ta. |
+| `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Măsoară cât de bine găsește căutarea ce te aștepți. FILE are o întrebare pe linie cu fișierele așteptate (`întrebare<TAB>fișier1,fișier2`) sau e JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Afișează hit@1, hit@5, hit@10 și MRR pentru fiecare mod și întrebările negăsite. |
 | `topics [--json]` | Grupează documentele după ce tratează (cele mai caracteristice cuvinte ale lor). |
 | `dossier TERM [--json]` | Tot ce spune biblioteca despre un nume sau termen: pasaje pe documente, plus datele și sumele găsite în ele. |
 | `changes --since DATE [--json]` | Documentele modificate de la o dată (YYYY, YYYY-MM sau YYYY-MM-DD), cele mai noi întâi. |
@@ -146,7 +149,7 @@ Da. Biblioteca și căutarea nu au nevoie de model. Pentru rezumat, extragere ș
 [Colibrì](https://github.com/JustVugg/colibri) este un motor local separat care rulează modelul de limbaj. Ai nevoie de el doar pentru răspunsurile AI. Alege un model al cărui fișier e mai mic decât RAM-ul tău liber și începe cu unul mic. Vezi documentația Colibrì.
 
 **Ce fișiere poate citi?**  
-Text și notițe (txt, md, rst, log, csv, json, yaml, html, rtf), PDF, fișiere Word, OpenDocument, PowerPoint și Excel (docx, odt, pptx, xlsx), epub și, cu OCR pornit, imagini și PDF-uri scanate.
+Text și notițe (txt, md, rst, log, csv, json, yaml, html, rtf), PDF, fișiere Word, OpenDocument, PowerPoint și Excel (docx, odt, pptx, xlsx), epub și, cu OCR pornit, imagini și PDF-uri scanate. Plus e-mail (eml, mbox), calendare și contacte (ics, vcf), arhive zip, tar și tar.gz, foi și prezentări OpenDocument (ods, odp) și vechile doc, xls și ppt dacă ai instalat antiword, catdoc sau LibreOffice.
 
 **Dar scanările și pozele cu documente?**  
 Pornește OCR (`--ocr` sau `CARTACOLIBRI_OCR=1`). Are nevoie de `tesseract` instalat pe calculator, plus `pdftoppm` pentru PDF-uri scanate. Pagina îți spune când lipsește tesseract.
@@ -162,6 +165,12 @@ Zip-ul portabil există pentru ambele, dar Linux e sistemul cel mai bine testat.
 
 **De ce „alfa”?**  
 Pentru că e tânăr: nucleul funcționează și e testat, dar nu pe orice sistem, iar verificările automate de pe GitHub nu sunt încă confirmate. Așteaptă-te la asperități și spune-ne despre ele.
+
+**Poate căuta după sens, nu doar după cuvinte?**  
+Da, opțional. Rulează o dată `cartacolibri embed`: modelul de embeddings al motorului tău local transformă fiecare pasaj în numere, păstrate în propriul tău fișier de index (apoi se refac doar pasajele noi sau schimbate). După aceea `search --mode hybrid` (sau `semantic`) găsește un text chiar dacă folosește alte cuvinte decât întrebarea ta. Are nevoie de un model de embeddings în motor (pentru Ollama: `ollama pull nomic-embed-text`). Fără el, căutarea după cuvinte merge exact ca înainte. `cartacolibri eval` măsoară cât de bine găsește fiecare mod ce te aștepți.
+
+**Ce nu poate face?**  
+Nu are agenți care acționează singuri, căutare pe web, conturi de utilizatori, aplicație de telefon sau sincronizare între calculatoare. Căutarea după cuvinte e exactă, dar uneltele de analiză (conflicte, duplicate, cronologie, nume și numere) folosesc reguli de cuvinte și numere, nu înțelegere: arată lucruri de verificat, nu sunt verdicte. Răspunsurile sunt doar la fel de bune ca modelul pe care îl rulezi local. Cele 8 traduceri nu au fost verificate de vorbitori nativi, iar proiectul e alfa. E-mailurile .msg și .pst nu se citesc (exportă-le în .eml sau .mbox), iar audio și video nu se transcriu.
 
 **Cum rămân etichetele, stelele și notele după reindexare?**  
 Nu sunt păstrate în indexul de căutare, ci într-un mic fișier separat, `organize.json`, în folderul tău `<home>`, legate de calea fiecărui document. Deci **Actualizează indexul**, o reindexare completă și chiar **Verifică/Repară** (care reface indexul) nu le ating. Dacă redenumești sau muți un fișier, el contează ca document nou, iar etichetele rămân la vechea cale.
