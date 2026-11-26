@@ -122,6 +122,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
 .starbtn[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#2b1d00}:root[data-theme=light] .starbtn[aria-pressed=true]{color:#fff}@media(prefers-color-scheme:light){:root[data-theme=auto] .starbtn[aria-pressed=true]{color:#fff}}
 .rel{list-style:none;margin:0;padding:0}.rel li{border-top:1px solid var(--line);padding:4px 0}.rel button{background:none;border:0;color:var(--cyan);cursor:pointer;text-align:left;padding:2px 0;text-decoration:underline;word-break:break-all}
 .msg{margin:10px 0}.msg .who{font-size:.8em;font-weight:700;color:var(--mute);margin-bottom:2px}.msg.u .mb{background:var(--sel);border-radius:var(--r);padding:8px 12px;white-space:pre-wrap}
+.chh{display:flex;gap:6px;align-items:stretch;margin:4px 0}.chh .hit{flex:1;min-width:0;text-align:left;background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;color:inherit;cursor:pointer;font:inherit}.chh .hit:hover,.chh .hit:focus-visible{border-color:var(--acc,#3b82f6)}.chh .hit b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chh .hit small{color:var(--mute)}.chh.on .hit{border-color:var(--acc,#3b82f6)}
 .msg.b .mb{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;background:var(--s2)}
 .nf{border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px}.nf b{color:var(--amber)}.nf p{margin:4px 0 0}
 .src details{width:100%}.src details .snip{white-space:pre-wrap;margin-top:4px}
@@ -252,6 +253,13 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
       <div class="row" style="flex-wrap:wrap;max-width:100%"><label class="muted" style="display:flex;gap:6px;align-items:center;flex:1 1 100%;min-width:0;max-width:100%"><input type="checkbox" id="chatOne"><span data-i="ch_one" style="min-width:0;overflow-wrap:anywhere;white-space:normal"></span></label><label class="muted" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span data-i="rg_from"></span><input type="date" id="chAfter" style="min-width:0;max-width:150px"></label><label class="muted" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span data-i="rg_to"></span><input type="date" id="chBefore" style="min-width:0;max-width:150px"></label></div>
       <p class="muted" id="chatEmpty" data-i="chat_empty"></p>
       <div id="chatLog" role="log" aria-live="polite" data-al="tab_chat"></div>
+      <section id="chatHist" aria-labelledby="chHT" style="margin-top:18px;border-top:1px solid var(--line);padding-top:10px">
+        <h3 id="chHT" data-i="ch_hist" style="margin:0 0 6px"></h3>
+        <div class="row"><input type="search" id="chHFilter" data-ph="ch_hist_ph" data-al="ch_hist_ph" style="flex:1;min-width:0" autocomplete="off"><button class="btn sm" id="chHClear" data-i="ch_hist_clear"></button></div>
+        <p class="muted" id="chHEmpty" data-i="ch_hist_empty"></p>
+        <div id="chHList"></div>
+        <p class="muted" style="font-size:.85em" data-i="ch_hist_note"></p>
+      </section>
     </div>
   </div>
   <div class="ft" id="taskFt"><textarea id="req" rows="3" data-ph="message_ph" data-al="message_ph"></textarea>
@@ -329,6 +337,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
   <h2 style="margin-top:22px" data-i="wg_h"></h2><p class="lead" data-i="wg_lead"></p>
   <div class="row"><input type="url" id="wgUrl" data-ph="wg_ph" data-al="wg_ph" style="flex:1" autocomplete="off" spellcheck="false"><select id="wgFmt" data-al="wg_h"><option value="mhtml" data-i="wg_mhtml"></option><option value="html" data-i="wg_html"></option></select><button class="btn pri" id="wgGo" data-i="wg_go"></button></div>
   <div id="wgSt" role="status" aria-live="polite" class="muted"></div><p class="muted" style="font-size:.87em" data-i="wg_browser"></p>
+  <div class="row"><button class="btn" id="wgBrowser" data-i="wg_open"></button><span id="wgBrSt" class="muted" role="status" aria-live="polite"></span></div>
   <details style="margin-top:18px"><summary><b data-i="feeds"></b></summary><p class="lead" data-i="fd_lead"></p>
   <div class="row"><input type="text" id="feedUrl" data-ph="fd_ph" data-al="fd_ph" style="flex:1" autocomplete="off" spellcheck="false"><button class="btn pri" id="feedAdd" data-i="fd_add"></button></div>
   <div id="feedList"></div>
@@ -431,6 +440,19 @@ gw_nostart:{en:'Colibri Companion is not installed here. Install it, or run `col
 sm_label:{en:'Smart search (adds related words)',ro:'Căutare inteligentă (adaugă cuvinte înrudite)',fr:'Recherche intelligente (ajoute des mots proches)',it:'Ricerca intelligente (aggiunge parole affini)',es:'Búsqueda inteligente (añade palabras afines)',pt:'Pesquisa inteligente (acrescenta palavras afins)',de:'Intelligente Suche (ergänzt verwandte Wörter)',hu:'Okos keresés (rokon szavakat ad hozzá)'},
 sm_also:{en:'Also searched:',ro:'Am căutat și:',fr:'Aussi cherché :',it:'Cercato anche:',es:'También se buscó:',pt:'Também pesquisado:',de:'Auch gesucht:',hu:'Még kerestem:'},
 f_hint:{en:'Filters in the box: ext:pdf  path:contracts  size:>1mb  after:2025-01  re:INV-\\d+',ro:'Filtre în căsuță: ext:pdf  path:contracte  size:>1mb  after:2025-01  re:FACT-\\d+',fr:'Filtres dans la zone : ext:pdf  path:contrats  size:>1mb  after:2025-01  re:FAC-\\d+',it:'Filtri nella casella: ext:pdf  path:contratti  size:>1mb  after:2025-01  re:FATT-\\d+',es:'Filtros en la casilla: ext:pdf  path:contratos  size:>1mb  after:2025-01  re:FAC-\\d+',pt:'Filtros na caixa: ext:pdf  path:contratos  size:>1mb  after:2025-01  re:FAT-\\d+',de:'Filter im Suchfeld: ext:pdf  path:vertraege  size:>1mb  after:2025-01  re:RE-\\d+',hu:'Szűrők a mezőben: ext:pdf  path:szerzodesek  size:>1mb  after:2025-01  re:SZ-\\d+'},
+wg_open:{en:'Open the web-grab browser',ro:'Deschide browserul web-grab',fr:'Ouvrir le navigateur web-grab',it:'Apri il browser web-grab',es:'Abrir el navegador web-grab',pt:'Abrir o navegador web-grab',de:'Web-Grab-Browser öffnen',hu:'A web-grab böngésző megnyitása'},
+wg_open_ok:{en:'The web-grab browser is opening — it may take a moment.',ro:'Browserul web-grab se deschide — poate dura câteva clipe.',fr:'Le navigateur web-grab s’ouvre — cela peut prendre un instant.',it:'Il browser web-grab si sta aprendo — può servire qualche istante.',es:'El navegador web-grab se está abriendo; puede tardar un momento.',pt:'O navegador web-grab está a abrir — pode demorar um instante.',de:'Der Web-Grab-Browser öffnet sich — das kann einen Moment dauern.',hu:'A web-grab böngésző megnyílik — eltarthat egy pillanatig.'},
+ch_hist:{en:'Chat history',ro:'Istoric chat',fr:'Historique du chat',it:'Cronologia della chat',es:'Historial del chat',pt:'Histórico do chat',de:'Chat-Verlauf',hu:'Csevegési előzmények'},
+ch_hist_ph:{en:'Search past chats',ro:'Caută în conversații',fr:'Chercher dans les conversations',it:'Cerca nelle conversazioni',es:'Buscar en las conversaciones',pt:'Pesquisar nas conversas',de:'In Gesprächen suchen',hu:'Keresés a beszélgetésekben'},
+ch_hist_clear:{en:'Delete all',ro:'Șterge tot',fr:'Tout supprimer',it:'Elimina tutto',es:'Borrar todo',pt:'Apagar tudo',de:'Alles löschen',hu:'Összes törlése'},
+ch_hist_clear_q:{en:'Delete every saved chat from this browser?',ro:'Ștergi toate conversațiile salvate din acest browser?',fr:'Supprimer toutes les conversations enregistrées de ce navigateur ?',it:'Eliminare tutte le conversazioni salvate da questo browser?',es:'¿Borrar todas las conversaciones guardadas en este navegador?',pt:'Apagar todas as conversas guardadas neste navegador?',de:'Alle gespeicherten Gespräche aus diesem Browser löschen?',hu:'Törlöd az összes mentett beszélgetést ebből a böngészőből?'},
+ch_hist_empty:{en:'Your conversations will appear here.',ro:'Conversațiile tale vor apărea aici.',fr:'Tes conversations apparaîtront ici.',it:'Le tue conversazioni compariranno qui.',es:'Tus conversaciones aparecerán aquí.',pt:'As tuas conversas vão aparecer aqui.',de:'Deine Gespräche erscheinen hier.',hu:'A beszélgetéseid itt jelennek meg.'},
+ch_hist_none:{en:'No conversation matches.',ro:'Nicio conversație nu se potrivește.',fr:'Aucune conversation ne correspond.',it:'Nessuna conversazione corrisponde.',es:'Ninguna conversación coincide.',pt:'Nenhuma conversa corresponde.',de:'Kein Gespräch passt.',hu:'Egy beszélgetés sem egyezik.'},
+ch_hist_n:{en:'{n} questions',ro:'{n} întrebări',fr:'{n} questions',it:'{n} domande',es:'{n} preguntas',pt:'{n} perguntas',de:'{n} Fragen',hu:'{n} kérdés'},
+ch_hist_del:{en:'Delete this conversation',ro:'Șterge conversația',fr:'Supprimer la conversation',it:'Elimina la conversazione',es:'Borrar la conversación',pt:'Apagar a conversa',de:'Gespräch löschen',hu:'Beszélgetés törlése'},
+ch_hist_resumed:{en:'Conversation restored — you can go on.',ro:'Conversația a fost refăcută — poți continua.',fr:'Conversation restaurée — tu peux continuer.',it:'Conversazione ripristinata — puoi continuare.',es:'Conversación restaurada: puedes continuar.',pt:'Conversa restaurada — podes continuar.',de:'Gespräch wiederhergestellt — du kannst weitermachen.',hu:'A beszélgetés visszaállt — folytathatod.'},
+ch_hist_resumed_ro:{en:'Shown, but the engine could not be told about it: a follow-up will start fresh.',ro:'Afișată, dar motorul nu a putut fi informat: o întrebare nouă va porni de la zero.',fr:'Affichée, mais le moteur n’a pas pu en être informé : une nouvelle question repartira de zéro.',it:'Mostrata, ma il motore non ha potuto saperlo: una nuova domanda ripartirà da zero.',es:'Mostrada, pero no se pudo avisar al motor: una nueva pregunta empezará de cero.',pt:'Mostrada, mas não foi possível avisar o motor: uma nova pergunta começa do zero.',de:'Angezeigt, aber die Engine konnte nicht informiert werden: Eine neue Frage beginnt von vorn.',hu:'Megjelenítve, de a motort nem lehetett értesíteni: az új kérdés elölről indul.'},
+ch_hist_note:{en:'Saved only in this browser on this computer, never sent anywhere. Opening one lets you continue it.',ro:'Salvat doar în acest browser, pe acest calculator, nu e trimis nicăieri. Dacă deschizi una, o poți continua.',fr:'Enregistré uniquement dans ce navigateur, sur cet ordinateur, jamais envoyé ailleurs. En ouvrir une permet de la poursuivre.',it:'Salvato solo in questo browser, su questo computer, mai inviato altrove. Aprendone una puoi continuarla.',es:'Guardado solo en este navegador, en este ordenador, y no se envía a ninguna parte. Al abrir una puedes continuarla.',pt:'Guardado só neste navegador, neste computador, nunca enviado para lado nenhum. Ao abrir uma, podes continuá-la.',de:'Nur in diesem Browser auf diesem Computer gespeichert, nirgends hingesendet. Beim Öffnen kannst du es fortsetzen.',hu:'Csak ebben a böngészőben, ezen a számítógépen tárolva, sehová sem kerül elküldésre. Megnyitva folytathatod.'},
 ch_one:{en:'Each question on its own (no memory of earlier ones)',ro:'Fiecare întrebare separat (fără memoria celor anterioare)',fr:'Chaque question à part (sans mémoire des précédentes)',it:'Ogni domanda a sé (senza memoria delle precedenti)',es:'Cada pregunta por separado (sin memoria de las anteriores)',pt:'Cada pergunta à parte (sem memória das anteriores)',de:'Jede Frage einzeln (ohne Erinnerung an frühere)',hu:'Minden kérdés külön (előzőkre nem emlékezik)'},
 cmp_btn:{en:'Compare 2',ro:'Compară 2',fr:'Comparer 2',it:'Confronta 2',es:'Comparar 2',pt:'Comparar 2',de:'2 vergleichen',hu:'2 összehasonlítása'},
 cmp_need2:{en:'Tick exactly two documents to compare.',ro:'Bifează exact două documente de comparat.',fr:'Coche exactement deux documents à comparer.',it:'Spunta esattamente due documenti da confrontare.',es:'Marca exactamente dos documentos para comparar.',pt:'Marca exatamente dois documentos para comparar.',de:'Hake genau zwei Dokumente zum Vergleichen an.',hu:'Jelölj be pontosan két dokumentumot az összehasonlításhoz.'},
@@ -800,7 +822,7 @@ async function load(){S.lib=await api('library');
   const [m,r,d,sv]=await Promise.all([safe(()=>api('meta'),{meta:{},tags:{}}),safe(()=>api('recent'),{recent:[],most:[]}),safe(()=>api('duplicates'),{groups:[]}),safe(()=>api('saved'),{saved:[]})]);
   S.meta=m.meta;S.tags=m.tags;S.recent=r.recent;S.most=r.most;S.dups=d.groups;S.saved=sv.saved;renderAll();computeSamples()}
 
-function renderAll(){renderRoots();renderTagSel();renderLib();renderStrip();renderDup();renderGroups();renderExts();renderRes();renderDym();renderSaved();renderDrawerScope();renderTaskSel();renderStatic();wizState();$('#ocrNote').textContent=S.ocr?T('ocr_ready'):T('ocr_missing')}
+function renderAll(){renderRoots();renderTagSel();renderLib();renderStrip();renderDup();renderGroups();renderExts();renderRes();renderDym();renderSaved();renderDrawerScope();renderTaskSel();renderStatic();hRender();wizState();$('#ocrNote').textContent=S.ocr?T('ocr_ready'):T('ocr_missing')}
 function renderRoots(){const c={};S.lib.documents.forEach(d=>c[d.root]=(c[d.root]||0)+1);
   $('#roots').innerHTML=S.lib.roots.map(r=>`<div class="row"><label title="${esc(r)}">${esc(r)}</label><span class="muted">${c[r]||0}</span><button class="btn sm bad" data-rm="${esc(r)}" aria-label="${esc(F('rm_aria',{x:r}))}">✕</button></div>`).join('')}
 const mt=p=>S.meta[p]||{tags:[],starred:false,has_note:false,opens:0};
@@ -1003,7 +1025,8 @@ function setTab(t){if(t!=='chat')t='task';pref('tab',t);$$('#dTabs button').forE
   if($('#drawer').classList.contains('on'))setTimeout(()=>$(t==='chat'?'#chatIn':'#req').focus(),20)}
 $$('#dTabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 /* chat: the conversation lives on the server, keyed by this page session */
-const chatSid=(()=>{try{const a=new Uint8Array(12);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return Date.now()+Math.random().toString(36).slice(2)}})();
+const newSid=()=>{try{const a=new Uint8Array(12);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return Date.now()+Math.random().toString(36).slice(2)}};
+let chatSid=newSid(),curChat=null;
 function addMsg(who,text,wait){const w=document.createElement('div');w.className='msg '+who;
   w.innerHTML=`<div class="who"></div><div class="mb md"></div>`;w.firstChild.textContent=T(who==='u'?'chat_you':'chat_bot');const mb=w.lastChild;if(text!=null)mb.textContent=text;else if(wait)mb.innerHTML=`<span class="muted">${esc(T('chat_wait'))}</span>`;
   $('#chatLog').appendChild(w);$('#chatEmpty').style.display='none';w.scrollIntoView({block:'end'});return w}
@@ -1017,11 +1040,33 @@ function renderBot(w,j){const mb=w.querySelector('.mb');
   mb.innerHTML=h;showUsage(mb,j.usage);w.scrollIntoView({block:'end'})}
 async function chatSend(){const q=$('#chatIn').value.trim();if(!q)return;$('#chatIn').value='';addMsg('u',q);const w=addMsg('b',null,true);$('#chatSend').disabled=true;
   const again=()=>{w.remove();$('#chatIn').value=q;chatSend()};
-  try{renderBot(w,await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value,mode:$('#chatOne').checked?'query':'chat',after:$('#chAfter').value,before:$('#chBefore').value}))}
+  try{{const j=await api('chat','POST',{sid:chatSid,q,group:$('#chatGroup').value,mock:$('#mock').checked,lang:$('#ansLang').value,mode:$('#chatOne').checked?'query':'chat',after:$('#chAfter').value,before:$('#chBefore').value});renderBot(w,j);hRecord(q,j)}}
   catch(e){errBox(w.querySelector('.mb'),e,again,()=>{$('#mock').checked=true;pref('mock','1');again()})}
   $('#chatSend').disabled=false;$('#chatIn').focus()}
 $('#chatSend').onclick=chatSend;$('#chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();chatSend()}});
-$('#chatNew').onclick=async()=>{try{await api('chat/reset','POST',{sid:chatSid})}catch(e){}$('#chatLog').innerHTML='';$('#chatEmpty').style.display='';$('#chatIn').focus()};
+$('#chatNew').onclick=async()=>{try{await api('chat/reset','POST',{sid:chatSid})}catch(e){}chatSid=newSid();curChat=null;hRender();$('#chatLog').innerHTML='';$('#chatEmpty').style.display='';$('#chatIn').focus()};
+
+/* chat history: kept in this browser only (localStorage); opening one puts it back, also on the server, so you can go on */
+const H_MAX=60,H_BYTES=1500000;
+function hLoad(){try{const a=JSON.parse(pref('chats')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function hSave(a){a=a.slice(0,H_MAX);let t=JSON.stringify(a);while(t.length>H_BYTES&&a.length>1){a.pop();t=JSON.stringify(a)}pref('chats',t)}
+function hSlim(j){return{found:!!j.found,answer:String(j.answer||'').slice(0,12000),note:j.note||null,sources:(j.sources||[]).slice(0,12).map(x=>({label:x.label,path:x.path,passage:String(x.passage||'').slice(0,400)}))}}
+function hRecord(q,j){if(!curChat)curChat={id:chatSid+'-'+Date.now(),ts:0,title:q.slice(0,80),msgs:[]};
+  curChat.msgs.push({u:q},{b:hSlim(j)});curChat.ts=Date.now();const a=hLoad().filter(x=>x.id!==curChat.id);a.unshift(curChat);hSave(a);hRender()}
+function hRender(){const f=($('#chHFilter').value||'').trim().toLowerCase(),all=hLoad(),a=f?all.filter(c=>(c.title+' '+c.msgs.map(m=>m.u||(m.b&&m.b.answer)||'').join(' ')).toLowerCase().includes(f)):all;
+  $('#chHEmpty').style.display=a.length?'none':'';$('#chHEmpty').textContent=T(all.length?'ch_hist_none':'ch_hist_empty');$('#chHClear').disabled=!all.length;
+  $('#chHList').innerHTML=a.map(c=>`<div class="chh${curChat&&curChat.id===c.id?' on':''}"><button class="hit" data-o="${esc(c.id)}"><b>${esc(c.title)}</b><small>${esc(new Date(c.ts).toLocaleString(LANG))} · ${esc(F('ch_hist_n',{n:c.msgs.filter(m=>m.u!=null).length}))}</small></button><button class="btn sm" data-d="${esc(c.id)}" aria-label="${esc(T('ch_hist_del'))}" title="${esc(T('ch_hist_del'))}">✕</button></div>`).join('')}
+async function hOpen(id){const c=hLoad().find(x=>x.id===id);if(!c)return;
+  try{await api('chat/reset','POST',{sid:chatSid})}catch(e){}
+  chatSid=newSid();curChat=c;$('#chatLog').innerHTML='';$('#chatEmpty').style.display='none';
+  const pairs=[];let q=null;for(const m of c.msgs){if(m.u!=null){q=m.u;addMsg('u',q)}else if(m.b){const w=addMsg('b');renderBot(w,m.b);if(q!=null&&m.b.found)pairs.push([q,m.b.answer])}}
+  try{await api('chat/restore','POST',{sid:chatSid,history:pairs});toast(T('ch_hist_resumed'))}catch(e){toast(T('ch_hist_resumed_ro'),1)}
+  hRender();$('#chatIn').focus()}
+$('#chHList').onclick=e=>{const o=e.target.closest('[data-o]'),d=e.target.closest('[data-d]');
+  if(o)hOpen(o.dataset.o);else if(d){hSave(hLoad().filter(x=>x.id!==d.dataset.d));if(curChat&&curChat.id===d.dataset.d)curChat=null;hRender()}};
+$('#chHFilter').oninput=hRender;
+$('#chHClear').onclick=()=>{if(!confirm(T('ch_hist_clear_q')))return;hSave([]);curChat=null;hRender()};
+$('#wgBrowser').onclick=async()=>{const o=$('#wgBrSt');o.textContent='';try{await api('browser/open','POST',{});o.textContent=T('wg_open_ok')}catch(e){o.textContent=String(e.message||e)}};
 function md(t){let h=esc(t);h=h.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^---$/gm,'<hr>');
   h=h.replace(/((?:^\|.*\|\s*$\n?)+)/gm,m=>{const rows=m.trim().split('\n').filter(r=>!/^\|[\s:|-]+\|$/.test(r.trim()));return '<table>'+rows.map((r,i)=>'<tr>'+r.trim().slice(1,-1).split('|').map(c=>`<${i?'td':'th'}>${c.trim()}</${i?'td':'th'}>`).join('')+'</tr>').join('')+'</table>'});
   h=h.replace(/((?:^[-*] .*$\n?)+)/gm,m=>'<ul>'+m.trim().split('\n').map(l=>'<li>'+l.replace(/^[-*] /,'')+'</li>').join('')+'</ul>');

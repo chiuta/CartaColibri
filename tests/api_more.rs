@@ -334,6 +334,28 @@ fn tasks_and_mock_run_and_chat() {
         post(&s, "/carta/chat/reset", json!({"sid": "page-1"})).code,
         200
     );
+    // a saved conversation can be put back; a bad id or malformed pairs are handled
+    assert_eq!(
+        post(
+            &s,
+            "/carta/chat/restore",
+            json!({"sid": "page-2", "history": [["What are the payment terms?", "Net 30. [S1]"], [1, 2], "x"]})
+        )
+        .code,
+        200
+    );
+    assert_eq!(
+        post(
+            &s,
+            "/carta/chat/restore",
+            json!({"sid": "../x", "history": []})
+        )
+        .code,
+        400
+    );
+    // the web-grab browser is not built next to the test binary: an honest 404, never a panic
+    let b = post(&s, "/carta/browser/open", json!({}));
+    assert_eq!(b.code, 404, "{}", b.text());
 }
 
 #[test]
@@ -599,6 +621,8 @@ fn every_new_route_demands_the_ui_header() {
         ("POST", "feeds/opml"),
         ("POST", "chat"),
         ("POST", "chat/reset"),
+        ("POST", "chat/restore"),
+        ("POST", "browser/open"),
         ("POST", "index"),
     ];
     for (m, r) in routes {

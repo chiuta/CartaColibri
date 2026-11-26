@@ -34,6 +34,9 @@ Colibrì is the reference engine, but every call is plain OpenAI-style HTTP (`/v
 Honest status: the protocol is tested against fake servers (good answers, 401/403/500, broken JSON, empty and null content, timeouts, wrong vector counts);
 it has not been run against every real Ollama / LM Studio build, so tell us what breaks.
 
+## Chat history
+In the web page, under the chat, a list keeps your past conversations (only in your browser, never sent anywhere): search them, open one to continue it, delete one or all. “Bring things in” has a button that opens the web-grab browser (`cartacolibri-browser`, which must sit next to `cartacolibri`) on the same library.
+
 ## Connect the chat services you know (`providers`, `--provider`, `versus`)
 Local is the default and stays the default. But the same OpenAI-style protocol is spoken by the services in most courses, so one name connects them:
 `cartacolibri providers` lists Ollama, LM Studio, Mistral (Le Chat), OpenAI (ChatGPT), Google Gemini, Cohere (Coral), NVIDIA build (Nemotron, Llama), Claude and Meta (Llama API), and which are ready.

@@ -1228,6 +1228,81 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             json!({"answer": rep.answer, "found": rep.found, "note": rep.note, "grounding": grounding, "usage": carta::take_usage().as_ref().map(carta::usage_json),
                 "sources": rep.sources.iter().map(|x| json!({"label": x.label, "path": x.path, "passage": x.passage})).collect::<Vec<_>>()})
         }
+        ("POST", "chat/restore") => {
+            // put a saved conversation back, so a follow-up question continues it (the page keeps the history)
+            let j = jbody(r.body).map_err(bad)?;
+            let sid = valid_sid(s(&j, "sid").map_err(bad)?).map_err(bad)?;
+            let mut hist = vec![];
+            for p in j["history"].as_array().into_iter().flatten().take(40) {
+                let (Some(q), Some(a)) = (p[0].as_str(), p[1].as_str()) else {
+                    continue;
+                };
+                hist.push((
+                    q.chars().take(4000).collect::<String>(),
+                    a.chars().take(8000).collect::<String>(),
+                ));
+            }
+            let mut cs = carta::ChatSession::new(carta::Backend::gateway(r.backend_url, None));
+            let keep = cs.max_turns.max(1);
+            if hist.len() > keep {
+                hist.drain(..hist.len() - keep);
+            }
+            cs.history = hist;
+            let mut g = lock(chats());
+            g.insert(
+                format!("{}\0{sid}", lib.home.display()),
+                (cs, TICK.fetch_add(1, Ordering::SeqCst)),
+            );
+            while g.len() > MAX_CHATS {
+                if let Some(old) = g.iter().min_by_key(|(_, v)| v.1).map(|(k, _)| k.clone()) {
+                    g.remove(&old);
+                } else {
+                    break;
+                }
+            }
+            json!({"ok": true})
+        }
+        ("POST", "browser/open") => {
+            // starts the web-grab browser that sits next to this program, on this same library; nothing from the request is passed on
+            let exe = if cfg!(windows) {
+                "cartacolibri-browser.exe"
+            } else {
+                "cartacolibri-browser"
+            };
+            let beside = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join(exe)))
+                .filter(|p| p.is_file());
+            let Some(beside) = beside else {
+                return Err((
+                    404,
+                    "the web-grab browser (cartacolibri-browser) is not installed next to this program"
+                        .into(),
+                ));
+            };
+            let mut cmd = std::process::Command::new(beside);
+            cmd.arg("--home")
+                .arg(&lib.home)
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null());
+            match cmd.spawn() {
+                Ok(mut child) => {
+                    // reap it when it ends, so no zombie stays behind
+                    std::thread::spawn(move || {
+                        let _ = child.wait();
+                    });
+                    json!({"ok": true})
+                }
+                Err(_) => {
+                    return Err((
+                        404,
+                        "the web-grab browser (cartacolibri-browser) is not installed next to this program"
+                            .into(),
+                    ));
+                }
+            }
+        }
         ("POST", "chat/reset") => {
             let j = jbody(r.body).map_err(bad)?;
             let sid = valid_sid(s(&j, "sid").map_err(bad)?).map_err(bad)?;
