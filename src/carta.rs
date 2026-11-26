@@ -125,10 +125,32 @@ pub struct Backend {
 /// Accepts `http://host:8000`, `http://host:8000/` and `http://host:8000/v1` alike.
 pub fn normalize_base(u: &str) -> String {
     let mut b = u.trim().trim_end_matches('/');
+    // a bare host keeps no `/v1` (it is added back by `endpoint`); a longer path such as
+    // `https://api.cohere.ai/compatibility/v1` or `.../v1beta/openai` is the real base and stays whole
     if let Some(x) = b.strip_suffix("/v1") {
-        b = x.trim_end_matches('/');
+        let host_only = x
+            .split_once("://")
+            .map(|(_, r)| !r.contains('/'))
+            .unwrap_or(true);
+        if host_only {
+            b = x.trim_end_matches('/');
+        }
     }
     b.to_string()
+}
+
+/// `base` + an OpenAI-style path such as `/chat/completions`: a bare host gets `/v1` in between,
+/// a base that already has a path (Gemini, Cohere, ...) is used as it is.
+pub fn endpoint(base: &str, path: &str) -> String {
+    let host_only = base
+        .split_once("://")
+        .map(|(_, r)| !r.contains('/'))
+        .unwrap_or(true);
+    if host_only {
+        format!("{base}/v1{path}")
+    } else {
+        format!("{base}{path}")
+    }
 }
 
 impl Backend {
@@ -207,7 +229,7 @@ impl Backend {
         }
         let agent = self.agent(self.timeout, true);
         let t0 = std::time::Instant::now();
-        let mut req = agent.post(&format!("{}/v1/chat/completions", self.url));
+        let mut req = agent.post(&endpoint(&self.url, "/chat/completions"));
         if let Some(k) = &self.api_key {
             req = req.header("Authorization", &format!("Bearer {k}"));
         }
@@ -261,7 +283,7 @@ impl Backend {
         }
         let mut r = self
             .agent(Duration::from_secs(3), true)
-            .get(&format!("{}/v1/models", self.url));
+            .get(&endpoint(&self.url, "/models"));
         if let Some(k) = &self.api_key {
             r = r.header("Authorization", &format!("Bearer {k}"));
         }
@@ -292,8 +314,8 @@ impl Backend {
         }
         let a = self.agent(Duration::from_secs(3), false);
         // (status, body is JSON)
-        let probe = |p: &str| -> (u16, bool) {
-            match a.get(&format!("{}{p}", self.url)).call() {
+        let probe = |full: &str| -> (u16, bool) {
+            match a.get(full).call() {
                 Ok(mut r) => {
                     let st = r.status().as_u16();
                     let ok = r.body_mut().read_json::<Value>().is_ok();
@@ -302,11 +324,11 @@ impl Backend {
                 Err(_) => (0, false),
             }
         };
-        let (st, json_ok) = probe("/v1/models");
+        let (st, json_ok) = probe(&endpoint(&self.url, "/models"));
         if matches!(st, 401 | 403) || (st == 200 && json_ok) {
             return true;
         }
-        let (st, json_ok) = probe("/health");
+        let (st, json_ok) = probe(&format!("{}/health", self.url));
         st == 200 && json_ok
     }
 }

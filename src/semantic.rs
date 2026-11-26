@@ -114,7 +114,7 @@ impl Backend {
             Duration::from_secs(if inputs.len() == 1 { 30 } else { 300 }),
             true,
         );
-        let mut req = agent.post(&format!("{}/v1/embeddings", self.url));
+        let mut req = agent.post(&crate::carta::endpoint(&self.url, "/embeddings"));
         if let Some(k) = &self.api_key {
             req = req.header("Authorization", &format!("Bearer {k}"));
         }

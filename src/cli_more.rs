@@ -29,6 +29,12 @@ pub struct Model {
     pub url: String,
     #[arg(long)]
     pub model: Option<String>,
+    /// a chat service by name (see `cartacolibri providers`): ollama, lmstudio, mistral, openai, gemini, cohere, nvidia, claude, meta; `NAME:MODEL` picks the model
+    #[arg(long)]
+    pub provider: Option<String>,
+    /// allow a cloud --provider: the question and the passages found are sent to that service
+    #[arg(long)]
+    pub allow_cloud: bool,
     /// offline extractive fallback (no model)
     #[arg(long)]
     pub mock: bool,
@@ -38,18 +44,44 @@ pub struct Model {
 }
 
 impl Model {
-    fn backend(&self) -> Backend {
+    fn backend(&self) -> Res<Backend> {
         let be = if self.mock {
             Backend::mock()
+        } else if let Some(p) = &self.provider {
+            cartacolibri::providers::backend(p, self.model.as_deref(), self.allow_cloud)?
         } else {
             Backend::gateway(&self.url, self.model.clone())
         };
-        be.with_fallback(self.fallback)
+        Ok(be.with_fallback(self.fallback))
     }
 }
 
 #[derive(Subcommand, Clone)]
 pub enum More {
+    /// list the chat services you can connect to (local engines and cloud APIs) and which ones are ready
+    Providers {
+        #[arg(long)]
+        json: bool,
+    },
+    /// ask the same question of several models over the same passages and compare the answers side by side
+    Versus {
+        /// the question
+        question: String,
+        /// comma-separated: `mock` (offline extractive), colibri, ollama:llama3.2, lmstudio, mistral:MODEL, ... (default: mock,colibri)
+        #[arg(long, value_delimiter = ',')]
+        providers: Vec<String>,
+        /// documents of this group only
+        #[arg(long)]
+        group: Option<String>,
+        /// answer language (default: the language of the question)
+        #[arg(long)]
+        lang: Option<String>,
+        /// allow cloud services: the question and the passages found are sent to them
+        #[arg(long)]
+        allow_cloud: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// run any RAG-CARTA task: compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions (or summarize/extract/synthesize)
     Task {
         /// task name
@@ -348,7 +380,7 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
                 verify,
                 ..Default::default()
             };
-            let text = carta::run_ex(lib, &name, &docs, &model.backend(), &o, &x, &mut |m| {
+            let text = carta::run_ex(lib, &name, &docs, &model.backend()?, &o, &x, &mut |m| {
                 eprintln!("· {m}")
             })?;
             println!("{}", cartacolibri::tour::plain(&text));
@@ -364,6 +396,15 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
                 );
             }
         }
+        More::Providers { json } => providers_cmd(json),
+        More::Versus {
+            question,
+            providers,
+            group,
+            lang,
+            allow_cloud,
+            json,
+        } => compare_cmd(lib, &question, providers, group, lang, allow_cloud, json)?,
         More::Chat {
             group,
             model,
@@ -378,7 +419,7 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
                 })
                 .transpose()
             };
-            let mut s = ChatSession::new(model.backend());
+            let mut s = ChatSession::new(model.backend()?);
             s.after = date(since, "since")?;
             s.before = date(until, "until")?;
             s.group = group;
@@ -630,5 +671,147 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
             }
         },
     }
+    Ok(())
+}
+
+fn providers_cmd(json: bool) {
+    use cartacolibri::providers::{self as pv, PROVIDERS};
+    let allowed = pv::cloud_allowed(false);
+    let rows: Vec<serde_json::Value> = PROVIDERS
+        .iter()
+        .map(|p| {
+            let ready = if p.cloud {
+                pv::key_of(p).is_some()
+            } else {
+                Backend::gateway(p.url, None).alive()
+            };
+            serde_json::json!({"name": p.name, "label": p.label, "url": p.url, "cloud": p.cloud,
+                "key_env": p.key_env, "ready": ready, "note": p.note})
+        })
+        .collect();
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&rows).unwrap_or_default()
+        );
+        return;
+    }
+    println!(
+        "{:<9} {:<32} {:<6} {:<6} {:<18} note",
+        "name", "service", "where", "ready", "key variable"
+    );
+    for r in &rows {
+        println!(
+            "{:<9} {:<32} {:<6} {:<6} {:<18} {}",
+            r["name"].as_str().unwrap_or(""),
+            r["label"].as_str().unwrap_or(""),
+            if r["cloud"].as_bool() == Some(true) {
+                "cloud"
+            } else {
+                "local"
+            },
+            if r["ready"].as_bool() == Some(true) {
+                "yes"
+            } else {
+                "no"
+            },
+            r["key_env"]
+                .as_str()
+                .filter(|k| !k.is_empty())
+                .unwrap_or("-"),
+            r["note"].as_str().unwrap_or("")
+        );
+    }
+    println!(
+        "\nlocal = answers never leave your computer. cloud = needs --allow-cloud{} and a key in its key variable, plus a model: --provider NAME:MODEL.\n\
+         No public API, so not connectable: {}.",
+        if allowed {
+            " (COLI_ALLOW_CLOUD is set)"
+        } else {
+            " or COLI_ALLOW_CLOUD=1"
+        },
+        pv::WEB_ONLY.join("; ")
+    );
+}
+
+fn compare_cmd(
+    lib: &Library,
+    question: &str,
+    mut providers: Vec<String>,
+    group: Option<String>,
+    lang: Option<String>,
+    allow_cloud: bool,
+    json: bool,
+) -> Res<()> {
+    if providers.is_empty() {
+        providers = vec!["mock".into(), "colibri".into()];
+    }
+    let mut out = vec![];
+    for spec in &providers {
+        let spec = spec.trim();
+        let be = if spec.eq_ignore_ascii_case("mock") {
+            Ok(Backend::mock())
+        } else {
+            cartacolibri::providers::backend(spec, None, allow_cloud)
+        };
+        let t = std::time::Instant::now();
+        let r = be.and_then(|be| {
+            let mut s = ChatSession::new(be);
+            s.group = group.clone();
+            s.answer_lang = lang.clone();
+            s.ask(lib, question)
+        });
+        let secs = t.elapsed().as_secs_f64();
+        out.push(match r {
+            Ok(r) => {
+                let cites = r.checks.len();
+                let bad = r.checks.iter().filter(|c| !c.exists || !c.supported).count();
+                serde_json::json!({"provider": spec, "ok": true, "secs": (secs * 100.0).round() / 100.0,
+                    "found": r.found, "words": r.answer.split_whitespace().count(),
+                    "citations": cites, "unsupported": bad, "sources": r.sources.len(),
+                    "answer": r.answer})
+            }
+            Err(e) => serde_json::json!({"provider": spec, "ok": false, "secs": (secs * 100.0).round() / 100.0, "error": e}),
+        });
+    }
+    if json {
+        println!("{}", serde_json::to_string_pretty(&out).unwrap_or_default());
+        return Ok(());
+    }
+    println!(
+        "{:<22} {:>7} {:>6} {:>9} {:>11}",
+        "model", "secs", "words", "citations", "unsupported"
+    );
+    for r in &out {
+        if r["ok"] == true {
+            println!(
+                "{:<22} {:>7.2} {:>6} {:>9} {:>11}",
+                r["provider"].as_str().unwrap_or(""),
+                r["secs"].as_f64().unwrap_or(0.0),
+                r["words"],
+                r["citations"],
+                r["unsupported"]
+            );
+        } else {
+            println!(
+                "{:<22} {:>7.2}  failed: {}",
+                r["provider"].as_str().unwrap_or(""),
+                r["secs"].as_f64().unwrap_or(0.0),
+                r["error"].as_str().unwrap_or("")
+            );
+        }
+    }
+    for r in &out {
+        if r["ok"] == true {
+            println!(
+                "\n=== {} ===\n{}",
+                r["provider"].as_str().unwrap_or(""),
+                cartacolibri::tour::plain(r["answer"].as_str().unwrap_or(""))
+            );
+        }
+    }
+    println!(
+        "\n`unsupported` = [S#] citations whose text shares no content word with the sentence: a hint to check, not a verdict. Same passages for every model."
+    );
     Ok(())
 }

@@ -17,6 +17,7 @@ pub mod insight;
 pub mod library;
 pub mod mcp;
 pub mod organize;
+pub mod providers;
 pub mod semantic;
 pub mod server;
 pub mod tour;

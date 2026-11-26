@@ -34,6 +34,31 @@ Colibrì is the reference engine, but every call is plain OpenAI-style HTTP (`/v
 Honest status: the protocol is tested against fake servers (good answers, 401/403/500, broken JSON, empty and null content, timeouts, wrong vector counts);
 it has not been run against every real Ollama / LM Studio build, so tell us what breaks.
 
+## Connect the chat services you know (`providers`, `--provider`, `versus`)
+Local is the default and stays the default. But the same OpenAI-style protocol is spoken by the services in most courses, so one name connects them:
+`cartacolibri providers` lists Ollama, LM Studio, Mistral (Le Chat), OpenAI (ChatGPT), Google Gemini, Cohere (Coral), NVIDIA build (Nemotron, Llama), Claude and Meta (Llama API), and which are ready.
+Use one on `chat`, `task`, `summarize`… with `--provider NAME:MODEL` (for example `--provider ollama:llama3.2`).
+Cloud services also need `--allow-cloud` (or `COLI_ALLOW_CLOUD=1`), a key in their own variable (`MISTRAL_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `COHERE_API_KEY`, `NVIDIA_API_KEY`, `ANTHROPIC_API_KEY`, `LLAMA_API_KEY`, or `COLI_API_KEY`) and a model name:
+the question **and the passages found in your documents are sent to that company**. Without both, nothing leaves your computer. Keys are never written to disk or logs, and a key is only sent to the service it belongs to.
+Not connectable: Microsoft Copilot and the chat websites themselves (meta.ai, chatgpt.com, gemini.google.com…) have no public key-based API for this; use the API names above. Meaning search (`embed`) stays on local engines on purpose: it would send the whole library out.
+Honest status: the protocol, the path handling (`/v1`, Gemini's `/v1beta/openai`, Cohere's `/compatibility/v1`) and the consent rules are tested against fakes; the cloud endpoints themselves were not called with real keys.
+
+`cartacolibri versus "question" --providers mock,colibri,ollama:llama3.2,mistral:MODEL --allow-cloud` asks each model the same question over the same retrieved passages, then prints time, length, number of [S#] citations and how many look unsupported, followed by every answer.
+It compares how models handle your documents; it is not a general benchmark.
+
+### CartaColibri next to those chat services (honest)
+| | ChatGPT, Gemini, Le Chat, Claude, Copilot, Meta AI, Coral | CartaColibri |
+|---|---|---|
+| Where your files go | uploaded to the company (limits on size and count) | stay on your computer; indexed in place |
+| Library size | a few files per chat | tens of thousands of files, searched in milliseconds |
+| Answers | general knowledge plus the files you attach, sources not always shown | only from your documents, every claim with [S#], unsupported ones marked |
+| "Not found" | may guess | says so and stops |
+| Quality of the writing and reasoning | usually higher (largest models) | the quality of the model you connect; the best of them can be connected |
+| Web search, images, voice, agents, apps, accounts, sync | yes | no (honest limit) |
+| Cost | free tiers with limits, paid plans | free; a cloud model, if you connect one, bills you |
+| Works offline | no | yes (with a local model, or `--mock` extractive answers) |
+Use them together: CartaColibri finds and cites the passages in your own files; the model you connect, local or cloud, writes the answer.
+
 ## Measured speed (scripts/bench.py, synthetic 20,000 documents, 30 MB of text, one core)
 first index 6.4 s · re-index with no change 0.13 s · word / phrase / prefix / boolean search 0.02–0.07 s · regex search 0.3 s ·
 entities, chronology, duplicates, conflicts, topics 0.3–0.5 s each · index 53 MB · about 25 MB of memory for searching (67 MB for stats).
