@@ -820,14 +820,14 @@ async function api(path,method='GET',body){
   /* GET: 6 s timeout and two retries (a request that never comes back must not leave a blank page) */
   const tries=method==='GET'?3:1;let r,lastErr;
   for(let i=0;i<tries;i++){
-    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),method==='GET'?6000:600000);
+    const ac=new AbortController(),tm=method==='GET'?setTimeout(()=>ac.abort(),6000):0; /* POST (tasks, chat): no browser-side limit, the engine's own timeout decides */
     try{r=await fetch('/carta/'+path,{...o,signal:ac.signal});clearTimeout(tm);if(r.status<500||i===tries-1)break}
     catch(e){clearTimeout(tm);lastErr=e;if(i===tries-1)throw e}}
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(j.error||r.statusText);return j}
 function fe(e){const raw=String(e&&e.message||e),l=raw.toLowerCase();let k='e_generic';
   if(l.includes('not a folder')||/no such (file|directory)/.test(l))k='e_folder';
-  else if(/timed out|timeout/.test(l))k='e_timeout';
+  else if(/timed out|timeout|operation was aborted|aborterror/.test(l))k='e_timeout';
   else if(/api key|http status: 40[13]/.test(l))k='e_key';
   else if(l.includes('no answer from the colibr')&&/http status: 5|empty answer|unexpected response|http status: 4/.test(l))k='e_engine_fail';
   else if(l.includes('no answer from the colibr'))k='e_engine';
@@ -1187,10 +1187,10 @@ async function runDrawer(){const scope=document.querySelector('[name=scope]:chec
   if(scope==='group')body.group=$('#scopeGroup').value;else body.ids=selIds();
   if(!body.group&&!body.ids.length){toast(T('need_selection'),1);return}
   if(S.task==='extract'){body.fields=$('#fields').value.split(',').map(s=>s.trim()).filter(Boolean);body.fmt=$('#asJson').checked?'json':'table'}
-  $('#run').disabled=true;$('#runSt').textContent=T('running');$('#out').textContent='';
+  $('#run').disabled=true;$('#out').textContent='';const t0=Date.now(),tick=()=>{const n=Math.round((Date.now()-t0)/1000);$('#runSt').textContent=T('running')+' '+Math.floor(n/60)+':'+String(n%60).padStart(2,'0')};tick();const tk=setInterval(tick,1000);
   try{const j=await api('run','POST',body);lastText=j.text;try{renderAnswer($('#out'),j.text,body.fmt);showUsage($('#out'),j.usage)}catch(x){console.error(x);$('#out').textContent=String(j.text||'')}if(j.saved)toast(T('saved')+': '+j.saved)}
   catch(e){errBox($('#out'),e,runDrawer,()=>{$('#mock').checked=true;pref('mock','1');runDrawer()})}
-  $('#run').disabled=false;$('#runSt').textContent=''}
+  clearInterval(tk);$('#run').disabled=false;$('#runSt').textContent=''}
 $('#run').onclick=runDrawer;
 $('#copy').onclick=()=>{if(lastText)copyText(lastText).then(()=>toast(T('copied')))};
 $('#vClose').onclick=()=>closeM($('#viewer'));
