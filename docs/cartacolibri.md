@@ -12,7 +12,9 @@ State lives in one folder: `$CARTACOLIBRI_HOME` (default `~/.cartacolibri`) — 
 txt md markdown rst log csv json jsonl yaml yml html htm rtf · pdf · docx odt ods odp pptx xlsx epub (and the macro/template variants docm dotx xlsm pptm ppsx …) ·
 eml mbox ics vcf mhtml · zip, tar, tgz / tar.gz (listing plus the text inside) ·
 old `.doc` `.xls` `.ppt` only when `antiword`/`catdoc`/`xls2csv`/`catppt` or LibreOffice (`soffice`) is installed (otherwise they are skipped, not failed) ·
-images (png jpg tif bmp webp) and scanned PDF pages when OCR is on (`--ocr` / `CARTACOLIBRI_OCR=1`, needs `tesseract`, and `pdftoppm` for PDFs).
+images (png jpg tif bmp webp) and scanned PDF pages when OCR is on (`--ocr` / `CARTACOLIBRI_OCR=1`, needs `tesseract`, and `pdftoppm` for PDFs) — **OCR engines:** [LegatorOCR](https://github.com/chiuta/LegatorOCR) (MIT; the same program and the same small module that Colibri Companion uses, found next to `cartacolibri`, in a sibling `LegatorOCR` folder, on `PATH` or through `CARTACOLIBRI_LEGATOROCR`) or `tesseract`; `cartacolibri doctor` shows which is found. With both, images go to LegatorOCR first (tesseract is the fallback) and scanned PDFs go page by page through tesseract when `pdftoppm` is there (page numbers kept), else whole through LegatorOCR (one text, page numbers lost, said in a note). `CARTACOLIBRI_OCR_ENGINE=legatorocr|tesseract` forces one. A searchable-PDF copy of a photo still needs tesseract. OCR text is never a verified transcription.
+Files bigger than 80 MB are skipped (and listed under “Files skipped”); `CARTACOLIBRI_MAX_FILE_MB=300` (1–2048) raises the limit.
+`cartacolibri forget PATH…` (or “Delete selected” in the web page, and ✕ beside a skipped file) takes files out of the library for good: the files are never touched and a re-index does not bring them back; `forget --list` shows them, `forget --undo PATH` lets them in again.
 Legacy 8-bit text is read as Windows-1250 (Romanian / Central-European). A broken or hostile file (zip bomb, corrupt PDF)
 is reported under `problems` and never stops the folder.
 

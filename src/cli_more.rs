@@ -58,6 +58,15 @@ impl Model {
 
 #[derive(Subcommand, Clone)]
 pub enum More {
+    /// leave files out of the library for good (the files themselves are never touched); `--list` shows them, `--undo` lets them back in
+    Forget {
+        /// file paths
+        paths: Vec<String>,
+        #[arg(long)]
+        list: bool,
+        #[arg(long)]
+        undo: bool,
+    },
     /// list the chat services you can connect to (local engines and cloud APIs) and which ones are ready
     Providers {
         #[arg(long)]
@@ -397,6 +406,22 @@ pub fn run(lib: &mut Library, cmd: More) -> Res<()> {
             }
         }
         More::Providers { json } => providers_cmd(json),
+        More::Forget { paths, list, undo } => {
+            if list || (paths.is_empty() && !undo) {
+                for p in lib.excluded() {
+                    println!("{p}");
+                }
+            } else if undo {
+                let mut n = 0;
+                for p in &paths {
+                    n += usize::from(lib.unforget(p)?);
+                }
+                println!("{n} files will be read again at the next index");
+            } else {
+                let n = lib.forget_paths(&paths)?;
+                println!("{n} files left out of the library (the files themselves are untouched)");
+            }
+        }
         More::Versus {
             question,
             providers,

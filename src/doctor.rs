@@ -54,6 +54,15 @@ pub fn gateway_up(url: &str) -> bool {
 pub fn run(home: Option<&str>, url: &str, port: u16) -> Vec<Check> {
     let mut v = vec![];
 
+    match cartacolibri_ocr_line() {
+        Some(l) => v.push(ck(Level::Ok, "LegatorOCR", &l, None)),
+        None => v.push(ck(
+            Level::Warn,
+            "LegatorOCR",
+            "not found (optional OCR engine, also used by Colibri Companion: github.com/chiuta/LegatorOCR; put it next to cartacolibri, on PATH, or set CARTACOLIBRI_LEGATOROCR)",
+            None,
+        )),
+    }
     if runs("tesseract", "--version") {
         v.push(ck(
             Level::Ok,
@@ -185,4 +194,10 @@ pub fn run(home: Option<&str>, url: &str, port: u16) -> Vec<Check> {
         )),
     }
     v
+}
+
+fn cartacolibri_ocr_line() -> Option<String> {
+    let bin = crate::legatorocr::locate()?;
+    let v = crate::legatorocr::version(&bin)?;
+    Some(format!("found: {v} (OCR for scans and images)"))
 }

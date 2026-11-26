@@ -528,6 +528,30 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             lib.add_root(&p).map_err(bad)?;
             serde_json::to_value(index_now(&mut lib, Some(&[p])).map_err(bad)?).unwrap()
         }
+        ("POST", "forget") => {
+            // take the chosen documents (or skipped files, by path) out of the library and keep them out;
+            // the files on disk are never touched
+            let j = jbody(r.body).map_err(bad)?;
+            let ids: Vec<i64> = j["ids"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|x| x.as_i64())
+                .take(5000)
+                .collect();
+            let paths: Vec<String> = j["paths"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|x| x.as_str().map(String::from))
+                .take(5000)
+                .collect();
+            if ids.is_empty() && paths.is_empty() {
+                return Err((400, "choose at least one document".into()));
+            }
+            let n = lib.forget_docs(&ids).map_err(bad)? + lib.forget_paths(&paths).map_err(bad)?;
+            json!({"forgotten": n})
+        }
         ("DELETE", "folders") => {
             let j = jbody(r.body).map_err(bad)?;
             json!({"dropped": lib.remove_root(s(&j, "path").map_err(bad)?).map_err(bad)?})
@@ -560,7 +584,7 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             }
         }
         ("GET", "status") => {
-            json!({"ocr": crate::extract::ocr_available(), "home": lib.home, "version": 2})
+            json!({"ocr": crate::extract::ocr_available(), "ocr_engine": crate::extract::ocr_engine_name(), "home": lib.home, "version": 2})
         }
         ("POST", "index") => {
             let j = jbody(r.body).map_err(bad)?;

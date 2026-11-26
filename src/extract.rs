@@ -616,8 +616,70 @@ pub fn which(tool: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// LegatorOCR, found once per setting of `CARTACOLIBRI_LEGATOROCR` (its `--version` runs only then).
+fn legatorocr_bin() -> Option<std::path::PathBuf> {
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<std::collections::HashMap<String, Option<std::path::PathBuf>>>> =
+        OnceLock::new();
+    let key = std::env::var("CARTACOLIBRI_LEGATOROCR").unwrap_or_default();
+    let mut m = CACHE
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    m.entry(key)
+        .or_insert_with(crate::legatorocr::locate)
+        .clone()
+}
+
+/// Which OCR engine may be used: `CARTACOLIBRI_OCR_ENGINE` = `legatorocr`, `tesseract` or `auto` (default).
+fn engine_allows(name: &str) -> bool {
+    match std::env::var("CARTACOLIBRI_OCR_ENGINE")
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "legatorocr" => name == "legatorocr",
+        "tesseract" => name == "tesseract",
+        _ => true,
+    }
+}
+
+fn use_legatorocr() -> Option<std::path::PathBuf> {
+    if engine_allows("legatorocr") {
+        legatorocr_bin()
+    } else {
+        None
+    }
+}
+
+fn use_tesseract() -> bool {
+    engine_allows("tesseract") && which("tesseract")
+}
+
+/// Which engine would read a scan now: `legatorocr`, `tesseract` or none (for doctor and the page).
+pub fn ocr_engine_name() -> Option<&'static str> {
+    if use_legatorocr().is_some() {
+        Some("legatorocr")
+    } else if use_tesseract() {
+        Some("tesseract")
+    } else {
+        None
+    }
+}
+
 pub fn ocr_available() -> bool {
-    which("tesseract")
+    ocr_engine_name().is_some()
+}
+
+/// Text of an image or a whole PDF through LegatorOCR; Romanian + English first, English alone when
+/// the Romanian data is not installed.
+fn legatorocr_text(bin: &Path, path: &Path) -> Res<String> {
+    let d = tempdir().map_err(|e| e.to_string())?;
+    let t = extract_timeout().mul_f32(9.0);
+    let r = crate::legatorocr::read_text(bin, path, "ron+eng", &d, t)
+        .or_else(|_| crate::legatorocr::read_text(bin, path, "eng", &d, t));
+    let _ = std::fs::remove_dir_all(&d);
+    r
 }
 
 fn tesseract_lang(want: &str) -> String {
@@ -639,8 +701,20 @@ fn tesseract_lang(want: &str) -> String {
 
 /// tesseract on one image. `pdf` = true returns the bytes of a searchable PDF, else UTF-8 text.
 pub fn ocr_image(path: &Path, pdf: bool) -> Res<Vec<u8>> {
-    if !ocr_available() {
-        return Err("OCR needs tesseract (apt install tesseract-ocr tesseract-ocr-ron)".into());
+    if !pdf && let Some(bin) = use_legatorocr() {
+        match legatorocr_text(&bin, path) {
+            Ok(t) => return Ok(t.into_bytes()),
+            // fall back to tesseract when it is there; otherwise say what LegatorOCR said
+            Err(e) if !use_tesseract() => return Err(e),
+            Err(_) => {}
+        }
+    }
+    if !use_tesseract() {
+        return Err(if pdf {
+            "a searchable PDF of a photo needs tesseract (apt install tesseract-ocr tesseract-ocr-ron)".into()
+        } else {
+            "OCR needs LegatorOCR (github.com/chiuta/LegatorOCR) or tesseract (apt install tesseract-ocr tesseract-ocr-ron)".into()
+        });
     }
     let mut c = Command::new("tesseract");
     c.arg(safe_arg(path))
@@ -664,7 +738,7 @@ pub fn ocr_image(path: &Path, pdf: bool) -> Res<Vec<u8>> {
 }
 
 fn ocr_pdf_page(path: &Path, n: usize) -> String {
-    if !(ocr_available() && which("pdftoppm")) {
+    if !(use_tesseract() && which("pdftoppm")) {
         return String::new();
     }
     let Ok(d) = tempdir() else {
@@ -784,6 +858,31 @@ fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
 
 fn pdf_pages(path: &Path, ocr: bool) -> Res<Parts> {
     let pages = pdf_pages_raw(path)?;
+    // LegatorOCR reads a scanned PDF as a whole (no page numbers); tesseract here works page by page and keeps
+    // them, so tesseract goes first when it can, and LegatorOCR takes over when it cannot or is the chosen engine.
+    let page_by_page = use_tesseract() && which("pdftoppm");
+    if ocr
+        && !page_by_page
+        && pages.iter().any(|t| t.trim().chars().count() < 20)
+        && let Some(bin) = use_legatorocr()
+    {
+        let note = format!(
+            "[Read with LegatorOCR as one text; page numbers are not kept. {} pages.]",
+            pages.len()
+        );
+        match legatorocr_text(&bin, path) {
+            Ok(t) => return Ok(vec![("OCR".into(), t), ("note".into(), note)]),
+            Err(e) => {
+                let mut out: Parts = pages
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, t)| (format!("p.{}", i + 1), t))
+                    .collect();
+                out.push(("note".into(), format!("[OCR did not work: {e}]")));
+                return Ok(out);
+            }
+        }
+    }
     let (maxp, mut ocred, mut skipped) = (ocr_max_pages(), 0usize, 0usize);
     let mut out: Parts = pages
         .into_iter()

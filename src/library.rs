@@ -94,7 +94,17 @@ const HEAVY_EXT: &[&str] = &[
     ".wav",
     ".flac",
 ];
-const MAX_FILE_BYTES: u64 = 80 * 1024 * 1024;
+const DEFAULT_MAX_FILE_MB: u64 = 80;
+
+/// Biggest file that is read: 80 MB, or `CARTACOLIBRI_MAX_FILE_MB` (1 to 2048) for libraries with large scans.
+fn max_file_bytes() -> u64 {
+    std::env::var("CARTACOLIBRI_MAX_FILE_MB")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|m| (1..=2048).contains(m))
+        .unwrap_or(DEFAULT_MAX_FILE_MB)
+        << 20
+}
 
 pub type Res<T> = Result<T, String>;
 fn e<E: std::fmt::Display>(x: E) -> String {
@@ -253,6 +263,7 @@ fn init_db(home: &Path) -> Res<Connection> {
          CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(text, doc_id UNINDEXED, loc UNINDEXED, seq UNINDEXED,
              tokenize='unicode61 remove_diacritics 2');
          CREATE TABLE IF NOT EXISTS problems(path TEXT PRIMARY KEY, reason TEXT, at REAL);
+         CREATE TABLE IF NOT EXISTS excluded(path TEXT PRIMARY KEY);
          CREATE INDEX IF NOT EXISTS docs_sha1 ON docs(sha1);
          CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks,'row');
          CREATE TABLE IF NOT EXISTS vecs(rid INTEGER, model TEXT, doc_id INTEGER, v BLOB, PRIMARY KEY(rid, model)) WITHOUT ROWID;",
@@ -543,6 +554,84 @@ impl Library {
         Ok(serde_json::json!({"saved": path, "ocr_files": made, "index": stats}))
     }
 
+    // ---- leaving files out (the file itself is never touched)
+    /// Takes documents out of the library and keeps them out when the folder is scanned again.
+    pub fn forget_docs(&self, ids: &[i64]) -> Res<usize> {
+        let mut n = 0;
+        for id in ids {
+            let path: Option<String> = self
+                .db
+                .query_row("SELECT path FROM docs WHERE id=?", [id], |r| r.get(0))
+                .ok();
+            if let Some(p) = path {
+                self.db
+                    .execute("INSERT OR IGNORE INTO excluded VALUES(?)", [&p])
+                    .map_err(e)?;
+                self.drop_doc(*id)?;
+                n += 1;
+            }
+        }
+        Ok(n)
+    }
+    /// The same by file path (also for files that were skipped as unreadable and have no document).
+    pub fn forget_paths(&self, paths: &[String]) -> Res<usize> {
+        let mut n = 0;
+        for p in paths {
+            let mut cands = vec![p.clone()];
+            if let Ok(c) = std::fs::canonicalize(p) {
+                cands.push(c.to_string_lossy().into_owned());
+            }
+            for c in cands {
+                let id: Option<i64> = self
+                    .db
+                    .query_row("SELECT id FROM docs WHERE path=?", [&c], |r| r.get(0))
+                    .ok();
+                let prob = self
+                    .db
+                    .execute("DELETE FROM problems WHERE path=?", [&c])
+                    .unwrap_or(0);
+                if id.is_some() || prob > 0 {
+                    self.db
+                        .execute("INSERT OR IGNORE INTO excluded VALUES(?)", [&c])
+                        .map_err(e)?;
+                    if let Some(id) = id {
+                        self.drop_doc(id)?;
+                    }
+                    n += 1;
+                    break;
+                }
+            }
+        }
+        Ok(n)
+    }
+    pub fn excluded(&self) -> Vec<String> {
+        let Ok(mut st) = self.db.prepare("SELECT path FROM excluded ORDER BY path") else {
+            return vec![];
+        };
+        st.query_map([], |r| r.get(0))
+            .map(|it| it.flatten().collect())
+            .unwrap_or_default()
+    }
+    /// Lets a left-out file in again (it is read at the next index).
+    pub fn unforget(&self, path: &str) -> Res<bool> {
+        let mut n = self
+            .db
+            .execute("DELETE FROM excluded WHERE path=?", [path])
+            .map_err(e)?;
+        if n == 0
+            && let Ok(c) = std::fs::canonicalize(path)
+        {
+            n = self
+                .db
+                .execute(
+                    "DELETE FROM excluded WHERE path=?",
+                    [c.to_string_lossy().as_ref()],
+                )
+                .map_err(e)?;
+        }
+        Ok(n > 0)
+    }
+
     // ---- indexing
     fn drop_doc(&self, id: i64) -> Res<()> {
         self.db
@@ -721,6 +810,7 @@ impl Library {
                 total: files.len() as u32,
                 ..Default::default()
             };
+            let left_out: HashSet<String> = self.excluded().into_iter().collect();
             for p in files {
                 let ps = p.to_string_lossy().into_owned();
                 st.seen += 1;
@@ -743,6 +833,7 @@ impl Library {
                     || name.ends_with(".tmp")
                     || HEAVY_EXT.contains(&ext.as_str())
                     || !self.exts.contains(&ext)
+                    || left_out.contains(&ps)
                 {
                     st.skipped += 1;
                     pr.skipped += 1;
@@ -772,13 +863,13 @@ impl Library {
                     progress(&pr);
                     continue;
                 }
-                if md.len() > MAX_FILE_BYTES {
+                if md.len() > max_file_bytes() {
                     st.skipped += 1;
                     pr.skipped += 1;
                     let msg = format!(
                         "Skipped: the file is very large ({} MB; the limit is {} MB).",
                         md.len() >> 20,
-                        MAX_FILE_BYTES >> 20
+                        max_file_bytes() >> 20
                     );
                     note(&tx, &ps, &msg)?;
                     progress(&pr);
@@ -815,13 +906,13 @@ impl Library {
                         let f = extract::open_regular(&p)
                             .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
                         let mut buf = Vec::new();
-                        f.take(MAX_FILE_BYTES + 1)
+                        f.take(max_file_bytes() + 1)
                             .read_to_end(&mut buf)
                             .map_err(|er| extract::plain_reason(&ext, &er.to_string()))?;
-                        if buf.len() as u64 > MAX_FILE_BYTES {
+                        if buf.len() as u64 > max_file_bytes() {
                             return Err(format!(
                                 "Skipped: the file is very large (the limit is {} MB).",
-                                MAX_FILE_BYTES >> 20
+                                max_file_bytes() >> 20
                             ));
                         }
                         buf
