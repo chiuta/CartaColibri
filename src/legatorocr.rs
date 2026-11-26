@@ -36,17 +36,14 @@ fn searchable(dir: &Path) -> bool {
 
 /// A file that can be started: on Unix it has an execute bit.
 fn startable(p: &Path) -> bool {
-    if !p.is_file() {
-        return false;
-    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::metadata(p).is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
+        p.is_file() && std::fs::metadata(p).is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
     }
     #[cfg(not(unix))]
     {
-        true
+        p.is_file()
     }
 }
 
@@ -172,7 +169,7 @@ pub fn build_command(bin: &Path, input: &Path, lang: &str, txt: &Path, out_dir: 
 /// UTF-8 (a byte-order mark is dropped) or UTF-16 with a byte-order mark; invalid bytes are replaced; NULs dropped.
 pub fn decode_text(bytes: &[u8]) -> String {
     let utf16 = |b: &[u8], le: bool| {
-        let units = b.chunks_exact(2).map(|c| {
+        let units = b.as_chunks::<2>().0.iter().map(|c| {
             if le {
                 u16::from_le_bytes([c[0], c[1]])
             } else {
