@@ -274,6 +274,9 @@ enum Cmd {
         /// stop after this many passages (run again to continue)
         #[arg(long)]
         limit: Option<usize>,
+        /// forget this model's vectors first and make them again
+        #[arg(long)]
+        reset: bool,
         #[arg(long)]
         json: bool,
     },
@@ -1111,6 +1114,7 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
             mock,
             batch,
             limit,
+            reset,
             json,
         } => {
             let be = if mock {
@@ -1119,6 +1123,9 @@ fn run(c: Cli, lang: usize) -> Result<(), String> {
                 carta::Backend::gateway(&url, None)
             };
             let m = cartacolibri::semantic::embed_model_name(&be, embed_model.as_deref());
+            if reset {
+                lib.drop_vectors(&m)?;
+            }
             let mut last = 0usize;
             let st =
                 lib.embed_missing(&be, &m, batch, limit.unwrap_or(usize::MAX), &mut |d, t| {

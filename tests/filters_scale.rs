@@ -50,3 +50,30 @@ fn a_search_of_only_filters_lists_what_they_select() {
     assert!(lib.search("   ", &Filter::default()).is_err());
     assert!(lib.search("re:[", &Filter::default()).is_err());
 }
+
+#[test]
+fn a_regular_expression_looks_at_every_passage_of_a_document() {
+    let t = tempfile::tempdir().unwrap();
+    let docs = t.path().join("docs");
+    std::fs::create_dir_all(&docs).unwrap();
+    // a long text: the code sits in a late passage, the first passage has nothing like it
+    let filler = "ordinary words about nothing in particular. ".repeat(900);
+    std::fs::write(
+        docs.join("long.txt"),
+        format!("{filler}\nReference ZX-7781-Q is the one.\n{filler}"),
+    )
+    .unwrap();
+    std::fs::write(docs.join("other.txt"), "no code here").unwrap();
+    let home = t.path().join("home").to_string_lossy().into_owned();
+    let mut lib = Library::open(Some(&home), false).unwrap();
+    lib.update(Some(&[docs.to_string_lossy().into_owned()]), &mut |_| {})
+        .unwrap();
+    let hits = lib.search(r"re:ZX-\d+-Q", &Filter::default()).unwrap();
+    assert_eq!(hits.len(), 1, "{hits:?}");
+    assert!(hits[0].path.ends_with("long.txt"));
+    // combined with words, the shown passage is one that matches the expression
+    let hits = lib
+        .search(r"reference re:ZX-\d+-Q", &Filter::default())
+        .unwrap();
+    assert_eq!(hits.len(), 1);
+}

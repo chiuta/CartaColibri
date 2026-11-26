@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizálj és kapcsolódj** — a `digest` újra lefuttat egy mentett keresést, és csak az újdonságokat jelzi (ismétel, fájlhoz fűz, összefoglal vagy e-mail fájlt ment); az `mcp` lehetővé teszi, hogy más MI-alkalmazások keressenek, olvassanak, kérdezzenek, ellenőrizzenek és dossziét kérjenek a könyvtáradból, csak olvasásra.
 - **Másolatok és dátumok** — “Duplikátumok” (másolat vagy majdnem másolat dokumentumok, hasonlóságukkal) és “Kronológia” (az összes dátumos mondat időrendben).
 
-## Újdonságok a 0.2.0-alpha.6-ben
+## Újdonságok a 0.2.0-alpha.7-ben
 
 - **Szűrők közvetlenül a keresőmezőben** — Írd a szavaid mellé: `ext:pdf`, `path:szerzodesek`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` vagy `re:SZ-\d+` (reguláris kifejezés), és a találatok szűkülnek. Működnek a weboldalon, a parancssorban és az API-n keresztül.
 - **Okos keresés** — Jelöld be az „Okos keresés” négyzetet, és a helyi MI hozzáad néhány szinonimát és rokon szót (egyszerű OR-ként, így a pontos találatok maradnak elöl). A hozzáadott szavak a mező alatt látszanak. Futó motor nélkül a szokásos keresést kapod.
@@ -94,22 +94,22 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Parancs | Mit csinál |
 |---|---|
-| `start [--folder F] [--port N] [--no-open]` | Vezetett indítás: kiválasztasz egy mappát, indexeli, és megnyílik a weboldal. |
+| `start [--folder F] [--port N] [--no-open] [--no-serve]` | Vezetett indítás: kiválasztasz egy mappát, indexeli, és megnyílik a weboldal. |
 | `doctor` | Ellenőrzi a motort, az OCR-t, a PDF-eszközöket, a lemezt és a portot, és minden hibához megadja a pontos megoldást. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Mappa felvétele vagy elfelejtése (a fájlokhoz soha nem nyúl), mappák listázása, újraindexelés és az olvashatatlan fájlok listája. |
 | `watch [--interval S]` | Naprakészen tartja az indexet: S másodpercenként újraolvassa a mappákat. |
 | `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Keres a könyvtárban. Szavak, „kifejezések”, előtag*, AND/OR/NOT és szűrők közvetlenül a lekérdezésben: `ext:pdf` `path:szerzodesek` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:SZ-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Listázza a dokumentumokat; a csoportok elnevezett dokumentumhalmazok, amelyekben kereshetsz vagy kérdezhetsz. |
-| `summarize`, `extract`, `synthesize` (same options as `task`) | Gyorsparancsok a három fő feladathoz: minden dokumentum összefoglalása, mezők kinyerése, vagy több dokumentum egy válaszba vonása. |
+| `summarize`, `extract`, `synthesize` (same options as `task`, with `--fields`) | Gyorsparancsok a három fő feladathoz: minden dokumentum összefoglalása, mezők kinyerése, vagy több dokumentum egy válaszba vonása. |
 | `grab URL`, `bookmarklet` | Weboldalt ment a könyvtárba (HTML, MHTML vagy PDF); a bookmarklet bármely böngészőből megteszi. |
 | `serve [--port N] [--url ENGINE]` | Elindítja a weboldalt ezen a gépen (http://127.0.0.1:PORT). |
 | `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Tab-kiegészítő szkriptet ír ki a shelledhez; újraimportálja a JSON-ként exportált címkéket, csillagokat, jegyzeteket és csoportokat. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | a 14 feladat (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); a `--verify` megjelöli azokat a mondatokat, amelyek `[S#]` hivatkozását a szöveg nem támasztja alá |
-| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | egymásra épülő kérdések a könyvtáradról; a válaszok hivatkoznak, vagy „nem található a dokumentumaidban” |
-| `tag add/rm/list/show`, `star`, `note` | a saját rendszerezésed, amely az újraindexelés után is megmarad |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx] [--fallback]` | egymásra épülő kérdések a könyvtáradról; a válaszok hivatkoznak, vagy „nem található a dokumentumaidban” |
+| `tag add/rm/list/show`, `star [--off]`, `note` | a saját rendszerezésed, amely az újraindexelés után is megmarad |
 | `saved add/list/run/rm` | mentett keresések / okos gyűjtemények |
 | `recent`, `related PATH` | amit nemrég megnyitottál; hasonló dokumentumok |
-| `export --format md\|csv\|json\|zip` | oszd meg egy csoportot, címkét vagy mentett keresést hivatkozásokkal |
+| `export [--saved NAME] --format md\|csv\|json\|zip` | oszd meg egy csoportot, címkét vagy mentett keresést hivatkozásokkal |
 | `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | egyfájlos, ellenőrzőösszeges mentés; ellenőrzése; visszaállítása |
 | `verify [--repair]` | ellenőrzi az indexet; a `--repair` a fájljaidból újraépíti |
 | `stats`, `timeline` | számok a könyvtáradról; dokumentumok havonként |
@@ -122,7 +122,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Különböző dokumentumok olyan mondatpárjai, amelyek egy számban vagy dátumban térnek el (500 és 550): ellenőrizendő jelöltek, nem ítéletek. |
 | `dupes [--group G] [--min 0.6] [--json]` | Megkeresi azokat a dokumentumokat, amelyek egymás másolatai vagy majdnem másolatai (exportok, piszkozatok, kétszer mentett fájl), hasonlóságukkal és azzal, hogy a kisebbik mekkora része van a másikban. |
 | `chronology [--group G] [--limit N] [--json]` | A könyvtár összes dátumos mondata időrendben, a dokumentumukkal (dátumok: 2025-03-12, 12.03.2025 vagy 12/03/2025, előbb a nap; vagy hónapnévvel a 8 nyelv bármelyikén: 2025. március 12., 12 March 2025). A havi dokumentumszám a `timeline`. |
-| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Előkészíti a jelentés szerinti keresést: a helyi motorod embedding-modellje vektort készít minden szövegrészből, és a könyvtár saját indexében tárolja. Inkrementális (csak az új vagy módosult részek), folytatható (`--limit`), és semmi nem hagyja el a gépedet. Ezután a `search --mode semantic` vagy `--mode hybrid` (szavak és jelentés együtt) olyan szövegeket is megtalál, amelyek más szavakat használnak, mint a kérdésed. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--reset] [--mock] [--json]` | Előkészíti a jelentés szerinti keresést: a helyi motorod embedding-modellje vektort készít minden szövegrészből, és a könyvtár saját indexében tárolja. Inkrementális (csak az új vagy módosult részek), folytatható (`--limit`), és semmi nem hagyja el a gépedet. Ezután a `search --mode semantic` vagy `--mode hybrid` (szavak és jelentés együtt) olyan szövegeket is megtalál, amelyek más szavakat használnak, mint a kérdésed. |
 | `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Megméri, mennyire találja meg a keresés azt, amit vársz. A FILE soronként egy kérdést tartalmaz a várt fájlokkal (`kérdés<TAB>fájl1,fájl2`), vagy JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Módonként kiírja a hit@1, hit@5, hit@10 és MRR értékeket, és a nem talált kérdéseket. |
 | `topics [--json]` | Téma szerint csoportosítja a dokumentumokat (legjellemzőbb szavaik alapján). |
 | `dossier TERM [--json]` | Mindaz, amit a könyvtár egy névről vagy fogalomról mond: szövegrészek dokumentumonként, a bennük talált dátumokkal és összegekkel. |

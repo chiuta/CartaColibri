@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizza e collega** — `digest` rilancia una ricerca salvata e segnala solo le novità (ripete, accoda a un file, riassume o salva un file e-mail); `mcp` permette ad altre app di IA di cercare, leggere, interrogare, verificare e chiedere dossier nella tua biblioteca, in sola lettura.
 - **Copie e date** — “Duplicati” (documenti copie o quasi-copie, con quanto si somigliano) e “Cronologia” (tutte le frasi con data in ordine di tempo).
 
-## Novità della 0.2.0-alpha.6
+## Novità della 0.2.0-alpha.7
 
 - **Filtri direttamente nella casella di ricerca** — Scrivi `ext:pdf`, `path:contratti`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` o `re:FATT-\d+` (espressione regolare) accanto alle tue parole e i risultati si restringono. Funzionano nella pagina web, da riga di comando e tramite API.
 - **Ricerca intelligente** — Spunta «Ricerca intelligente» e la tua IA locale aggiunge qualche sinonimo e parola affine (come semplice OR: le corrispondenze esatte restano in testa). Le parole aggiunte compaiono sotto la casella. Senza motore attivo ottieni la normale ricerca.
@@ -94,22 +94,22 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Comando | Cosa fa |
 |---|---|
-| `start [--folder F] [--port N] [--no-open]` | Avvio guidato: scegli una cartella, viene indicizzata e si apre la pagina web. |
+| `start [--folder F] [--port N] [--no-open] [--no-serve]` | Avvio guidato: scegli una cartella, viene indicizzata e si apre la pagina web. |
 | `doctor` | Controlla motore, OCR, strumenti PDF, disco e porta e indica la correzione esatta per ogni problema. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Registra o dimentica una cartella (i file non vengono mai toccati), elenca le cartelle, reindicizza ed elenca i file illeggibili. |
 | `watch [--interval S]` | Mantiene l’indice aggiornato: riscansiona le cartelle ogni S secondi. |
 | `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Cerca nella biblioteca. Parole, «frasi», prefisso*, AND/OR/NOT e filtri nella query: `ext:pdf` `path:contratti` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FATT-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Elenca i documenti; i gruppi sono insiemi di documenti con nome in cui cercare o su cui fare domande. |
-| `summarize`, `extract`, `synthesize` (same options as `task`) | Scorciatoie per le tre attività principali: riassumere ogni documento, estrarre campi o combinarne più di uno in una risposta. |
+| `summarize`, `extract`, `synthesize` (same options as `task`, with `--fields`) | Scorciatoie per le tre attività principali: riassumere ogni documento, estrarre campi o combinarne più di uno in una risposta. |
 | `grab URL`, `bookmarklet` | Salva una pagina web nella biblioteca (HTML, MHTML o PDF); il bookmarklet lo fa da qualsiasi browser. |
 | `serve [--port N] [--url ENGINE]` | Avvia la pagina web su questo computer (http://127.0.0.1:PORT). |
 | `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Stampa uno script di completamento con Tab per la tua shell; reimporta tag, stelle, note e gruppi esportati in JSON. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | i 14 compiti (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` segnala le frasi il cui `[S#]` non è sostenuto dal testo |
-| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | domande in sequenza sulla biblioteca; risposte citate, oppure «non trovato nei tuoi documenti» |
-| `tag add/rm/list/show`, `star`, `note` | la tua organizzazione personale, conservata dopo la reindicizzazione |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx] [--fallback]` | domande in sequenza sulla biblioteca; risposte citate, oppure «non trovato nei tuoi documenti» |
+| `tag add/rm/list/show`, `star [--off]`, `note` | la tua organizzazione personale, conservata dopo la reindicizzazione |
 | `saved add/list/run/rm` | ricerche salvate / raccolte intelligenti |
 | `recent`, `related PATH` | ciò che hai aperto di recente; documenti simili |
-| `export --format md\|csv\|json\|zip` | condividi un gruppo, un’etichetta o una ricerca salvata, con citazioni |
+| `export [--saved NAME] --format md\|csv\|json\|zip` | condividi un gruppo, un’etichetta o una ricerca salvata, con citazioni |
 | `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | backup in un solo file con checksum; controllalo; ripristinalo |
 | `verify [--repair]` | controlla l’indice; con `--repair` lo ricostruisce dai tuoi file |
 | `stats`, `timeline` | numeri sulla tua biblioteca; documenti per mese |
@@ -122,7 +122,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Coppie di frasi di documenti diversi uguali tranne un numero o una data (500 contro 550): candidati da verificare, non verdetti. |
 | `dupes [--group G] [--min 0.6] [--json]` | Trova i documenti che sono copie o quasi-copie l’uno dell’altro (esportazioni, bozze, lo stesso file salvato due volte), con quanto si somigliano e quanta parte del più piccolo è contenuta nell’altro. |
 | `chronology [--group G] [--limit N] [--json]` | Tutte le frasi con data della biblioteca in ordine di tempo, con il documento di provenienza (date come 2025-03-12, 12.03.2025 o 12/03/2025, prima il giorno; o con il nome del mese in una delle 8 lingue: 12 marzo 2025, 12 March 2025). Il conteggio mensile dei documenti è `timeline`. |
-| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Prepara la ricerca per significato: il modello di embedding del tuo motore locale trasforma ogni passaggio in un vettore conservato nell’indice della biblioteca. Incrementale (solo passaggi nuovi o cambiati), riprendibile (`--limit`), e nulla lascia il tuo computer. Poi `search --mode semantic` o `--mode hybrid` (parole e significato insieme) trova testi che usano parole diverse dalla tua domanda. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--reset] [--mock] [--json]` | Prepara la ricerca per significato: il modello di embedding del tuo motore locale trasforma ogni passaggio in un vettore conservato nell’indice della biblioteca. Incrementale (solo passaggi nuovi o cambiati), riprendibile (`--limit`), e nulla lascia il tuo computer. Poi `search --mode semantic` o `--mode hybrid` (parole e significato insieme) trova testi che usano parole diverse dalla tua domanda. |
 | `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Misura quanto bene la ricerca trova ciò che ti aspetti. FILE ha una domanda per riga con i file attesi (`domanda<TAB>file1,file2`) oppure è JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Stampa hit@1, hit@5, hit@10 e MRR per ogni modalità e le domande non trovate. |
 | `topics [--json]` | Raggruppa i documenti per argomento (le loro parole più caratteristiche). |
 | `dossier TERM [--json]` | Tutto ciò che la biblioteca dice di un nome o termine: passaggi per documento, più date e importi trovati. |

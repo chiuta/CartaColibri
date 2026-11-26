@@ -87,7 +87,7 @@ CLI = [
  "pt": "perguntas seguidas sobre a biblioteca; respostas citadas, ou «não encontrado nos teus documentos»",
  "de": "Folgefragen zu deiner Bibliothek; Antworten mit Quellen oder „in deinen Dokumenten nicht gefunden“",
  "hu": "egymásra épülő kérdések a könyvtáradról; a válaszok hivatkoznak, vagy „nem található a dokumentumaidban”"}),
-("`tag add/rm/list/show`, `star`, `note`", {
+("`tag add/rm/list/show`, `star [--off]`, `note`", {
  "en": "your own organization, kept across re-indexing",
  "ro": "organizarea ta, păstrată și după reindexare",
  "fr": "ton organisation personnelle, conservée après réindexation",
@@ -114,7 +114,7 @@ CLI = [
  "pt": "o que abriste recentemente; documentos semelhantes",
  "de": "was du zuletzt geöffnet hast; ähnliche Dokumente",
  "hu": "amit nemrég megnyitottál; hasonló dokumentumok"}),
-("`export --format md|csv|json|zip`", {
+("`export [--saved NAME] --format md|csv|json|zip`", {
  "en": "share a group, tag or saved search with citations",
  "ro": "partajează un grup, o etichetă sau o căutare salvată, cu citări",
  "fr": "partage un groupe, une étiquette ou une recherche enregistrée, avec citations",

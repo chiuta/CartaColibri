@@ -51,21 +51,27 @@ fn call(lib: &Library, be: &Backend, name: &str, a: &Value) -> Value {
                 Ok(m) => m,
                 Err(e) => return err_result(&e),
             };
+            let mut note: Option<String> = None;
             let res = if mode == crate::semantic::Mode::Bm25 {
                 lib.search_friendly(q, &Filter::default())
             } else {
                 let m = crate::semantic::embed_model_name(be, None);
                 lib.search_mode(be, &m, q, &Filter::default(), mode)
-                    .map(|s| crate::library::FriendlyResult {
-                        hits: s.hits,
-                        ..Default::default()
+                    .map(|s| {
+                        note = s.note;
+                        crate::library::FriendlyResult {
+                            hits: s.hits,
+                            ..Default::default()
+                        }
                     })
             };
+            let pre = note.map(|n| format!("note: {n}\n")).unwrap_or_default();
             match res {
                 Err(e) => err_result(&e),
-                Ok(fr) if fr.hits.is_empty() => text_result("no matches".into()),
+                Ok(fr) if fr.hits.is_empty() => text_result(format!("{pre}no matches")),
                 Ok(fr) => text_result(
-                    fr.hits
+                    pre + &fr
+                        .hits
                         .iter()
                         .take(limit)
                         .map(|h| {

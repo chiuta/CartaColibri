@@ -179,24 +179,20 @@ fn dot_blob(q: &[f32], b: &[u8]) -> Option<f32> {
 }
 
 impl Library {
-    fn vectors_table(&self) -> Res<()> {
+    /// Forgets the vectors of one model (after the engine changed the size of its answers, say).
+    pub fn drop_vectors(&self, model: &str) -> Res<usize> {
         self.db
-            .execute_batch(
-                "CREATE TABLE IF NOT EXISTS vectors(rid INTEGER PRIMARY KEY, doc_id INTEGER, model TEXT, v BLOB);",
-            )
+            .execute("DELETE FROM vecs WHERE model=?1", [model])
             .map_err(|e| e.to_string())
     }
 
     /// `(passages with a vector, passages in total)` for `model`.
     pub fn vector_counts(&self, model: &str) -> (usize, usize) {
-        let _ = self.vectors_table();
         let have: i64 = self
             .db
-            .query_row(
-                "SELECT count(*) FROM vectors WHERE model=?1",
-                [model],
-                |r| r.get(0),
-            )
+            .query_row("SELECT count(*) FROM vecs WHERE model=?1", [model], |r| {
+                r.get(0)
+            })
             .unwrap_or(0);
         let all: i64 = self
             .db
@@ -216,14 +212,13 @@ impl Library {
         limit: usize,
         progress: &mut dyn FnMut(usize, usize),
     ) -> Res<EmbedStats> {
-        self.vectors_table()?;
         let batch = batch.clamp(1, 256);
         let q = |s: &str, p: &[&dyn rusqlite::ToSql]| {
             self.db.execute(s, p).map(|_| ()).map_err(|e| e.to_string())
         };
-        q("DELETE FROM vectors WHERE model<>?1", &[&model])?;
+        // vectors of other models are kept (a trial with --mock must not cost hours of real work)
         q(
-            "DELETE FROM vectors WHERE rid NOT IN (SELECT rowid FROM chunks)",
+            "DELETE FROM vecs WHERE rid NOT IN (SELECT rowid FROM chunks)",
             &[],
         )?;
         let (already, total) = self.vector_counts(model);
@@ -234,11 +229,11 @@ impl Library {
                 let mut st = self
                     .db
                     .prepare_cached(
-                        "SELECT c.rowid, c.doc_id, c.text FROM chunks c LEFT JOIN vectors v ON v.rid=c.rowid \
+                        "SELECT c.rowid, c.doc_id, c.text FROM chunks c LEFT JOIN vecs v ON v.rid=c.rowid AND v.model=?3 \
                          WHERE c.rowid>?1 AND v.rid IS NULL ORDER BY c.rowid LIMIT ?2",
                     )
                     .map_err(|e| e.to_string())?;
-                st.query_map(rusqlite::params![last, batch as i64], |r| {
+                st.query_map(rusqlite::params![last, batch as i64, model], |r| {
                     Ok((r.get(0)?, r.get(1)?, r.get(2)?))
                 })
                 .map_err(|e| e.to_string())?
@@ -257,7 +252,7 @@ impl Library {
             let tx = self.db.unchecked_transaction().map_err(|e| e.to_string())?;
             for ((rid, doc, _), v) in rows.iter().zip(&vs) {
                 tx.execute(
-                    "INSERT OR REPLACE INTO vectors(rid,doc_id,model,v) VALUES(?1,?2,?3,?4)",
+                    "INSERT OR REPLACE INTO vecs(rid,doc_id,model,v) VALUES(?1,?2,?3,?4)",
                     rusqlite::params![rid, doc, model, to_blob(v)],
                 )
                 .map_err(|e| e.to_string())?;
@@ -278,10 +273,11 @@ impl Library {
 
     /// The passages closest in meaning to `qv`, as hits (filters applied, one hit per document).
     pub fn semantic_hits(&self, qv: &[f32], model: &str, f: &Filter) -> Res<Vec<Hit>> {
-        self.vectors_table()?;
+        // document filters are applied while comparing, so they see every passage
+        let allowed = self.allowed_docs(f)?;
         let mut st = self
             .db
-            .prepare("SELECT rid, doc_id, v FROM vectors WHERE model=?1")
+            .prepare("SELECT rid, doc_id, v FROM vecs WHERE model=?1")
             .map_err(|e| e.to_string())?;
         let rows = st
             .query_map([model], |r| {
@@ -294,10 +290,16 @@ impl Library {
             .map_err(|e| e.to_string())?;
         // min-heap of the best TOP_CHUNKS passages: (similarity in millionths, rid)
         let mut heap: BinaryHeap<std::cmp::Reverse<(i64, i64)>> = BinaryHeap::new();
-        for (rid, _doc, blob) in rows.flatten() {
+        let (mut wrong_size, mut compared) = (0usize, 0usize);
+        for (rid, doc, blob) in rows.flatten() {
+            if allowed.as_ref().is_some_and(|a| !a.contains(&doc)) {
+                continue;
+            }
             let Some(sim) = dot_blob(qv, &blob) else {
+                wrong_size += 1;
                 continue;
             };
+            compared += 1;
             // a passage with nothing in common with the question is not a match
             if !sim.is_finite() || sim <= 0.0 {
                 continue;
@@ -309,6 +311,12 @@ impl Library {
                 heap.pop();
                 heap.push(std::cmp::Reverse((key, rid)));
             }
+        }
+        if wrong_size > 0 && compared == 0 {
+            return Err(format!(
+                "the stored vectors have another size than the engine's answers now ({} values): run `cartacolibri embed --reset` to make them again",
+                qv.len()
+            ));
         }
         let mut best: Vec<(i64, i64)> = heap.into_iter().map(|r| r.0).collect();
         best.sort_by(|a, b| b.cmp(a));

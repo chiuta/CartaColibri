@@ -254,9 +254,23 @@ fn init_db(home: &Path) -> Res<Connection> {
              tokenize='unicode61 remove_diacritics 2');
          CREATE TABLE IF NOT EXISTS problems(path TEXT PRIMARY KEY, reason TEXT, at REAL);
          CREATE INDEX IF NOT EXISTS docs_sha1 ON docs(sha1);
-         CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks,'row');",
+         CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vocab USING fts5vocab(chunks,'row');
+         CREATE TABLE IF NOT EXISTS vecs(rid INTEGER, model TEXT, doc_id INTEGER, v BLOB, PRIMARY KEY(rid, model)) WITHOUT ROWID;",
     )
     .map_err(e)?;
+    // alpha.5/6 kept one vector per passage whatever the model: carry them over
+    let old: i64 = db
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='vectors'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if old > 0 {
+        let _ = db.execute_batch(
+            "INSERT OR IGNORE INTO vecs(rid,model,doc_id,v) SELECT rid,model,doc_id,v FROM vectors; DROP TABLE vectors;",
+        );
+    }
     Ok(db)
 }
 
@@ -535,7 +549,7 @@ impl Library {
             .execute("DELETE FROM chunks WHERE doc_id=?", [id])
             .map_err(e)?;
         // vectors are keyed by passage rowid, which SQLite may hand out again: never keep them
-        let _ = self.db.execute("DELETE FROM vectors WHERE doc_id=?", [id]);
+        let _ = self.db.execute("DELETE FROM vecs WHERE doc_id=?", [id]);
         self.db
             .execute("DELETE FROM docs WHERE id=?", [id])
             .map_err(e)?;
@@ -827,7 +841,7 @@ impl Library {
                     if let Some((id, ..)) = &row {
                         tx.execute("DELETE FROM chunks WHERE doc_id=?", [id])
                             .map_err(e)?;
-                        let _ = tx.execute("DELETE FROM vectors WHERE doc_id=?", [id]);
+                        let _ = tx.execute("DELETE FROM vecs WHERE doc_id=?", [id]);
                         tx.execute("DELETE FROM docs WHERE id=?", [id]).map_err(e)?;
                         st.updated += 1;
                     } else {
@@ -900,7 +914,7 @@ impl Library {
                 if !seen.contains(&path) && (walked.contains(&path) || !Path::new(&path).exists()) {
                     tx.execute("DELETE FROM chunks WHERE doc_id=?", [id])
                         .map_err(e)?;
-                    let _ = tx.execute("DELETE FROM vectors WHERE doc_id=?", [id]);
+                    let _ = tx.execute("DELETE FROM vecs WHERE doc_id=?", [id]);
                     tx.execute("DELETE FROM docs WHERE id=?", [id]).map_err(e)?;
                     st.removed += 1;
                     pr.changed += 1;
@@ -1085,25 +1099,132 @@ impl Library {
 
     /// `limit` is 2000 passages normally, 50000 when a filter will thin the list afterwards (so a
     /// filter never only sees the best 2000 passages of the whole library).
-    fn fetch(&self, m: &str, limit: usize) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
-        let mut q = self.db.prepare_cached(
-            "SELECT doc_id, loc, text, bm25(chunks) FROM chunks WHERE chunks MATCH ?1 ORDER BY bm25(chunks) LIMIT ?2",
-        )?;
+    fn fetch(
+        &self,
+        m: &str,
+        limit: usize,
+        restricted: bool,
+    ) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
+        let sql = if restricted {
+            "SELECT doc_id, loc, text, bm25(chunks) FROM chunks WHERE chunks MATCH ?1 AND doc_id IN (SELECT id FROM temp.allowed_docs) ORDER BY bm25(chunks) LIMIT ?2"
+        } else {
+            "SELECT doc_id, loc, text, bm25(chunks) FROM chunks WHERE chunks MATCH ?1 ORDER BY bm25(chunks) LIMIT ?2"
+        };
+        let mut q = self.db.prepare_cached(sql)?;
         let rows = q.query_map(rusqlite::params![m, limit as i64], |r| {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
         })?;
         rows.collect()
     }
 
-    /// Passages in index order, for searches made only of filters (`ext:pdf`, `re:INV-\d+`, ...).
-    fn scan(&self, limit: usize) -> rusqlite::Result<Vec<(i64, String, String, f64)>> {
+    /// The documents that the metadata filters (extension, size, dates, path, group) allow, or
+    /// `None` when no such filter is set. The regular expression looks at text, so it is not here.
+    pub(crate) fn allowed_docs(&self, f: &Filter) -> Res<Option<HashSet<i64>>> {
+        if f.ext.is_empty()
+            && f.min_size.is_none()
+            && f.max_size.is_none()
+            && f.path_like.is_none()
+            && f.group.is_none()
+            && f.after.is_none()
+            && f.before.is_none()
+        {
+            return Ok(None);
+        }
+        let group: Option<HashSet<i64>> = match &f.group {
+            Some(g) => Some(self.resolve_group(g)?.into_iter().map(|d| d.id).collect()),
+            None => None,
+        };
+        let exts: HashSet<String> = f
+            .ext
+            .iter()
+            .map(|x| {
+                if x.starts_with('.') {
+                    x.to_lowercase()
+                } else {
+                    format!(".{}", x.to_lowercase())
+                }
+            })
+            .collect();
+        let path = f.path_like.as_ref().map(|p| p.to_lowercase());
+        Ok(Some(
+            self.all_docs()
+                .into_iter()
+                .filter(|d| {
+                    group.as_ref().is_none_or(|g| g.contains(&d.id))
+                        && (exts.is_empty() || exts.contains(&d.ext))
+                        && f.min_size.is_none_or(|m| d.size >= m)
+                        && f.max_size.is_none_or(|m| d.size <= m)
+                        && f.after.is_none_or(|t| d.mtime >= t)
+                        && f.before.is_none_or(|t| d.mtime < t)
+                        && path
+                            .as_ref()
+                            .is_none_or(|p| d.path.to_lowercase().contains(p))
+                })
+                .map(|d| d.id)
+                .collect(),
+        ))
+    }
+
+    /// Makes `temp.allowed_docs` hold exactly `ids`, for the next restricted `fetch`.
+    fn set_allowed(&self, ids: &HashSet<i64>) -> Res<()> {
+        self.db
+            .execute_batch(
+                "DROP TABLE IF EXISTS temp.allowed_docs; CREATE TEMP TABLE allowed_docs(id INTEGER PRIMARY KEY);",
+            )
+            .map_err(e)?;
+        let tx = self.db.unchecked_transaction().map_err(e)?;
+        {
+            let mut ins = tx
+                .prepare_cached("INSERT OR IGNORE INTO temp.allowed_docs(id) VALUES(?1)")
+                .map_err(e)?;
+            for id in ids {
+                ins.execute([id]).map_err(e)?;
+            }
+        }
+        tx.commit().map_err(e)
+    }
+
+    fn regex_of(f: &Filter) -> Res<Option<regex::Regex>> {
+        match f.regex.as_deref() {
+            Some(p) => regex::RegexBuilder::new(p)
+                .size_limit(1 << 20)
+                .case_insensitive(true)
+                .build()
+                .map(Some)
+                .map_err(|x| format!("bad regular expression: {x}")),
+            None => Ok(None),
+        }
+    }
+
+    /// Searches made only of filters (`ext:pdf`, `re:INV-\d+`, ...): passages in index order, as
+    /// many documents as asked for, found by reading the index once (stopping early).
+    fn scan_filtered(&self, f: &Filter) -> Res<Vec<(i64, String, String, f64)>> {
+        let allowed = self.allowed_docs(f)?;
+        let re = Self::regex_of(f)?;
+        let want = f.limit.unwrap_or(1000).max(1);
         let mut q = self
             .db
-            .prepare_cached("SELECT doc_id, loc, text, 0.0 FROM chunks LIMIT ?1")?;
-        let rows = q.query_map([limit as i64], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
-        })?;
-        rows.collect()
+            .prepare_cached("SELECT doc_id, loc, text FROM chunks")
+            .map_err(e)?;
+        let mut rows = q.query([]).map_err(e)?;
+        let mut seen: HashSet<i64> = HashSet::new();
+        let mut out = vec![];
+        while let Some(r) = rows.next().map_err(e)? {
+            let id: i64 = r.get(0).map_err(e)?;
+            if seen.contains(&id) || allowed.as_ref().is_some_and(|a| !a.contains(&id)) {
+                continue;
+            }
+            let text: String = r.get(2).map_err(e)?;
+            if re.as_ref().is_some_and(|x| !x.is_match(&text)) {
+                continue;
+            }
+            seen.insert(id);
+            out.push((id, r.get(1).map_err(e)?, text, 0.0));
+            if seen.len() >= want {
+                break;
+            }
+        }
+        Ok(out)
     }
 
     /// Returns the hits and the FTS match string that actually produced them.
@@ -1120,11 +1241,20 @@ impl Library {
             || f.before.is_some()
             || f.regex.is_some();
         if query.trim().is_empty() && filtered {
-            // only filters, no words: list what they select (a scan, capped)
-            let rows = self.scan(300_000).map_err(e)?;
+            // only filters, no words: list what they select
+            let rows = self.scan_filtered(f)?;
             return Ok((self.rows_to_hits(rows, &[], f)?, String::new()));
         }
-        let limit = if filtered { 50_000 } else { 2_000 };
+        // document filters are applied inside the index query, so they see the whole library;
+        // only the regular expression (it reads text) works on a larger window of passages
+        let restricted = match self.allowed_docs(f)? {
+            Some(ids) => {
+                self.set_allowed(&ids)?;
+                true
+            }
+            None => false,
+        };
+        let limit = if f.regex.is_some() { 50_000 } else { 2_000 };
         let word = Regex::new(r"\w+").unwrap();
         let plain: Vec<&str> = word
             .find_iter(query)
@@ -1133,7 +1263,7 @@ impl Library {
             .take(MAX_QUERY_TERMS)
             .collect();
         let mut used = Self::fts_query(query)?;
-        let mut rows = match self.fetch(&used, limit) {
+        let mut rows = match self.fetch(&used, limit, restricted) {
             Ok(r) => r,
             Err(_) => {
                 // e.g. a dangling AND/NOT: fall back to plain quoted words, never a crash
@@ -1145,7 +1275,7 @@ impl Library {
                     .map(|w| format!("\"{w}\""))
                     .collect::<Vec<_>>()
                     .join(" ");
-                self.fetch(&used, limit).map_err(e)?
+                self.fetch(&used, limit, restricted).map_err(e)?
             }
         };
         if rows.is_empty() && fallback && !plain.is_empty() {
@@ -1171,7 +1301,7 @@ impl Library {
                 if tried.contains(&m) {
                     continue;
                 }
-                rows = self.fetch(&m, limit).unwrap_or_default();
+                rows = self.fetch(&m, limit, restricted).unwrap_or_default();
                 tried.push(m.clone());
                 if !rows.is_empty() {
                     used = m;
@@ -1204,25 +1334,20 @@ impl Library {
                 }
             })
             .collect();
+        let re = Self::regex_of(f)?;
         let mut hits: HashMap<i64, u32> = HashMap::new();
         let mut best: Vec<(i64, String, String, f64)> = vec![];
         for r in rows {
+            // the regular expression must match the passage that is shown, not just the first one
+            if re.as_ref().is_some_and(|x| !x.is_match(&r.2)) {
+                continue;
+            }
             let c = hits.entry(r.0).or_insert(0);
             *c += 1;
             if *c == 1 {
                 best.push(r);
             }
         }
-        let re = match f.regex.as_deref() {
-            Some(p) => Some(
-                regex::RegexBuilder::new(p)
-                    .size_limit(1 << 20)
-                    .case_insensitive(true)
-                    .build()
-                    .map_err(|x| format!("bad regular expression: {x}"))?,
-            ),
-            None => None,
-        };
         let docs: HashMap<i64, Doc> = self.all_docs().into_iter().map(|d| (d.id, d)).collect();
         let mut out: Vec<Hit> = vec![];
         for (did, loc, text, score) in best {
@@ -1237,9 +1362,6 @@ impl Library {
                 continue;
             }
             if f.after.is_some_and(|t| d.mtime < t) || f.before.is_some_and(|t| d.mtime >= t) {
-                continue;
-            }
-            if re.as_ref().is_some_and(|r| !r.is_match(&text)) {
                 continue;
             }
             if f.path_like

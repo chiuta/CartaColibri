@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automate and connect** — `digest` re-runs a saved search and reports only what is new (repeat, append to a file, summarize, or save an e-mail file); `mcp` lets other AI apps search, read, ask, fact-check and look up dossiers in your library, read-only.
 - **Copies and dates** — “Duplicates” (documents that are copies or near-copies, with how alike they are) and “Chronology” (every dated sentence in time order).
 
-## New in 0.2.0-alpha.6
+## New in 0.2.0-alpha.7
 
 - **Filters right in the search box** — Type `ext:pdf`, `path:contracts`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` or `re:INV-\d+` (a regular expression) next to your words and the results narrow down. They work in the web page, on the command line and through the API.
 - **Smart search** — Tick “Smart search” and your local AI adds a few synonyms and related words (as a plain OR, so exact matches still rank first). The extra words are shown under the box. With no engine running, you simply get the normal search.
@@ -94,22 +94,22 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Command | What it does |
 |---|---|
-| `start [--folder F] [--port N] [--no-open]` | Guided start: pick a folder, index it, open the web page. |
+| `start [--folder F] [--port N] [--no-open] [--no-serve]` | Guided start: pick a folder, index it, open the web page. |
 | `doctor` | Checks the engine, OCR, PDF tools, disk and port, and prints the exact fix for each problem. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Register or forget a folder (files are never touched), list folders, re-index, and list files that could not be read. |
 | `watch [--interval S]` | Keeps the index current: re-scans the folders every S seconds. |
 | `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Searches the library. Words, "phrases", prefix*, AND/OR/NOT, and filters right in the query: `ext:pdf` `path:contracts` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:INV-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Lists documents; groups are named sets of documents you can search or ask about. |
-| `summarize`, `extract`, `synthesize` (same options as `task`) | Shortcuts for the three main tasks: summarize each document, extract fields, or combine several into one answer. |
+| `summarize`, `extract`, `synthesize` (same options as `task`, with `--fields`) | Shortcuts for the three main tasks: summarize each document, extract fields, or combine several into one answer. |
 | `grab URL`, `bookmarklet` | Saves a web page into the library (HTML, MHTML or PDF); the bookmarklet does it from any browser. |
 | `serve [--port N] [--url ENGINE]` | Starts the web page on this computer (http://127.0.0.1:PORT). |
 | `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Prints a tab-completion script for your shell; re-imports tags, stars, notes and groups exported as JSON. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | the 14 tasks (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` marks sentences whose `[S#]` the text does not back |
-| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | multi-turn questions over your library; answers are cited, or say “not found in your documents” |
-| `tag add/rm/list/show`, `star`, `note` | your own organization, kept across re-indexing |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx] [--fallback]` | multi-turn questions over your library; answers are cited, or say “not found in your documents” |
+| `tag add/rm/list/show`, `star [--off]`, `note` | your own organization, kept across re-indexing |
 | `saved add/list/run/rm` | saved searches / smart collections |
 | `recent`, `related PATH` | what you opened lately; similar documents |
-| `export --format md\|csv\|json\|zip` | share a group, tag or saved search with citations |
+| `export [--saved NAME] --format md\|csv\|json\|zip` | share a group, tag or saved search with citations |
 | `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | one-file backup with checksums; check it; restore it |
 | `verify [--repair]` | check the index; with `--repair`, rebuild it from your files |
 | `stats`, `timeline` | numbers about your library; documents by month |
@@ -122,7 +122,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Pairs of sentences in different documents that agree except for a number or a date (500 vs 550): candidates to check, not verdicts. |
 | `dupes [--group G] [--min 0.6] [--json]` | Finds documents that are copies or near-copies of each other (exports, drafts, the same file saved twice), with how alike they are and how much of the smaller one is inside the other. |
 | `chronology [--group G] [--limit N] [--json]` | Every dated sentence of the library in time order, with the document it comes from (dates as 2025-03-12, 12.03.2025 or 12/03/2025, day first; or with a month name in any of the 8 languages: 12 March 2025, 12 martie 2025). The monthly document count is `timeline`. |
-| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Prepares meaning search: your local engine's embedding model turns each passage into a vector stored in the library's own index. Incremental (only new or changed passages), restartable (`--limit`), and nothing leaves your machine. Then `search --mode semantic` or `--mode hybrid` (words and meaning fused) finds texts that use other words than your question. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--reset] [--mock] [--json]` | Prepares meaning search: your local engine's embedding model turns each passage into a vector stored in the library's own index. Incremental (only new or changed passages), restartable (`--limit`), and nothing leaves your machine. Then `search --mode semantic` or `--mode hybrid` (words and meaning fused) finds texts that use other words than your question. |
 | `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Measures how well search finds what you expect. FILE has one question per line with the expected files (`question<TAB>file1,file2`) or is JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Prints hit@1, hit@5, hit@10 and MRR for each mode, and the questions that were not found. |
 | `topics [--json]` | Groups the documents by what they are about (their most characteristic words). |
 | `dossier TERM [--json]` | Everything the library says about a name or term: passages per document, plus the dates and amounts found in them. |

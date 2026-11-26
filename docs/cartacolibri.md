@@ -22,7 +22,7 @@ passage and stores it in the same SQLite index; it is incremental and restartabl
 `search QUERY --mode semantic|hybrid` compares the question's vector with the passages (cosine); `hybrid` fuses the BM25 and the
 vector ranking with reciprocal rank fusion (k=60), so an exact word match still wins. The same `mode` is a parameter of
 `GET /carta/search` and of the MCP `search` tool. Without vectors or without an embedding model, `hybrid` falls back to words with a note.
-`--embed-model` / `COLI_EMBED_MODEL` choose the model; changing it replaces the vectors. `--mock` is a lexical stand-in for trying the pipeline offline.
+`--embed-model` / `COLI_EMBED_MODEL` choose the model; every model keeps its own vectors (a trial with `--mock` never erases real ones). If an engine starts answering with vectors of another size, search says so and `embed --reset` makes them again. Document filters (`ext:`, `path:`, `size:`, dates, groups) are applied while comparing, so they see every passage. `--mock` is a lexical stand-in for trying the pipeline offline.
 Brute-force cosine over all passages: 31,000 passages take about 0.2 s per question with the offline mock (256 dimensions); real models have 3-6x more dimensions. Fine for hundreds of thousands of passages, not for tens of millions. A question times out after 30 s, so a hung engine cannot freeze a search.
 
 `cartacolibri eval FILE` measures retrieval on your own questions (`question<TAB>file1,file2` or JSON) per mode: hit@1/5/10 and MRR, plus the missed questions.

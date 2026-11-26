@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizezi și conectezi** — `digest` reia o căutare salvată și raportează doar ce e nou (repetă, adaugă într-un fișier, rezumă sau salvează un fișier email); `mcp` lasă alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta, doar în citire.
 - **Copii și date** — “Duplicate” (documente copii sau aproape-copii, cu cât de asemănătoare sunt) și “Cronologie” (toate propozițiile cu dată, în ordine).
 
-## Noutăți în 0.2.0-alpha.6
+## Noutăți în 0.2.0-alpha.7
 
 - **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` sau `re:FACT-\d+` (expresie regulată) lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
 - **Căutare inteligentă** — Bifează „Căutare inteligentă” și AI-ul tău local adaugă câteva sinonime și cuvinte înrudite (ca un simplu OR, deci potrivirile exacte rămân primele). Cuvintele în plus apar sub căsuță. Fără motor pornit primești pur și simplu căutarea normală.
@@ -94,22 +94,22 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 
 | Comandă | Ce face |
 |---|---|
-| `start [--folder F] [--port N] [--no-open]` | Pornire ghidată: alegi un folder, îl indexează și deschide pagina web. |
+| `start [--folder F] [--port N] [--no-open] [--no-serve]` | Pornire ghidată: alegi un folder, îl indexează și deschide pagina web. |
 | `doctor` | Verifică motorul, OCR-ul, uneltele PDF, discul și portul și îți spune exact cum repari fiecare problemă. |
 | `add FOLDER`, `remove FOLDER`, `folders`, `index [FOLDER]`, `problems` | Adaugi sau uiți un folder (fișierele nu sunt atinse niciodată), listezi folderele, reindexezi și vezi fișierele care n-au putut fi citite. |
 | `watch [--interval S]` | Ține indexul la zi: rescanează folderele la fiecare S secunde. |
 | `search QUERY [--ext pdf,txt] [--min-kb N] [--max-kb N] [--path P] [--group G] [--mode bm25\|semantic\|hybrid] [--json]` | Caută în bibliotecă. Cuvinte, „fraze”, prefix*, AND/OR/NOT și filtre direct în interogare: `ext:pdf` `path:contracte` `size:>1mb` `after:2025-01` `before:2025-06-30` `re:FACT-\d+`. |
 | `list [--group G] [--json]`, `group set/list/show/rm/from-search` | Listează documentele; grupurile sunt seturi de documente cu nume, în care poți căuta sau despre care poți întreba. |
-| `summarize`, `extract`, `synthesize` (same options as `task`) | Scurtături pentru cele trei sarcini principale: rezumi fiecare document, extragi câmpuri sau combini mai multe într-un singur răspuns. |
+| `summarize`, `extract`, `synthesize` (same options as `task`, with `--fields`) | Scurtături pentru cele trei sarcini principale: rezumi fiecare document, extragi câmpuri sau combini mai multe într-un singur răspuns. |
 | `grab URL`, `bookmarklet` | Salvează o pagină web în bibliotecă (HTML, MHTML sau PDF); bookmarklet-ul face asta din orice browser. |
 | `serve [--port N] [--url ENGINE]` | Pornește pagina web pe acest calculator (http://127.0.0.1:PORT). |
 | `completions bash\|zsh\|fish\|powershell`, `import-json FILE` | Tipărește un script de completare cu Tab pentru shell-ul tău; reimportă etichete, stele, notițe și grupuri exportate ca JSON. |
 | `task NAME [request] --group G \| --tag T \| --query Q [--mock] [--verify] [--lang xx] [--save md\|html\|txt]` | cele 14 taskuri (compare, timeline, glossary, outline, actions, faq, flashcards, quiz, translate, explain, contradictions, summarize, extract, synthesize); `--verify` marchează frazele al căror `[S#]` nu e susținut de text |
-| `chat [--group G] [--since DATE] [--until DATE] [--lang xx]` | întrebări succesive peste bibliotecă; răspunsurile sunt citate sau spun „nu am găsit în documentele tale” |
-| `tag add/rm/list/show`, `star`, `note` | organizarea ta, păstrată și după reindexare |
+| `chat [--group G] [--since DATE] [--until DATE] [--lang xx] [--fallback]` | întrebări succesive peste bibliotecă; răspunsurile sunt citate sau spun „nu am găsit în documentele tale” |
+| `tag add/rm/list/show`, `star [--off]`, `note` | organizarea ta, păstrată și după reindexare |
 | `saved add/list/run/rm` | căutări salvate / colecții inteligente |
 | `recent`, `related PATH` | ce ai deschis recent; documente similare |
-| `export --format md\|csv\|json\|zip` | partajează un grup, o etichetă sau o căutare salvată, cu citări |
+| `export [--saved NAME] --format md\|csv\|json\|zip` | partajează un grup, o etichetă sau o căutare salvată, cu citări |
 | `backup OUT [--index]`, `backup-check ZIP`, `restore ZIP` | copie de rezervă într-un singur fișier, cu sume de control; verific-o; restaureaz-o |
 | `verify [--repair]` | verifică indexul; cu `--repair`, îl reconstruiește din fișierele tale |
 | `stats`, `timeline` | cifre despre bibliotecă; documente pe luni |
@@ -122,7 +122,7 @@ cartacolibri-browser https://example.org           # web-grab (browser)
 | `conflicts [--group G] [--json]` | Perechi de propoziții din documente diferite care sunt la fel, mai puțin un număr sau o dată (500 față de 550): candidate de verificat, nu verdicte. |
 | `dupes [--group G] [--min 0.6] [--json]` | Găsește documente care sunt copii sau aproape-copii unele ale altora (exporturi, ciorne, același fișier salvat de două ori), cu cât de asemănătoare sunt și cât din cel mai mic se află în celălalt. |
 | `chronology [--group G] [--limit N] [--json]` | Toate propozițiile cu dată din bibliotecă, în ordine cronologică, cu documentul din care vin (date ca 2025-03-12, 12.03.2025 sau 12/03/2025, ziua întâi; sau cu numele lunii în oricare din cele 8 limbi: 12 March 2025, 12 martie 2025). Numărul lunar de documente este `timeline`. |
-| `embed [--embed-model M] [--batch 32] [--limit N] [--mock] [--json]` | Pregătește căutarea după sens: modelul de embeddings al motorului tău local transformă fiecare pasaj într-un vector păstrat în indexul bibliotecii. Incremental (doar pasajele noi sau schimbate), reluabil (`--limit`), iar nimic nu iese de pe calculator. Apoi `search --mode semantic` sau `--mode hybrid` (cuvinte și sens împreună) găsește texte care folosesc alte cuvinte decât întrebarea ta. |
+| `embed [--embed-model M] [--batch 32] [--limit N] [--reset] [--mock] [--json]` | Pregătește căutarea după sens: modelul de embeddings al motorului tău local transformă fiecare pasaj într-un vector păstrat în indexul bibliotecii. Incremental (doar pasajele noi sau schimbate), reluabil (`--limit`), iar nimic nu iese de pe calculator. Apoi `search --mode semantic` sau `--mode hybrid` (cuvinte și sens împreună) găsește texte care folosesc alte cuvinte decât întrebarea ta. |
 | `eval FILE [--modes bm25,semantic,hybrid] [--json]` | Măsoară cât de bine găsește căutarea ce te aștepți. FILE are o întrebare pe linie cu fișierele așteptate (`întrebare<TAB>fișier1,fișier2`) sau e JSON (`[{"q": "...", "expect": ["lease.txt"]}]`). Afișează hit@1, hit@5, hit@10 și MRR pentru fiecare mod și întrebările negăsite. |
 | `topics [--json]` | Grupează documentele după ce tratează (cele mai caracteristice cuvinte ale lor). |
 | `dossier TERM [--json]` | Tot ce spune biblioteca despre un nume sau termen: pasaje pe documente, plus datele și sumele găsite în ele. |

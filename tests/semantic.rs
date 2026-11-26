@@ -202,12 +202,14 @@ fn embedding_is_incremental_and_follows_reindexing() {
     assert_eq!(st.total, 2, "{st:?}");
     assert_eq!(st.pending, 0);
     assert_eq!(lib.vector_counts(m).0, 2, "stale vectors were dropped");
-    // another model replaces the vectors instead of mixing them
+    // another model gets its own vectors; the first model's are kept (a trial must not erase them)
     let st = lib
         .embed_missing(&be, "other", 8, usize::MAX, &mut |_, _| {})
         .unwrap();
     assert_eq!(st.embedded, 2);
-    assert_eq!(lib.vector_counts(m).0, 0);
+    assert_eq!(lib.vector_counts(m).0, 2);
+    assert_eq!(lib.drop_vectors("other").unwrap(), 2);
+    assert_eq!(lib.vector_counts(m).0, 2);
     // a limit stops early and the next run continues
     let st = lib
         .embed_missing(&be, "limited", 1, 1, &mut |_, _| {})
@@ -357,4 +359,90 @@ fn a_rewritten_text_never_keeps_the_vector_of_the_old_one() {
     std::fs::remove_file(t.path().join("docs/b.txt")).unwrap();
     lib.update(Some(&[d]), &mut |_| {}).unwrap();
     assert_eq!(lib.vector_counts("m").0, 0);
+}
+
+#[test]
+fn a_changed_vector_size_is_explained_and_reset_fixes_it() {
+    let fk = fake("ok");
+    let (_t, lib, _) = lib_with(&[("a.txt", "The automobile.")]);
+    let be = Backend::gateway(&fk.url, None);
+    lib.embed_missing(&be, "m", 8, usize::MAX, &mut |_, _| {})
+        .unwrap();
+    // the engine now answers with vectors of another size under the same model name
+    let q = vec![1.0f32, 0.0, 0.0];
+    let e = lib.semantic_hits(&q, "m", &Filter::default()).unwrap_err();
+    assert!(e.contains("embed --reset"), "{e}");
+    lib.drop_vectors("m").unwrap();
+    assert_eq!(lib.vector_counts("m").0, 0);
+    assert_eq!(
+        lib.embed_missing(&be, "m", 8, usize::MAX, &mut |_, _| {})
+            .unwrap()
+            .embedded,
+        1
+    );
+}
+
+#[test]
+fn document_filters_see_every_passage_in_meaning_search() {
+    let fk = fake("ok");
+    // many passages about vehicles in one folder, one in another: a filter on the second folder
+    // must find it even though thousands of better-or-equal passages exist elsewhere
+    let t = tempfile::tempdir().unwrap();
+    let docs = t.path().join("docs");
+    std::fs::create_dir_all(docs.join("many")).unwrap();
+    std::fs::create_dir_all(docs.join("one")).unwrap();
+    for i in 0..60 {
+        std::fs::write(
+            docs.join("many").join(format!("{i}.txt")),
+            "automobile automobile",
+        )
+        .unwrap();
+    }
+    std::fs::write(
+        docs.join("one/x.txt"),
+        "a sedan among many other words and words",
+    )
+    .unwrap();
+    let home = t.path().join("home").to_string_lossy().into_owned();
+    let mut lib = Library::open(Some(&home), false).unwrap();
+    lib.update(Some(&[docs.to_string_lossy().into_owned()]), &mut |_| {})
+        .unwrap();
+    let be = Backend::gateway(&fk.url, None);
+    lib.embed_missing(&be, "m", 16, usize::MAX, &mut |_, _| {})
+        .unwrap();
+    let f = Filter {
+        path_like: Some("one".into()),
+        ..Default::default()
+    };
+    let r = lib
+        .search_mode(&be, "m", "vehicle", &f, Mode::Semantic)
+        .unwrap();
+    assert_eq!(names(&r.hits), vec!["x.txt".to_string()], "{:?}", r.hits);
+}
+
+#[test]
+fn vectors_made_by_alpha_5_and_6_are_carried_over() {
+    let t = tempfile::tempdir().unwrap();
+    let home = t.path().join("home");
+    let h = home.to_string_lossy().into_owned();
+    drop(Library::open(Some(&h), false).unwrap());
+    {
+        let db = rusqlite::Connection::open(home.join("index.sqlite")).unwrap();
+        db.execute_batch(
+            "CREATE TABLE vectors(rid INTEGER PRIMARY KEY, doc_id INTEGER, model TEXT, v BLOB);
+             INSERT INTO vectors VALUES(1, 1, 'old-model', x'0000803f');",
+        )
+        .unwrap();
+    }
+    let lib = Library::open(Some(&h), false).unwrap();
+    assert_eq!(lib.vector_counts("old-model").0, 1);
+    drop(lib);
+    // opening again is harmless
+    assert_eq!(
+        Library::open(Some(&h), false)
+            .unwrap()
+            .vector_counts("old-model")
+            .0,
+        1
+    );
 }
