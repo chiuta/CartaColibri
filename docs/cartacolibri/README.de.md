@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatisieren und verbinden** — `digest` führt eine gespeicherte Suche erneut aus und meldet nur Neues (wiederholt, hängt an eine Datei an, fasst zusammen oder speichert eine E-Mail-Datei); `mcp` lässt andere KI-Apps in deiner Bibliothek suchen, lesen, fragen, prüfen und Dossiers abrufen, nur lesend.
 - **Kopien und Daten** — “Duplikate” (Dokumente, die Kopien oder fast Kopien sind, mit ihrer Ähnlichkeit) und “Chronologie” (alle datierten Sätze in zeitlicher Reihenfolge).
 
-## Neu in 0.2.0-alpha.5
+## Neu in 0.2.0-alpha.6
 
 - **Filter direkt im Suchfeld** — Tippe `ext:pdf`, `path:vertraege`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` oder `re:RE-\d+` (regulärer Ausdruck) neben deine Wörter, und die Treffer werden eingegrenzt. Sie funktionieren auf der Webseite, in der Kommandozeile und über die API.
 - **Intelligente Suche** — Hake „Intelligente Suche“ an, und deine lokale KI ergänzt ein paar Synonyme und verwandte Wörter (als einfaches OR, exakte Treffer stehen also weiter vorn). Die zusätzlichen Wörter erscheinen unter dem Feld. Ohne laufende Engine bekommst du die normale Suche.

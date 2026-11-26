@@ -1,6 +1,6 @@
-"""What is new in 0.2.0-alpha.5 (8 languages, informal "tu"): inline filters, smart search, single-question chat, MCP server."""
-H_NEW = {"en": "New in 0.2.0-alpha.5", "ro": "Noutăți în 0.2.0-alpha.5", "fr": "Nouveautés de la 0.2.0-alpha.5", "it": "Novità della 0.2.0-alpha.5",
-         "es": "Novedades de la 0.2.0-alpha.5", "pt": "Novidades da 0.2.0-alpha.5", "de": "Neu in 0.2.0-alpha.5", "hu": "Újdonságok a 0.2.0-alpha.5-ben"}
+"""What is new in 0.2.0-alpha.6 (8 languages, informal "tu"): inline filters, smart search, single-question chat, MCP server."""
+H_NEW = {"en": "New in 0.2.0-alpha.6", "ro": "Noutăți în 0.2.0-alpha.6", "fr": "Nouveautés de la 0.2.0-alpha.6", "it": "Novità della 0.2.0-alpha.6",
+         "es": "Novedades de la 0.2.0-alpha.6", "pt": "Novidades da 0.2.0-alpha.6", "de": "Neu in 0.2.0-alpha.6", "hu": "Újdonságok a 0.2.0-alpha.6-ben"}
 NEWS = [
  {"en": ("Filters right in the search box", "Type `ext:pdf`, `path:contracts`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` or `re:INV-\\d+` (a regular expression) next to your words and the results narrow down. They work in the web page, on the command line and through the API."),
   "ro": ("Filtre direct în căsuța de căutare", "Scrie `ext:pdf`, `path:contracte`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` sau `re:FACT-\\d+` (expresie regulată) lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API."),

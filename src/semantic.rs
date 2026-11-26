@@ -109,7 +109,11 @@ impl Backend {
         if let Some(m) = &m {
             body["model"] = json!(m);
         }
-        let agent = self.agent(Duration::from_secs(300), true);
+        // one question must not hang a search for minutes; a batch of passages may take a while
+        let agent = self.agent(
+            Duration::from_secs(if inputs.len() == 1 { 30 } else { 300 }),
+            true,
+        );
         let mut req = agent.post(&format!("{}/v1/embeddings", self.url));
         if let Some(k) = &self.api_key {
             req = req.header("Authorization", &format!("Bearer {k}"));
@@ -294,7 +298,8 @@ impl Library {
             let Some(sim) = dot_blob(qv, &blob) else {
                 continue;
             };
-            if !sim.is_finite() {
+            // a passage with nothing in common with the question is not a match
+            if !sim.is_finite() || sim <= 0.0 {
                 continue;
             }
             let key = (sim as f64 * 1e6) as i64;

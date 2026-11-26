@@ -23,7 +23,7 @@ passage and stores it in the same SQLite index; it is incremental and restartabl
 vector ranking with reciprocal rank fusion (k=60), so an exact word match still wins. The same `mode` is a parameter of
 `GET /carta/search` and of the MCP `search` tool. Without vectors or without an embedding model, `hybrid` falls back to words with a note.
 `--embed-model` / `COLI_EMBED_MODEL` choose the model; changing it replaces the vectors. `--mock` is a lexical stand-in for trying the pipeline offline.
-Brute-force cosine over all passages: fine for hundreds of thousands, not for tens of millions.
+Brute-force cosine over all passages: 31,000 passages take about 0.2 s per question with the offline mock (256 dimensions); real models have 3-6x more dimensions. Fine for hundreds of thousands of passages, not for tens of millions. A question times out after 30 s, so a hung engine cannot freeze a search.
 
 `cartacolibri eval FILE` measures retrieval on your own questions (`question<TAB>file1,file2` or JSON) per mode: hit@1/5/10 and MRR, plus the missed questions.
 
@@ -42,7 +42,7 @@ Synthetic text is not your text: run `python3 scripts/bench.py --docs N` on your
 ## Limits (honest)
 No agents, no web search, no accounts or multi-user mode, no phone app, no sync. The insight tools (conflicts, duplicates, chronology, entities,
 fact-check, grounding) are word and number heuristics with caps, not understanding: they point at things to check. Answer quality is the quality of the
-local model. `.msg` and `.pst` mail, audio and video are not read. Translations are not reviewed by native speakers. The project is alpha; the engine
+local model. The whole-library analyses load at most 400 million characters of text (use `--group` to analyse a part of a bigger library). `.msg` and `.pst` mail, audio and video are not read. Translations are not reviewed by native speakers. The project is alpha; the engine
 protocol is tested against fakes of Colibrì/Ollama/LM Studio, not against every real build.
 
 ## Search syntax

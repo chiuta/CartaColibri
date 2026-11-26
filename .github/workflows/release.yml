@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version without the v (e.g. 0.2.0-alpha.5) - must match Cargo.toml'
+        description: 'Version without the v (e.g. 0.2.0-alpha.6) - must match Cargo.toml'
         required: true
-        default: '0.2.0-alpha.5'
+        default: '0.2.0-alpha.6'
 
 permissions:
   contents: read

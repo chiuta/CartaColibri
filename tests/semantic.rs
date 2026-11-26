@@ -319,3 +319,42 @@ fn the_evaluation_compares_modes_and_reads_both_formats() {
         assert!(cartacolibri::semantic::load_cases(bad).is_err(), "{bad:?}");
     }
 }
+
+#[test]
+fn a_rewritten_text_never_keeps_the_vector_of_the_old_one() {
+    // SQLite hands the highest rowid out again after its row is deleted: the new passage of a
+    // changed document can get the rowid of the old one, and with it the old vector.
+    let fk = fake("ok");
+    let (t, mut lib, d) = lib_with(&[("a.txt", "A puppy."), ("b.txt", "The automobile.")]);
+    let be = Backend::gateway(&fk.url, None);
+    lib.embed_missing(&be, "m", 8, usize::MAX, &mut |_, _| {})
+        .unwrap();
+    for round in 0..3 {
+        // rewrite whichever file holds the highest rowid, and also delete-and-recreate it
+        std::fs::write(
+            t.path().join("docs/b.txt"),
+            format!("Flour and sugar {round}."),
+        )
+        .unwrap();
+        lib.update(Some(std::slice::from_ref(&d)), &mut |_| {})
+            .unwrap();
+        let st = lib
+            .embed_missing(&be, "m", 8, usize::MAX, &mut |_, _| {})
+            .unwrap();
+        assert_eq!(
+            st.embedded, 1,
+            "round {round}: the changed passage must be embedded again: {st:?}"
+        );
+    }
+    let f = Filter::default();
+    let r = lib
+        .search_mode(&be, "m", "vehicle", &f, Mode::Semantic)
+        .unwrap();
+    // nothing in the library is about vehicles any more: no passage may score as a perfect match
+    assert!(r.hits.is_empty(), "{:?}", r.hits);
+    // and removing everything leaves no vectors behind
+    std::fs::remove_file(t.path().join("docs/a.txt")).unwrap();
+    std::fs::remove_file(t.path().join("docs/b.txt")).unwrap();
+    lib.update(Some(&[d]), &mut |_| {}).unwrap();
+    assert_eq!(lib.vector_counts("m").0, 0);
+}

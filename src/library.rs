@@ -534,6 +534,8 @@ impl Library {
         self.db
             .execute("DELETE FROM chunks WHERE doc_id=?", [id])
             .map_err(e)?;
+        // vectors are keyed by passage rowid, which SQLite may hand out again: never keep them
+        let _ = self.db.execute("DELETE FROM vectors WHERE doc_id=?", [id]);
         self.db
             .execute("DELETE FROM docs WHERE id=?", [id])
             .map_err(e)?;
@@ -825,6 +827,7 @@ impl Library {
                     if let Some((id, ..)) = &row {
                         tx.execute("DELETE FROM chunks WHERE doc_id=?", [id])
                             .map_err(e)?;
+                        let _ = tx.execute("DELETE FROM vectors WHERE doc_id=?", [id]);
                         tx.execute("DELETE FROM docs WHERE id=?", [id]).map_err(e)?;
                         st.updated += 1;
                     } else {
@@ -897,6 +900,7 @@ impl Library {
                 if !seen.contains(&path) && (walked.contains(&path) || !Path::new(&path).exists()) {
                     tx.execute("DELETE FROM chunks WHERE doc_id=?", [id])
                         .map_err(e)?;
+                    let _ = tx.execute("DELETE FROM vectors WHERE doc_id=?", [id]);
                     tx.execute("DELETE FROM docs WHERE id=?", [id]).map_err(e)?;
                     st.removed += 1;
                     pr.changed += 1;

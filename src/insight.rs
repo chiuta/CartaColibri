@@ -657,8 +657,17 @@ pub fn changes(
 }
 
 /// All library texts as `(path, text)`, for the whole-library analyses.
+/// At most `MAX_ANALYSIS_CHARS` characters are loaded (documents beyond that, in index order, are
+/// left out), so a very large library cannot exhaust memory: use `--group` to analyse a part.
+pub const MAX_ANALYSIS_CHARS: i64 = 400_000_000;
+
 pub fn library_texts(lib: &Library, group: Option<&str>) -> Result<Vec<(String, String)>, String> {
-    let docs = lib.documents(group)?;
+    let mut docs = lib.documents(group)?;
+    let mut total = 0i64;
+    docs.retain(|d| {
+        total = total.saturating_add(d.chars.max(0));
+        total <= MAX_ANALYSIS_CHARS
+    });
     let ids: Vec<i64> = docs.iter().map(|d| d.id).collect();
     let mut texts = lib.texts_of(&ids);
     Ok(docs
