@@ -623,6 +623,7 @@ fn every_new_route_demands_the_ui_header() {
         ("POST", "chat/reset"),
         ("POST", "chat/restore"),
         ("POST", "browser/open"),
+        ("POST", "legatorocr/open"),
         ("POST", "index"),
     ];
     for (m, r) in routes {
@@ -798,4 +799,35 @@ fn chat_can_be_limited_to_a_time_range() {
     assert_eq!(ask(json!({"after": "2000"})).json()["found"], true);
     assert_eq!(ask(json!({"before": "2000"})).json()["found"], false);
     assert_eq!(ask(json!({"after": "2999"})).json()["found"], false);
+}
+
+#[cfg(unix)]
+#[test]
+fn legatorocr_window_opens_or_says_why_not() {
+    use std::os::unix::fs::PermissionsExt;
+    let (s, _) = indexed();
+    // not installed: an honest 404
+    let none = post(&s, "/carta/legatorocr/open", json!({}));
+    assert_eq!(none.code, 404, "{}", none.text());
+    let dir = std::env::temp_dir().join(format!("cc-lgr-gui-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let put = |name: &str, body: &str| {
+        let p = dir.join(name);
+        std::fs::write(&p, body).unwrap();
+        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        p
+    };
+    let cli = put("legatorocr", "#!/bin/sh\necho \"legatorocr 0.0-test\"\n");
+    // one test, one setting: this is the only test that reads the variable
+    unsafe { std::env::set_var("CARTACOLIBRI_LEGATOROCR", &cli) };
+    // the window program ends at once: the reason is passed on, not "opening"
+    put("legatorocr-gui", "#!/bin/sh\necho 'no display found' >&2\nexit 3\n");
+    let bad = post(&s, "/carta/legatorocr/open", json!({}));
+    assert_eq!(bad.code, 500, "{}", bad.text());
+    assert!(bad.text().contains("no display found"), "{}", bad.text());
+    // one that stays open is a success
+    put("legatorocr-gui", "#!/bin/sh\nsleep 4\n");
+    let ok = post(&s, "/carta/legatorocr/open", json!({}));
+    assert_eq!(ok.code, 200, "{}", ok.text());
 }

@@ -84,6 +84,14 @@ pub fn locate() -> Option<PathBuf> {
     version(&bin).map(|_| bin)
 }
 
+/// The LegatorOCR window (`legatorocr-gui`), looked for beside the `legatorocr` program that was found.
+pub fn locate_gui() -> Option<PathBuf> {
+    let name = if cfg!(windows) { format!("{PROGRAM}-gui.exe") } else { format!("{PROGRAM}-gui") };
+    let cli = locate()?;
+    let gui = cli.parent()?.join(name);
+    startable(&gui).then_some(gui)
+}
+
 /// The version line (`legatorocr 0.2.0-pre.65`), or `None` when the program does not answer like LegatorOCR.
 pub fn version(bin: &Path) -> Option<String> {
     let mut cmd = Command::new(bin);

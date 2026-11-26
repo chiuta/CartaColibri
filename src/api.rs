@@ -1304,28 +1304,20 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                         .into(),
                 ));
             };
-            let mut cmd = std::process::Command::new(beside);
-            cmd.arg("--home")
-                .arg(&lib.home)
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null());
-            match cmd.spawn() {
-                Ok(mut child) => {
-                    // reap it when it ends, so no zombie stays behind
-                    std::thread::spawn(move || {
-                        let _ = child.wait();
-                    });
-                    json!({"ok": true})
-                }
-                Err(_) => {
-                    return Err((
-                        404,
-                        "the web-grab browser (cartacolibri-browser) is not installed next to this program"
-                            .into(),
-                    ));
-                }
-            }
+            launch(&beside, &[std::ffi::OsString::from("--home"), lib.home.clone().into_os_string()], &lib.home)?;
+            json!({"ok": true})
+        }
+        ("POST", "legatorocr/open") => {
+            // opens the LegatorOCR window (legatorocr-gui, next to the legatorocr program found for OCR)
+            let Some(gui) = crate::legatorocr::locate_gui() else {
+                return Err((
+                    404,
+                    "LegatorOCR (legatorocr-gui) was not found: put it next to this program, in a LegatorOCR folder beside it, or set CARTACOLIBRI_LEGATOROCR"
+                        .into(),
+                ));
+            };
+            launch(&gui, &[], &lib.home)?;
+            json!({"ok": true})
         }
         ("POST", "chat/reset") => {
             let j = jbody(r.body).map_err(bad)?;
@@ -1335,4 +1327,56 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
         }
         _ => return Err((404, "no such carta route".into())),
     })
+}
+
+/// Starts `bin` detached, with its messages written to `launch.log` in the library folder, and waits a
+/// moment: a program that ends at once (missing runtime, no display, crash) is reported with its own
+/// last lines instead of a button that says "opening" while nothing opens.
+fn launch(
+    bin: &std::path::Path,
+    args: &[std::ffi::OsString],
+    home: &std::path::Path,
+) -> Result<(), (u16, String)> {
+    let log = home.join("launch.log");
+    let out = std::fs::File::create(&log).ok();
+    let mut cmd = std::process::Command::new(bin);
+    cmd.args(args).stdin(std::process::Stdio::null());
+    match out.and_then(|f| f.try_clone().ok().map(|g| (f, g))) {
+        Some((f, g)) => cmd.stdout(f).stderr(g),
+        None => cmd
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null()),
+    };
+    let mut child = cmd.spawn().map_err(|e| {
+        (
+            500,
+            format!("could not start {}: {e}", bin.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
+        )
+    })?;
+    for _ in 0..20 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if let Ok(Some(st)) = child.try_wait() {
+            let text = std::fs::read(&log).unwrap_or_default();
+            let tail: String = String::from_utf8_lossy(&text[text.len().saturating_sub(2048)..])
+                .lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .rev()
+                .take(4)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" | ");
+            return Err((
+                500,
+                format!("it stopped right after starting ({st}){}", if tail.is_empty() { String::new() } else { format!(": {tail}") }),
+            ));
+        }
+    }
+    // still running after two seconds: it opened. Reap it when it ends, so no zombie stays behind.
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
 }
