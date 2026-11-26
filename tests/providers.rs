@@ -51,9 +51,31 @@ fn path_base_is_really_requested() {
     let port = l.local_addr().unwrap().port();
     let h = std::thread::spawn(move || {
         let (mut s, _) = l.accept().unwrap();
+        // read the whole request (headers, then the body announced by Content-Length): answering early resets the connection
+        let mut raw = Vec::new();
         let mut buf = [0u8; 4096];
-        let n = s.read(&mut buf).unwrap();
-        let req = String::from_utf8_lossy(&buf[..n]).to_string();
+        loop {
+            let n = s.read(&mut buf).unwrap();
+            raw.extend_from_slice(&buf[..n]);
+            let t = String::from_utf8_lossy(&raw).to_string();
+            if let Some(i) = t.find("\r\n\r\n") {
+                let want = t[..i]
+                    .lines()
+                    .find_map(|l| {
+                        l.to_lowercase()
+                            .strip_prefix("content-length:")
+                            .map(|v| v.trim().parse::<usize>().unwrap_or(0))
+                    })
+                    .unwrap_or(0);
+                if raw.len() >= i + 4 + want {
+                    break;
+                }
+            }
+            if n == 0 {
+                break;
+            }
+        }
+        let req = String::from_utf8_lossy(&raw).to_string();
         let body = r#"{"choices":[{"message":{"content":"ok"}}]}"#;
         write!(s, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
         req
