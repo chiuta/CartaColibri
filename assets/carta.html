@@ -256,6 +256,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
       <section id="chatHist" aria-labelledby="chHT" style="margin-top:18px;border-top:1px solid var(--line);padding-top:10px">
         <h3 id="chHT" data-i="ch_hist" style="margin:0 0 6px"></h3>
         <div class="row"><input type="search" id="chHFilter" data-ph="ch_hist_ph" data-al="ch_hist_ph" style="flex:1;min-width:0" autocomplete="off"><button class="btn sm" id="chHClear" data-i="ch_hist_clear"></button></div>
+        <div class="row"><button class="btn sm" id="chHExp" data-i="ch_hist_export"></button><button class="btn sm" id="chHImp" data-i="ch_hist_import"></button><input type="file" id="chHFile" accept=".json,application/json" hidden></div>
         <p class="muted" id="chHEmpty" data-i="ch_hist_empty"></p>
         <div id="chHList"></div>
         <p class="muted" style="font-size:.85em" data-i="ch_hist_note"></p>
@@ -453,6 +454,13 @@ ch_hist_del:{en:'Delete this conversation',ro:'Șterge conversația',fr:'Supprim
 ch_hist_resumed:{en:'Conversation restored — you can go on.',ro:'Conversația a fost refăcută — poți continua.',fr:'Conversation restaurée — tu peux continuer.',it:'Conversazione ripristinata — puoi continuare.',es:'Conversación restaurada: puedes continuar.',pt:'Conversa restaurada — podes continuar.',de:'Gespräch wiederhergestellt — du kannst weitermachen.',hu:'A beszélgetés visszaállt — folytathatod.'},
 ch_hist_resumed_ro:{en:'Shown, but the engine could not be told about it: a follow-up will start fresh.',ro:'Afișată, dar motorul nu a putut fi informat: o întrebare nouă va porni de la zero.',fr:'Affichée, mais le moteur n’a pas pu en être informé : une nouvelle question repartira de zéro.',it:'Mostrata, ma il motore non ha potuto saperlo: una nuova domanda ripartirà da zero.',es:'Mostrada, pero no se pudo avisar al motor: una nueva pregunta empezará de cero.',pt:'Mostrada, mas não foi possível avisar o motor: uma nova pergunta começa do zero.',de:'Angezeigt, aber die Engine konnte nicht informiert werden: Eine neue Frage beginnt von vorn.',hu:'Megjelenítve, de a motort nem lehetett értesíteni: az új kérdés elölről indul.'},
 ch_hist_note:{en:'Saved only in this browser on this computer, never sent anywhere. Opening one lets you continue it.',ro:'Salvat doar în acest browser, pe acest calculator, nu e trimis nicăieri. Dacă deschizi una, o poți continua.',fr:'Enregistré uniquement dans ce navigateur, sur cet ordinateur, jamais envoyé ailleurs. En ouvrir une permet de la poursuivre.',it:'Salvato solo in questo browser, su questo computer, mai inviato altrove. Aprendone una puoi continuarla.',es:'Guardado solo en este navegador, en este ordenador, y no se envía a ninguna parte. Al abrir una puedes continuarla.',pt:'Guardado só neste navegador, neste computador, nunca enviado para lado nenhum. Ao abrir uma, podes continuá-la.',de:'Nur in diesem Browser auf diesem Computer gespeichert, nirgends hingesendet. Beim Öffnen kannst du es fortsetzen.',hu:'Csak ebben a böngészőben, ezen a számítógépen tárolva, sehová sem kerül elküldésre. Megnyitva folytathatod.'},
+ch_hist_export:{en:'Export history',ro:'Exportă istoricul',fr:'Exporter l’historique',it:'Esporta la cronologia',es:'Exportar el historial',pt:'Exportar o histórico',de:'Verlauf exportieren',hu:'Előzmények exportálása'},
+ch_hist_import:{en:'Import history',ro:'Importă istoricul',fr:'Importer l’historique',it:'Importa la cronologia',es:'Importar el historial',pt:'Importar o histórico',de:'Verlauf importieren',hu:'Előzmények importálása'},
+ch_hist_exported:{en:'History saved as a file (format shared with Colibri Companion).',ro:'Istoricul a fost salvat ca fișier (format comun cu Colibri Companion).',fr:'Historique enregistré dans un fichier (format commun avec Colibri Companion).',it:'Cronologia salvata in un file (formato condiviso con Colibri Companion).',es:'Historial guardado en un archivo (formato compartido con Colibri Companion).',pt:'Histórico guardado num ficheiro (formato comum com o Colibri Companion).',de:'Verlauf als Datei gespeichert (gemeinsames Format mit Colibri Companion).',hu:'Az előzmények fájlba mentve (a Colibri Companionnel közös formátum).'},
+ch_hist_imported:{en:'History imported: {a} new, {u} updated, {k} already here, {s} skipped.',ro:'Istoric importat: {a} noi, {u} actualizate, {k} deja aici, {s} sărite.',fr:'Historique importé : {a} nouvelles, {u} mises à jour, {k} déjà présentes, {s} ignorées.',it:'Cronologia importata: {a} nuove, {u} aggiornate, {k} già presenti, {s} saltate.',es:'Historial importado: {a} nuevas, {u} actualizadas, {k} ya estaban, {s} omitidas.',pt:'Histórico importado: {a} novas, {u} atualizadas, {k} já existiam, {s} ignoradas.',de:'Verlauf importiert: {a} neu, {u} aktualisiert, {k} schon vorhanden, {s} übersprungen.',hu:'Előzmények importálva: {a} új, {u} frissítve, {k} már megvolt, {s} kihagyva.'},
+ch_hist_bad:{en:'That file is not a chat history.',ro:'Fișierul nu este un istoric de conversații.',fr:'Ce fichier n’est pas un historique de conversations.',it:'Questo file non è una cronologia di conversazioni.',es:'Ese archivo no es un historial de conversaciones.',pt:'Esse ficheiro não é um histórico de conversas.',de:'Diese Datei ist kein Gesprächsverlauf.',hu:'Ez a fájl nem beszélgetési előzmény.'},
+ch_hist_new:{en:'The file comes from a newer version; update the app.',ro:'Fișierul vine dintr-o versiune mai nouă; actualizează aplicația.',fr:'Le fichier vient d’une version plus récente ; mets l’application à jour.',it:'Il file viene da una versione più recente; aggiorna l’app.',es:'El archivo viene de una versión más nueva; actualiza la aplicación.',pt:'O ficheiro vem de uma versão mais recente; atualiza a aplicação.',de:'Die Datei stammt aus einer neueren Version; aktualisiere die App.',hu:'A fájl újabb verzióból származik; frissítsd az alkalmazást.'},
+ch_hist_big:{en:'The file is too big.',ro:'Fișierul este prea mare.',fr:'Le fichier est trop volumineux.',it:'Il file è troppo grande.',es:'El archivo es demasiado grande.',pt:'O ficheiro é demasiado grande.',de:'Die Datei ist zu groß.',hu:'A fájl túl nagy.'},
 ch_one:{en:'Each question on its own (no memory of earlier ones)',ro:'Fiecare întrebare separat (fără memoria celor anterioare)',fr:'Chaque question à part (sans mémoire des précédentes)',it:'Ogni domanda a sé (senza memoria delle precedenti)',es:'Cada pregunta por separado (sin memoria de las anteriores)',pt:'Cada pergunta à parte (sem memória das anteriores)',de:'Jede Frage einzeln (ohne Erinnerung an frühere)',hu:'Minden kérdés külön (előzőkre nem emlékezik)'},
 cmp_btn:{en:'Compare 2',ro:'Compară 2',fr:'Comparer 2',it:'Confronta 2',es:'Comparar 2',pt:'Comparar 2',de:'2 vergleichen',hu:'2 összehasonlítása'},
 cmp_need2:{en:'Tick exactly two documents to compare.',ro:'Bifează exact două documente de comparat.',fr:'Coche exactement deux documents à comparer.',it:'Spunta esattamente due documenti da confrontare.',es:'Marca exactamente dos documentos para comparar.',pt:'Marca exatamente dois documentos para comparar.',de:'Hake genau zwei Dokumente zum Vergleichen an.',hu:'Jelölj be pontosan két dokumentumot az összehasonlításhoz.'},
@@ -1051,7 +1059,7 @@ const H_MAX=60,H_BYTES=1500000;
 function hLoad(){try{const a=JSON.parse(pref('chats')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function hSave(a){a=a.slice(0,H_MAX);let t=JSON.stringify(a);while(t.length>H_BYTES&&a.length>1){a.pop();t=JSON.stringify(a)}pref('chats',t)}
 function hSlim(j){return{found:!!j.found,answer:String(j.answer||'').slice(0,12000),note:j.note||null,sources:(j.sources||[]).slice(0,12).map(x=>({label:x.label,path:x.path,passage:String(x.passage||'').slice(0,400)}))}}
-function hRecord(q,j){if(!curChat)curChat={id:chatSid+'-'+Date.now(),ts:0,title:q.slice(0,80),msgs:[]};
+function hRecord(q,j){if(!curChat)curChat={id:chatSid+'-'+Date.now(),created:Date.now(),ts:0,title:q.slice(0,80),msgs:[]};
   curChat.msgs.push({u:q},{b:hSlim(j)});curChat.ts=Date.now();const a=hLoad().filter(x=>x.id!==curChat.id);a.unshift(curChat);hSave(a);hRender()}
 function hRender(){const f=($('#chHFilter').value||'').trim().toLowerCase(),all=hLoad(),a=f?all.filter(c=>(c.title+' '+c.msgs.map(m=>m.u||(m.b&&m.b.answer)||'').join(' ')).toLowerCase().includes(f)):all;
   $('#chHEmpty').style.display=a.length?'none':'';$('#chHEmpty').textContent=T(all.length?'ch_hist_none':'ch_hist_empty');$('#chHClear').disabled=!all.length;
@@ -1066,6 +1074,37 @@ $('#chHList').onclick=e=>{const o=e.target.closest('[data-o]'),d=e.target.closes
   if(o)hOpen(o.dataset.o);else if(d){hSave(hLoad().filter(x=>x.id!==d.dataset.d));if(curChat&&curChat.id===d.dataset.d)curChat=null;hRender()}};
 $('#chHFilter').oninput=hRender;
 $('#chHClear').onclick=()=>{if(!confirm(T('ch_hist_clear_q')))return;hSave([]);curChat=null;hRender()};
+
+/* the same portable file Colibri Companion writes and reads: format colibri-chat-history, version 1 (docs/CHAT-HISTORY.md) */
+const HX_MAX=64*1024*1024,HX_ID=/[^A-Za-z0-9_-]/g;
+const hSrcOut=x=>[x.label,x.path,x.passage].filter(Boolean).join(' | ');
+function hSrcIn(t){const p=String(t).slice(0,20000).split(' | ');return p.length===3?{label:p[0],path:p[1],passage:p[2].slice(0,400)}:{label:p.join(' | ').slice(0,300),path:'',passage:''}}
+function hToPortable(c){const m=[];for(const x of c.msgs||[]){if(x.u!=null)m.push({role:'user',content:String(x.u)});else if(x.b){const o={role:'assistant',content:String(x.b.answer||'')},s=(x.b.sources||[]).map(hSrcOut).filter(Boolean);if(s.length)o.sources=s;m.push(o)}}
+  const up=Math.floor((c.ts||Date.now())/1000);return{id:String(c.id||'').replace(HX_ID,'').slice(0,80),title:String(c.title||''),created:Math.floor((c.created||c.ts||Date.now())/1000),updated:up,messages:m}}
+function hFromPortable(t){let j;try{j=JSON.parse(t)}catch(e){return{err:'bad'}}
+  if(!j||j.format!=='colibri-chat-history'||!Array.isArray(j.conversations))return{err:'bad'};
+  if((Number(j.version)||0)>1)return{err:'new'};
+  const out=[],now=Date.now();let skipped=0;
+  for(const c of j.conversations.slice(0,5000)){if(!c||!Array.isArray(c.messages)){skipped++;continue}
+    const msgs=[];for(const m of c.messages.slice(0,2000)){if(!m||typeof m.content!=='string')continue;
+      if(m.role==='user')msgs.push({u:m.content.slice(0,20000)});
+      else if(m.role==='assistant')msgs.push({b:{found:true,answer:m.content.slice(0,12000),note:null,sources:(Array.isArray(m.sources)?m.sources:[]).filter(x=>typeof x==='string').slice(0,12).map(hSrcIn)}})}
+    const first=msgs.find(x=>x.u!=null);if(!first){skipped++;continue}
+    const id=String(c.id||'').replace(HX_ID,'').slice(0,80)||('imp-'+now+'-'+out.length);
+    const ts=Math.min(Number(c.updated)>0?Number(c.updated)*1000:now,now+864e5),cr=Math.min(Number(c.created)>0?Number(c.created)*1000:ts,ts);
+    out.push({id,created:cr,ts,title:(typeof c.title==='string'&&c.title.trim()?c.title:first.u).slice(0,80),msgs})}
+  return{out,skipped}}
+function hImport(t){const r=hFromPortable(t);if(r.err)return r;const cur=hLoad();let a=0,u=0,k=0;
+  for(const c of r.out){const i=cur.findIndex(x=>x.id===c.id);if(i<0){cur.push(c);a++}else if((cur[i].ts||0)<c.ts){cur[i]=c;u++}else k++}
+  cur.sort((x,y)=>(y.ts||0)-(x.ts||0));hSave(cur);return{a,u,k,s:r.skipped}}
+$('#chHExp').onclick=()=>{const all=hLoad();if(!all.length){toast(T('ch_hist_empty'),1);return}
+  const doc={format:'colibri-chat-history',version:1,app:'cartacolibri',exported:Math.floor(Date.now()/1000),conversations:all.slice().reverse().map(hToPortable)};
+  const b=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='cartacolibri-chat-history-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast(T('ch_hist_exported'))};
+$('#chHImp').onclick=()=>$('#chHFile').click();
+$('#chHFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>HX_MAX){toast(T('ch_hist_big'),1);return}
+  let t;try{t=await f.text()}catch(x){toast(T('ch_hist_bad'),1);return}
+  const r=hImport(t);if(r.err){toast(T(r.err==='new'?'ch_hist_new':'ch_hist_bad'),1);return}hRender();toast(F('ch_hist_imported',r))};
 $('#wgBrowser').onclick=async()=>{const o=$('#wgBrSt');o.textContent='';try{await api('browser/open','POST',{});o.textContent=T('wg_open_ok')}catch(e){o.textContent=String(e.message||e)}};
 function md(t){let h=esc(t);h=h.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^---$/gm,'<hr>');
   h=h.replace(/((?:^\|.*\|\s*$\n?)+)/gm,m=>{const rows=m.trim().split('\n').filter(r=>!/^\|[\s:|-]+\|$/.test(r.trim()));return '<table>'+rows.map((r,i)=>'<tr>'+r.trim().slice(1,-1).split('|').map(c=>`<${i?'td':'th'}>${c.trim()}</${i?'td':'th'}>`).join('')+'</tr>').join('')+'</table>'});
