@@ -14,6 +14,7 @@
 @media(prefers-color-scheme:light){:root[data-theme=auto]{--bg:#f7f8fa;--surface:#fff;--s2:#f0f2f5;--s3:#e6e9ee;--line:#aab2c0;--ink:#1c2230;--mute:#566074;--blue:#2a5db8;--cyan:#0a6a7c;--amber:#8a5a00;--ok:#067647;--bad:#b42318;--sel:rgba(42,93,184,.16)}}
 :root[data-big="1"]{--fs:18px}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
+.sb[hidden]{display:none}.sb{position:fixed;z-index:40;display:flex;flex-direction:column;gap:6px;pointer-events:none}.sb button{pointer-events:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--s2);color:var(--ink);font-size:16px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.45)}.sb button:hover:not(:disabled){background:var(--cyan);color:#000}.sb button:disabled{opacity:.35;cursor:default}
 /* scrollbars you can see and grab: full width, light thumb on a dark track (the browser default hides in dark themes) */
 *{scrollbar-width:auto;scrollbar-color:#8aa0d6 var(--s2)}
 body{background:var(--bg);color:var(--ink);font:var(--fs)/1.5 var(--font);display:grid;grid-template-columns:64px 1fr;overflow:hidden}
@@ -43,10 +44,10 @@ textarea{width:100%;resize:vertical}
 .view{display:none;flex:1;min-height:0}.view.on{display:flex}
 .side{width:280px;border-right:1px solid var(--line);padding:14px;overflow:auto;flex:none;background:var(--surface)}
 .side h3{font-size:.8em;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px;display:flex;align-items:center;gap:6px}.side h3:first-child{margin-top:0}
-.body{flex:1;min-width:0;display:flex;flex-direction:column}
+.body{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
 .bar{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
 .bar input[type=text]{flex:1;min-width:180px}
-.scroll{flex:1;overflow:auto;min-height:0}
+.scroll{flex:1 1 0;overflow:auto;min-height:0}
 table{border-collapse:collapse;width:100%}th,td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
 th{position:sticky;top:0;background:var(--surface);font-size:.8em;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;z-index:1}
 td.n{text-align:right;white-space:nowrap;color:var(--mute)}td.p{color:var(--mute);word-break:break-all;font-size:.87em}
@@ -451,6 +452,8 @@ ocr_open:{en:'Open LegatorOCR',ro:'Deschide LegatorOCR',fr:'Ouvrir LegatorOCR',i
 ocr_open_ok:{en:'LegatorOCR is open. Scan, clean up and save the pages, then add the result here.',ro:'LegatorOCR este deschis. Scanează, curăță și salvează paginile, apoi adaugă rezultatul aici.',fr:'LegatorOCR est ouvert. Numérise, nettoie et enregistre les pages, puis ajoute le résultat ici.',it:'LegatorOCR è aperto. Scansiona, ripulisci e salva le pagine, poi aggiungi qui il risultato.',es:'LegatorOCR está abierto. Escanea, limpia y guarda las páginas, y luego añade aquí el resultado.',pt:'O LegatorOCR está aberto. Digitaliza, limpa e guarda as páginas e depois junta aqui o resultado.',de:'LegatorOCR ist offen. Seiten scannen, bereinigen und speichern, dann das Ergebnis hier hinzufügen.',hu:'A LegatorOCR meg van nyitva. Szkenneld, tisztítsd és told el az oldalakat, majd add hozzá ide az eredményt.'},
 open_none:{en:'Not found next to CartaColibri. Put the program in the same folder (or in a LegatorOCR folder beside it) and try again.',ro:'Nu l-am găsit lângă CartaColibri. Pune programul în același folder (sau într-un folder LegatorOCR alăturat) și încearcă din nou.',fr:'Introuvable à côté de CartaColibri. Mets le programme dans le même dossier (ou dans un dossier LegatorOCR voisin) et réessaie.',it:'Non trovato accanto a CartaColibri. Metti il programma nella stessa cartella (o in una cartella LegatorOCR accanto) e riprova.',es:'No se encuentra junto a CartaColibri. Pon el programa en la misma carpeta (o en una carpeta LegatorOCR al lado) e inténtalo de nuevo.',pt:'Não foi encontrado junto do CartaColibri. Põe o programa na mesma pasta (ou numa pasta LegatorOCR ao lado) e tenta de novo.',de:'Neben CartaColibri nicht gefunden. Lege das Programm in denselben Ordner (oder in einen Ordner LegatorOCR daneben) und versuche es erneut.',hu:'Nem találom a CartaColibri mellett. Tedd a programot ugyanabba a mappába (vagy egy mellette lévő LegatorOCR mappába), és próbáld újra.'},
 open_fail:{en:'It did not open: {d}',ro:'Nu s-a deschis: {d}',fr:'Il ne s’est pas ouvert : {d}',it:'Non si è aperto: {d}',es:'No se abrió: {d}',pt:'Não abriu: {d}',de:'Es hat sich nicht geöffnet: {d}',hu:'Nem nyílt meg: {d}'},
+sc_up:{en:'Scroll up',ro:'Derulează în sus',fr:'Défiler vers le haut',it:'Scorri in su',es:'Desplazar hacia arriba',pt:'Deslocar para cima',de:'Nach oben scrollen',hu:'Görgetés felfelé'},
+sc_down:{en:'Scroll down',ro:'Derulează în jos',fr:'Défiler vers le bas',it:'Scorri in giù',es:'Desplazar hacia abajo',pt:'Deslocar para baixo',de:'Nach unten scrollen',hu:'Görgetés lefelé'},
 ch_hist:{en:'Chat history',ro:'Istoric chat',fr:'Historique du chat',it:'Cronologia della chat',es:'Historial del chat',pt:'Histórico do chat',de:'Chat-Verlauf',hu:'Csevegési előzmények'},
 ch_hist_ph:{en:'Search past chats',ro:'Caută în conversații',fr:'Chercher dans les conversations',it:'Cerca nelle conversazioni',es:'Buscar en las conversaciones',pt:'Pesquisar nas conversas',de:'In Gesprächen suchen',hu:'Keresés a beszélgetésekben'},
 ch_hist_clear:{en:'Delete all',ro:'Șterge tot',fr:'Tout supprimer',it:'Elimina tutto',es:'Borrar todo',pt:'Apagar tudo',de:'Alles löschen',hu:'Összes törlése'},
@@ -1146,6 +1149,19 @@ $('#chHFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(
 function openErr(e){const m=String(e&&e.message||e);return /not installed|was not found/.test(m)?T('open_none'):F('open_fail',{d:m.replace(/^it stopped right after starting /,'')})}
 function openBtn(btn,st,route,okKey){$(btn).onclick=async()=>{const o=$(st);o.textContent='…';try{await api(route,'POST',{});o.textContent=T(okKey)}catch(e){o.textContent=openErr(e)}}}
 openBtn('#wgBrowser','#wgBrSt','browser/open','wg_open_ok');openBtn('#ocrOpen','#ocrOpSt','legatorocr/open','ocr_open_ok');
+/* scroll buttons: every scrolling area (library list, both side panels, the RAG-CARTA drawer with its chat history) gets an up and a down button at its lower right edge, shown only while there is something to scroll */
+(function(){const HOSTS='.scroll,.side,.drawer .bd',M=new Map();
+function mk(h){const w=document.createElement('div');w.className='sb';w.hidden=true;const u=document.createElement('button'),d=document.createElement('button');u.type=d.type='button';u.textContent='▲';d.textContent='▼';
+ u.onclick=()=>h.scrollBy({top:-Math.max(80,h.clientHeight*.85),behavior:'smooth'});d.onclick=()=>h.scrollBy({top:Math.max(80,h.clientHeight*.85),behavior:'smooth'});
+ w.append(u,d);document.body.appendChild(w);const o={w,u,d};M.set(h,o);return o}
+function upd(){const live=new Set(document.querySelectorAll(HOSTS));for(const h of live){const o=M.get(h)||mk(h),r=h.getBoundingClientRect(),can=h.offsetParent!==null&&r.width>0&&h.scrollHeight-h.clientHeight>8&&r.bottom>60&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;
+  let show=can;if(can){const sbw=h.offsetWidth-h.clientWidth,x=Math.min(r.right,innerWidth)-sbw-46,y=Math.min(r.bottom,innerHeight)-98;o.w.style.left=x+'px';o.w.style.top=y+'px';
+   o.u.title=o.u.ariaLabel=T('sc_up');o.d.title=o.d.ariaLabel=T('sc_down');o.u.disabled=h.scrollTop<=2;o.d.disabled=h.scrollTop+h.clientHeight>=h.scrollHeight-2;
+   const e=document.elementFromPoint(x+18,y+39);show=!!e&&(h.contains(e)||o.w.contains(e))}
+  o.w.hidden=!show}
+ for(const[h,o]of M)if(!live.has(h)){o.w.remove();M.delete(h)}}
+let t=0;const go=()=>{cancelAnimationFrame(t);t=requestAnimationFrame(upd)};
+document.addEventListener('scroll',go,true);addEventListener('resize',go);setInterval(go,600);go()})();
 
 /* why a file was skipped, in the page language (the program writes English) */
 function reasonT(r){let m;r=String(r||'');

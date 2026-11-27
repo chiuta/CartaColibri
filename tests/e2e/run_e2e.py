@@ -131,6 +131,17 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.wait_for_selector("#libRows tr", timeout=15000)
             assert pg.locator("#libRows tr").count() >= len(FIXTURES), "fewer rows than fixture files"
             pg.screenshot(path=f"{shots}/{lang}-library.png")
+        with rep.check(L, "scroll buttons", pg):
+            # many rows make the library list scroll: it shows an up/down pair that really scrolls (labels translated), then the page is reloaded
+            pg.evaluate("()=>{const t=document.querySelector('#libRows');const r=[...t.children];for(let i=0;i<30;i++)r.forEach(x=>t.appendChild(x.cloneNode(true)))}")
+            pg.wait_for_function("()=>document.querySelectorAll('.sb:not([hidden]) button').length>=2", timeout=8000)
+            pg.evaluate("()=>{document.querySelector('.scroll').scrollTop=0}")
+            pg.wait_for_function("()=>[...document.querySelectorAll('.sb:not([hidden]) button')].some(b=>!b.disabled)", timeout=5000)
+            pg.screenshot(path=f"{shots}/{lang}-scroll-buttons.png")
+            pg.locator(".sb:not([hidden]) button >> nth=1").click()
+            pg.wait_for_function("()=>document.querySelector('.scroll').scrollTop>0", timeout=5000)
+            assert pg.evaluate("()=>[...document.querySelectorAll('.sb:not([hidden]) button')].every(b=>b.title&&b.title!=='sc_up'&&b.title!=='sc_down')"), "button labels not translated"
+            pg.reload(); pg.wait_for_selector("#libRows tr", timeout=15000)
         with rep.check(L, "search finds a doc", pg):
             pg.click('.rb[data-view=fetch]'); pg.fill("#q", QUERY[lang]); pg.press("#q", "Enter")
             pg.wait_for_selector("#resRows tr", timeout=10000)
