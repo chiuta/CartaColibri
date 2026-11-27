@@ -806,9 +806,6 @@ fn chat_can_be_limited_to_a_time_range() {
 fn legatorocr_window_opens_or_says_why_not() {
     use std::os::unix::fs::PermissionsExt;
     let (s, _) = indexed();
-    // not installed: an honest 404
-    let none = post(&s, "/carta/legatorocr/open", json!({}));
-    assert_eq!(none.code, 404, "{}", none.text());
     let dir = std::env::temp_dir().join(format!("cc-lgr-gui-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -819,9 +816,12 @@ fn legatorocr_window_opens_or_says_why_not() {
         p
     };
     let cli = put("legatorocr", "#!/bin/sh\necho \"legatorocr 0.0-test\"\n");
-    // one test, one setting: this is the only test that reads the variable
+    // the only test of this file that touches the variable; it is removed at the end
     unsafe { std::env::set_var("CARTACOLIBRI_LEGATOROCR", &cli) };
-    // the window program ends at once: the reason is passed on, not "opening"
+    // the program is there but not its window: an honest 404
+    let none = post(&s, "/carta/legatorocr/open", json!({}));
+    assert_eq!(none.code, 404, "{}", none.text());
+    // the window program ends at once with an error: the reason is passed on, not "opening"
     put(
         "legatorocr-gui",
         "#!/bin/sh\necho 'no display found' >&2\nexit 3\n",
@@ -829,8 +829,14 @@ fn legatorocr_window_opens_or_says_why_not() {
     let bad = post(&s, "/carta/legatorocr/open", json!({}));
     assert_eq!(bad.code, 500, "{}", bad.text());
     assert!(bad.text().contains("no display found"), "{}", bad.text());
+    // a launcher that hands over to the real window and ends with success is fine
+    put("legatorocr-gui", "#!/bin/sh\nexit 0\n");
+    let hand = post(&s, "/carta/legatorocr/open", json!({}));
+    assert_eq!(hand.code, 200, "{}", hand.text());
     // one that stays open is a success
     put("legatorocr-gui", "#!/bin/sh\nsleep 4\n");
     let ok = post(&s, "/carta/legatorocr/open", json!({}));
     assert_eq!(ok.code, 200, "{}", ok.text());
+    unsafe { std::env::remove_var("CARTACOLIBRI_LEGATOROCR") };
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -616,19 +616,31 @@ pub fn which(tool: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// LegatorOCR, found once per setting of `CARTACOLIBRI_LEGATOROCR` (its `--version` runs only then).
+/// LegatorOCR, looked up per setting of `CARTACOLIBRI_LEGATOROCR`. A program that was found is kept
+/// (its `--version` runs once) while it still exists; "not found" is only remembered for a few seconds,
+/// so putting LegatorOCR next to CartaColibri works without restarting.
 fn legatorocr_bin() -> Option<std::path::PathBuf> {
     use std::sync::{Mutex, OnceLock};
-    static CACHE: OnceLock<Mutex<std::collections::HashMap<String, Option<std::path::PathBuf>>>> =
-        OnceLock::new();
+    use std::time::{Duration, Instant};
+    type Slot = (Option<std::path::PathBuf>, Instant);
+    static CACHE: OnceLock<Mutex<std::collections::HashMap<String, Slot>>> = OnceLock::new();
     let key = std::env::var("CARTACOLIBRI_LEGATOROCR").unwrap_or_default();
     let mut m = CACHE
         .get_or_init(Default::default)
         .lock()
         .unwrap_or_else(|e| e.into_inner());
-    m.entry(key)
-        .or_insert_with(crate::legatorocr::locate)
-        .clone()
+    if let Some((found, at)) = m.get(&key) {
+        let fresh = match found {
+            Some(p) => p.is_file(),
+            None => at.elapsed() < Duration::from_secs(3),
+        };
+        if fresh {
+            return found.clone();
+        }
+    }
+    let found = crate::legatorocr::locate();
+    m.insert(key, (found.clone(), Instant::now()));
+    found
 }
 
 /// Which OCR engine may be used: `CARTACOLIBRI_OCR_ENGINE` = `legatorocr`, `tesseract` or `auto` (default).
@@ -832,10 +844,21 @@ fn pdf_pages_raw(path: &Path) -> Res<Vec<String>> {
         let o = run_cmd(c, extract_timeout())?;
         if o.status.success() {
             let t = decode(&o.stdout);
-            return Ok(t
-                .split('\x0c')
+            let mut chunks: Vec<String> = t.split('\x0c').map(String::from).collect();
+            if chunks.last().is_some_and(|s| s.trim().is_empty()) {
+                chunks.pop(); // the form feed after the last page
+            }
+            // a pure scan has no text on any page: keep the empty pages, so OCR still knows how many there are
+            if chunks.iter().all(|s| s.trim().is_empty()) {
+                return Ok(if chunks.is_empty() {
+                    vec![String::new()]
+                } else {
+                    chunks
+                });
+            }
+            return Ok(chunks
+                .into_iter()
                 .filter(|s| !s.trim().is_empty())
-                .map(String::from)
                 .collect());
         }
         return Err(format!(

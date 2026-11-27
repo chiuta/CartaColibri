@@ -47,9 +47,42 @@ fn startable(p: &Path) -> bool {
     }
 }
 
-/// Looks in `extra` (a folder, or the program itself), then in the folder of this program and its
-/// sibling `LegatorOCR` folder (portable layouts), then in every folder of `path`.
+/// The folders directly inside `dir` whose name starts with `LegatorOCR` (any letter case).
+fn legatorocr_folders(dir: &Path) -> Vec<PathBuf> {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut v: Vec<PathBuf> = rd
+        .flatten()
+        .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .starts_with("legatorocr")
+        })
+        .map(|e| e.path())
+        .collect();
+    v.sort();
+    v.reverse(); // the newest version name sorts last
+    v
+}
+
+/// Looks in `extra` (a folder, or the program itself), then in the folder of this program, the two above it
+/// and their `LegatorOCR*` folders (portable layouts), then in every folder of `path`.
 pub fn locate_in(extra: &[PathBuf], path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
+    let here = std::env::current_exe()
+        .ok()
+        .and_then(|me| me.parent().map(Path::to_path_buf));
+    locate_from(extra, path, here.as_deref())
+}
+
+/// `locate_in` with the folder of this program given (so portable layouts can be tried).
+fn locate_from(
+    extra: &[PathBuf],
+    path: Option<&std::ffi::OsStr>,
+    here: Option<&Path>,
+) -> Option<PathBuf> {
     let name = exe_name();
     for x in extra {
         if searchable(x) && startable(x) {
@@ -57,12 +90,16 @@ pub fn locate_in(extra: &[PathBuf], path: Option<&std::ffi::OsStr>) -> Option<Pa
         }
     }
     let mut dirs: Vec<PathBuf> = extra.to_vec();
-    if let Ok(me) = std::env::current_exe()
-        && let Some(d) = me.parent()
-    {
-        dirs.push(d.to_path_buf());
-        if let Some(up) = d.parent() {
-            dirs.push(up.join("LegatorOCR"));
+    if let Some(d) = here {
+        // this folder, the folder above it and the one above that (a portable `App` folder), each as is and
+        // with the LegatorOCR folders in it (an unpacked download is `LegatorOCR-<version>-<target>`, maybe
+        // inside a `LegatorOCR` folder)
+        for base in d.ancestors().take(3) {
+            dirs.push(base.to_path_buf());
+            for sub in legatorocr_folders(base) {
+                dirs.extend(legatorocr_folders(&sub));
+                dirs.push(sub);
+            }
         }
     }
     if let Some(p) = path {
@@ -165,6 +202,8 @@ pub fn build_command(bin: &Path, input: &Path, lang: &str, txt: &Path, out_dir: 
     args.push(absolute(txt).into_os_string());
     args.extend(["--format".into(), "none".into(), "--out-dir".into()]);
     args.push(absolute(out_dir).into_os_string());
+    // one input is one page: by default LegatorOCR cuts a wide picture into two book pages, which drops and scrambles lines
+    args.extend(["--split".into(), "off".into()]);
     if lang.split('+').any(|l| l == "ron") {
         // comma-below ș ț, words split at a line end joined
         args.push("--clean-text".into());
@@ -300,6 +339,34 @@ printf 'The harbour office opened at nine.\n' > "$out"
             )
             .is_none()
         );
+    }
+
+    #[test]
+    fn finds_it_in_portable_layouts() {
+        let none = Some(std::ffi::OsStr::new(""));
+        // `App` holds CartaColibri and the program next to it
+        let app = temp("app");
+        let here = app.join("CartaColibri");
+        std::fs::create_dir_all(&here).unwrap();
+        let in_app = fake(&app, OK);
+        assert_eq!(locate_from(&[], none, Some(&here)), Some(in_app));
+        // an unpacked download: App/LegatorOCR/LegatorOCR-<version>-<target>/
+        let app2 = temp("app2");
+        let here2 = app2.join("CartaColibri");
+        let deep = app2
+            .join("LegatorOCR")
+            .join("LegatorOCR-0.2.0-x86_64-pc-windows-msvc");
+        std::fs::create_dir_all(&here2).unwrap();
+        std::fs::create_dir_all(&deep).unwrap();
+        let found = fake(&deep, OK);
+        assert_eq!(locate_from(&[], none, Some(&here2)), Some(found));
+        // an unrelated folder is not searched
+        let app3 = temp("app3");
+        let here3 = app3.join("CartaColibri");
+        std::fs::create_dir_all(&here3).unwrap();
+        std::fs::create_dir_all(app3.join("Other")).unwrap();
+        fake(&app3.join("Other"), OK);
+        assert_eq!(locate_from(&[], none, Some(&here3)), None);
     }
 
     #[test]

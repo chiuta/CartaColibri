@@ -1311,6 +1311,7 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                     lib.home.clone().into_os_string(),
                 ],
                 &lib.home,
+                &[],
             )?;
             json!({"ok": true})
         }
@@ -1323,8 +1324,19 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                         .into(),
                 ));
             };
-            launch(&gui, &[], &lib.home)?;
-            json!({"ok": true})
+            // a folder that belongs to the library: what LegatorOCR saves there joins it at the next index;
+            // its path is also handed over as CARTACOLIBRI_INBOX for a "save to CartaColibri" action
+            let inbox = lib.home.join("from-legatorocr");
+            std::fs::create_dir_all(&inbox)
+                .map_err(|e| (500, format!("cannot create {}: {e}", inbox.display())))?;
+            lib.add_root(&inbox.to_string_lossy()).map_err(bad)?;
+            launch(
+                &gui,
+                &[],
+                &lib.home,
+                &[("CARTACOLIBRI_INBOX", inbox.clone().into_os_string())],
+            )?;
+            json!({"ok": true, "inbox": inbox.to_string_lossy()})
         }
         ("POST", "chat/reset") => {
             let j = jbody(r.body).map_err(bad)?;
@@ -1343,11 +1355,14 @@ fn launch(
     bin: &std::path::Path,
     args: &[std::ffi::OsString],
     home: &std::path::Path,
+    envs: &[(&str, std::ffi::OsString)],
 ) -> Result<(), (u16, String)> {
     let log = home.join("launch.log");
     let out = std::fs::File::create(&log).ok();
     let mut cmd = std::process::Command::new(bin);
-    cmd.args(args).stdin(std::process::Stdio::null());
+    cmd.args(args)
+        .envs(envs.iter().map(|(k, v)| (*k, v)))
+        .stdin(std::process::Stdio::null());
     match out.and_then(|f| f.try_clone().ok().map(|g| (f, g))) {
         Some((f, g)) => cmd.stdout(f).stderr(g),
         None => cmd
@@ -1368,15 +1383,26 @@ fn launch(
     for _ in 0..20 {
         std::thread::sleep(std::time::Duration::from_millis(100));
         if let Ok(Some(st)) = child.try_wait() {
+            // a launcher that starts the real window and ends with success is fine
+            if st.success() {
+                return Ok(());
+            }
             let text = std::fs::read(&log).unwrap_or_default();
-            let tail: String = String::from_utf8_lossy(&text[text.len().saturating_sub(2048)..])
+            // the program's own last lines, without the generic panic noise around them
+            let tail: String = String::from_utf8_lossy(&text[text.len().saturating_sub(4096)..])
                 .lines()
                 .map(str::trim)
-                .filter(|l| !l.is_empty())
-                .rev()
-                .take(4)
+                .filter(|l| {
+                    !l.is_empty()
+                        && !l.starts_with("stack backtrace")
+                        && !l.starts_with("note: ")
+                        && !l.starts_with("thread '")
+                })
+                .map(|l| l.chars().take(200).collect::<String>())
                 .collect::<Vec<_>>()
                 .into_iter()
+                .rev()
+                .take(3)
                 .rev()
                 .collect::<Vec<_>>()
                 .join(" | ");
