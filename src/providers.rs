@@ -169,6 +169,8 @@ pub fn backend(spec: &str, model: Option<&str>, allow_cloud: bool) -> Result<Bac
         }
     }
     let mut be = Backend::gateway(p.url, m);
+    // context packs are a corbul feature: never offered to another service
+    be.packs = false;
     if p.cloud {
         // never send another service's key to a cloud host by accident: only its own variable or COLI_API_KEY
         be.api_key = key_of(p).or_else(|| {

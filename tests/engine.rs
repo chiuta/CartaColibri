@@ -108,3 +108,90 @@ fn engine_with_v1_models_usage_and_discovery() {
     );
     stop.store(true, Ordering::Relaxed);
 }
+
+/// An engine with `/v1/packs/complete`, or one that answers 501 there and chats normally.
+fn packs_engine(with: bool) -> (String, Arc<AtomicBool>, Arc<std::sync::Mutex<Vec<String>>>) {
+    let srv = tiny_http::Server::http("127.0.0.1:0").unwrap();
+    let port = srv.server_addr().to_ip().unwrap().port();
+    let stop = Arc::new(AtomicBool::new(false));
+    let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let (s2, seen2) = (stop.clone(), seen.clone());
+    std::thread::spawn(move || {
+        while !s2.load(Ordering::Relaxed) {
+            let Ok(Some(mut r)) = srv.recv_timeout(std::time::Duration::from_millis(100)) else {
+                continue;
+            };
+            let url = r.url().to_string();
+            let mut body = String::new();
+            let _ = std::io::Read::read_to_string(r.as_reader(), &mut body);
+            seen2.lock().unwrap().push(url.clone());
+            let (code, out) = match url.as_str() {
+                "/v1/packs/complete" if with => {
+                    let v: serde_json::Value = serde_json::from_str(&body).unwrap();
+                    let packs = v["packs"].as_array().unwrap();
+                    let ok = packs.len() == 3
+                        && !packs[1].as_str().unwrap().contains("[S1]")
+                        && v["question"].as_str().unwrap().contains("= [S2]");
+                    (
+                        200,
+                        format!(
+                            r#"{{"text":"{}","usage":{{"prompt_tokens":5,"completion_tokens":2}}}}"#,
+                            if ok { "packed [S1]" } else { "bad shape" }
+                        ),
+                    )
+                }
+                "/v1/packs/complete" => (501, "{}".to_string()),
+                "/v1/models" => (200, r#"{"data":[{"id":"m"}]}"#.to_string()),
+                "/v1/chat/completions" => (
+                    200,
+                    r#"{"choices":[{"message":{"content":"plain [S1]"}}]}"#.to_string(),
+                ),
+                _ => (404, "{}".to_string()),
+            };
+            let _ = r.respond(
+                tiny_http::Response::from_string(out)
+                    .with_status_code(code)
+                    .with_header(
+                        tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap(),
+                    ),
+            );
+        }
+    });
+    (format!("http://127.0.0.1:{port}"), stop, seen)
+}
+
+const PACKED: &str =
+    "Summarize.\n\n<<SOURCES>>\n### [S1] a.txt\nalpha text\n\n### [S2] b.txt\nbeta text\n<<END>>";
+
+#[test]
+fn packs_are_used_when_the_engine_has_them_and_skipped_when_it_does_not() {
+    let (base, stop, seen) = packs_engine(true);
+    let b = Backend::gateway(&base, None).with_packs(true);
+    assert_eq!(b.complete("sys", PACKED).unwrap(), "packed [S1]");
+    assert!(
+        !seen
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|u| u.contains("chat/completions"))
+    );
+    // not the shape of a sources prompt: ordinary chat even with packs on
+    assert_eq!(b.complete("sys", "hello").unwrap(), "plain [S1]");
+    stop.store(true, Ordering::Relaxed);
+
+    let (base, stop, seen) = packs_engine(false);
+    let b = Backend::gateway(&base, None).with_packs(true);
+    assert_eq!(b.complete("sys", PACKED).unwrap(), "plain [S1]");
+    assert_eq!(b.complete("sys", PACKED).unwrap(), "plain [S1]");
+    let asked = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|u| u.contains("packs"))
+        .count();
+    assert_eq!(asked, 1, "a 501 is remembered, not asked again");
+    // off by default: never asks
+    let b = Backend::gateway(&base, None).with_packs(false);
+    b.complete("sys", PACKED).unwrap();
+    stop.store(true, Ordering::Relaxed);
+}

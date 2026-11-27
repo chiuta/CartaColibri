@@ -41,6 +41,9 @@ pub struct Model {
     /// if the model is unreachable, fall back to the offline mode and say so
     #[arg(long)]
     pub fallback: bool,
+    /// with `corbul serve --packs`: reuse the work done on each source across calls (any other engine: ignored)
+    #[arg(long)]
+    pub packs: bool,
 }
 
 impl Model {
@@ -51,6 +54,11 @@ impl Model {
             cartacolibri::providers::backend(p, self.model.as_deref(), self.allow_cloud)?
         } else {
             Backend::gateway(&self.url, self.model.clone())
+        };
+        let be = if self.packs && !self.mock && self.provider.is_none() {
+            be.with_packs(true)
+        } else {
+            be
         };
         Ok(be.with_fallback(self.fallback))
     }

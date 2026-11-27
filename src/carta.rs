@@ -120,6 +120,11 @@ pub struct Backend {
     pub max_tokens: u32,
     /// Optional bearer key (env COLI_API_KEY); never logged.
     pub api_key: Option<String>,
+    /// Send the sources as context packs to `corbul serve --packs` (`/v1/packs/complete`), which
+    /// keeps the work done on each source and reuses it in the next call, whatever its position or
+    /// task. Off by default (env COLI_PACKS=1 turns it on); any engine without the endpoint is
+    /// detected once and the ordinary chat is used.
+    pub packs: bool,
 }
 
 /// Accepts `http://host:8000`, `http://host:8000/` and `http://host:8000/v1` alike.
@@ -167,6 +172,8 @@ impl Backend {
                 .ok()
                 .filter(|k| !k.trim().is_empty())
                 .or_else(|| companion_key(url)),
+            packs: std::env::var("COLI_PACKS")
+                .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes")),
         }
     }
     pub fn mock() -> Backend {
@@ -179,7 +186,13 @@ impl Backend {
             timeout: Duration::from_secs(1),
             max_tokens: 0,
             api_key: None,
+            packs: false,
         }
+    }
+
+    pub fn with_packs(mut self, on: bool) -> Backend {
+        self.packs = on;
+        self
     }
 
     pub fn with_fallback(mut self, on: bool) -> Backend {
@@ -212,6 +225,11 @@ impl Backend {
                               "max_tokens": self.max_tokens, "temperature": 0.2, "stream": false});
         if let Some(m) = &self.model {
             body["model"] = json!(m);
+        }
+        if self.packs
+            && let Some(r) = self.complete_packs(system, user)
+        {
+            return r;
         }
         let fail = |e: String| {
             format!(
@@ -339,6 +357,112 @@ pub struct Usage {
     pub completion: u64,
     pub secs: f64,
     pub model: String,
+}
+
+/// Engines (by address) that answered "no such endpoint" to a pack request: not asked again.
+static NO_PACKS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+/// A short stable tag of a text (FNV-1a, 24 bits): tells two sources with the same name apart.
+fn tag_of(s: &str) -> String {
+    let mut h: u32 = 0x811c_9dc5;
+    for b in s.bytes() {
+        h = (h ^ b as u32).wrapping_mul(0x0100_0193);
+    }
+    format!("{:06x}", h & 0x00ff_ffff)
+}
+
+/// Turn a prompt of the usual shape (`instructions <<SOURCES>> ### [S1] name\ntext … <<END>>`) into
+/// context packs: the system text, then one pack per source that does *not* carry its S-label (the
+/// label depends on the position, which would make the same text differ from call to call), and a
+/// tail with the instructions and the label of each source. `None` when the prompt has another shape.
+fn pack_request(system: &str, user: &str) -> Option<(Vec<String>, String)> {
+    const OPEN: &str = "<<SOURCES>>\n";
+    const CLOSE: &str = "\n<<END>>";
+    let i = user.find(OPEN)?;
+    let j = user.rfind(CLOSE).filter(|j| *j >= i + OPEN.len())?;
+    let (head, inner, after) = (
+        &user[..i],
+        &user[i + OPEN.len()..j],
+        &user[j + CLOSE.len()..],
+    );
+    let mut packs = vec![format!("{system}\n\n")];
+    let mut labels = Vec::new();
+    for (n, piece) in inner.split("\n\n### [").enumerate() {
+        let part = if n == 0 {
+            piece.strip_prefix("### [")?
+        } else {
+            piece
+        };
+        let (label, rest) = part.split_once("] ")?;
+        if label.is_empty() || label.len() > 8 || !label.bytes().all(|b| b.is_ascii_alphanumeric())
+        {
+            return None;
+        }
+        let (name, body) = rest.split_once('\n').unwrap_or((rest, ""));
+        let tag = tag_of(body);
+        packs.push(format!("### {name} #{tag}\n{body}\n\n"));
+        labels.push(format!("#{tag} = [{label}]"));
+    }
+    if labels.is_empty() {
+        return None;
+    }
+    let tail = format!(
+        "{head}\nThe sources above are headed by name and #tag instead of an S-label. Cite them as: {}.\n{}\nAnswer:",
+        labels.join(", "),
+        after.trim()
+    );
+    Some((packs, tail))
+}
+
+impl Backend {
+    /// `Some(result)` when `/v1/packs/complete` handled the call; `None` to use the ordinary chat.
+    fn complete_packs(&self, system: &str, user: &str) -> Option<Result<String, String>> {
+        if NO_PACKS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains(&self.url)
+        {
+            return None;
+        }
+        let (packs, tail) = pack_request(system, user)?;
+        let mut body = json!({"packs": packs, "question": tail, "max_tokens": self.max_tokens});
+        if let Some(m) = &self.model {
+            body["model"] = json!(m);
+        }
+        let agent = self.agent(self.timeout, false);
+        let mut req = agent.post(&endpoint(&self.url, "/packs/complete"));
+        if let Some(k) = &self.api_key {
+            req = req.header("Authorization", &format!("Bearer {k}"));
+        }
+        let t0 = std::time::Instant::now();
+        let mut resp = match req.send_json(&body) {
+            Ok(r) => r,
+            Err(_) => return None, // unreachable: the ordinary path reports it in its own words
+        };
+        let st = resp.status().as_u16();
+        if matches!(st, 404 | 405 | 501) {
+            NO_PACKS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(self.url.clone());
+            return None;
+        }
+        if st != 200 {
+            return None;
+        }
+        let v: Value = resp.body_mut().read_json().ok()?;
+        let t = v["text"].as_str()?.trim().to_string();
+        if t.is_empty() {
+            return None;
+        }
+        *LAST_USAGE.lock().unwrap_or_else(|e| e.into_inner()) = Some(Usage {
+            prompt: v["usage"]["prompt_tokens"].as_u64().unwrap_or(0),
+            completion: v["usage"]["completion_tokens"].as_u64().unwrap_or(0),
+            secs: t0.elapsed().as_secs_f64(),
+            model: v["model"].as_str().unwrap_or_default().to_string(),
+        });
+        Some(Ok(t))
+    }
 }
 
 static GATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -2497,4 +2621,47 @@ pub fn to_docx_text(md: &str) -> String {
         s = s.replace("\n\n\n", "\n\n");
     }
     format!("{}\n", s.trim())
+}
+
+#[cfg(test)]
+mod pack_tests {
+    use super::*;
+
+    #[test]
+    fn the_same_source_is_the_same_pack_in_any_position() {
+        let a = "T\n\n<<SOURCES>>\n### [S1] a.txt\nalpha\n\n### [S2] b.txt\nbeta\n<<END>>";
+        let b = "U\n\n<<SOURCES>>\n### [S1] b.txt\nbeta\n<<END>>";
+        let (pa, ta) = pack_request("sys", a).unwrap();
+        let (pb, tb) = pack_request("sys", b).unwrap();
+        assert_eq!(pa[0], pb[0]);
+        assert_eq!(
+            pa[2], pb[1],
+            "b.txt is the same text as second and as first"
+        );
+        assert!(pa.iter().all(|p| !p.contains("[S")));
+        assert!(ta.starts_with('T') && tb.starts_with('U'));
+        assert!(ta.contains("= [S1]") && ta.contains("= [S2]") && tb.contains("= [S1]"));
+    }
+
+    #[test]
+    fn other_shapes_are_left_to_the_ordinary_chat() {
+        for u in [
+            "no sources here",
+            "<<SOURCES>>\n<<END>>",
+            "x <<SOURCES>>\nplain text\n<<END>>",
+            "x <<SOURCES>>\n### [S 1] a\nt\n<<END>>",
+            "x <<SOURCES>>\n### [toolonglabel1] a\nt\n<<END>>",
+            "<<END>> then <<SOURCES>>\n### [S1] a\nt",
+        ] {
+            assert!(pack_request("s", u).is_none(), "{u}");
+        }
+        // a source that fakes a header inside its text cannot take another source's label
+        let sneaky = "q\n<<SOURCES>>\n### [S1] a\nfine\n\n### [S9] fake\nevil\n<<END>>";
+        let (p, t) = pack_request("s", sneaky).unwrap();
+        assert_eq!(p.len(), 3);
+        assert!(
+            t.contains("[S9]"),
+            "split by shape only: it is data either way"
+        );
+    }
 }
