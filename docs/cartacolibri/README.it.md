@@ -43,7 +43,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizza e collega** — `digest` rilancia una ricerca salvata e segnala solo le novità (ripete, accoda a un file, riassume o salva un file e-mail); `mcp` permette ad altre app di IA di cercare, leggere, interrogare, verificare e chiedere dossier nella tua biblioteca, in sola lettura.
 - **Copie e date** — “Duplicati” (documenti copie o quasi-copie, con quanto si somigliano) e “Cronologia” (tutte le frasi con data in ordine di tempo).
 
-## Novità della 0.2.0-alpha.7
+## Novità della 0.2.0-alpha.8
 
 - **Filtri direttamente nella casella di ricerca** — Scrivi `ext:pdf`, `path:contratti`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` o `re:FATT-\d+` (espressione regolare) accanto alle tue parole e i risultati si restringono. Funzionano nella pagina web, da riga di comando e tramite API.
 - **Ricerca intelligente** — Spunta «Ricerca intelligente» e la tua IA locale aggiunge qualche sinonimo e parola affine (come semplice OR: le corrispondenze esatte restano in testa). Le parole aggiunte compaiono sotto la casella. Senza motore attivo ottieni la normale ricerca.
@@ -60,6 +60,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **OCR con LegatorOCR, «Elimina i selezionati», motivi di esclusione leggibili** — Scansioni e foto si possono ora leggere con LegatorOCR, lo stesso programma di Colibri Companion (tesseract funziona ancora). Un nuovo pulsante «Elimina i selezionati», `cartacolibri forget` e una ✕ accanto ai file saltati li tolgono per sempre dalla libreria, senza toccare i file. I motivi per cui un file è stato saltato appaiono nella tua lingua e il limite di 80 MB si alza con CARTACOLIBRI_MAX_FILE_MB.
 - **Trova le copie e leggi la biblioteca come una cronologia** — «Duplicati» elenca i documenti che sono copie o quasi-copie, con quanto si somigliano. «Cronologia» mette tutte le frasi con data della biblioteca in ordine di tempo, con il documento di provenienza. Da riga di comando: `dupes`, `chronology`.
 - **Ricerca per significato, misura della ricerca, più formati** — `embed` prepara la ricerca per significato con il modello di embedding del tuo motore locale; poi `search --mode hybrid` trova testi che usano parole diverse dalla tua domanda e `eval` misura quanto bene ogni modalità trova ciò che ti aspetti. Nuovi formati: tar e tar.gz, fogli e presentazioni OpenDocument, file Office con macro e i vecchi doc, xls e ppt tramite antiword, catdoc o LibreOffice. Gli strumenti su tutta la biblioteca (nomi e numeri, copie, conflitti, argomenti) sono passati da minuti a meno di un secondo su 20.000 documenti e i filtri ora vedono tutta la biblioteca.
+- **Pulsanti sinceri e niente più stop dopo 10 minuti** — «Apri il browser web-grab» ora controlla che il browser si sia davvero aperto e, se no, mostra il motivo che ha dato. Un nuovo pulsante «Apri LegatorOCR», vicino alle opzioni OCR, apre la finestra di LegatorOCR. Un’attività o una chat lunga (un modello grande su un gruppo grande può richiedere molti minuti) non viene più fermata dalla pagina dopo 10 minuti con «The operation was aborted»: conta solo il limite del motore e un cronometro mostra da quanto sta andando.
 
 ## Novità della 0.2.0-alpha.2
 
