@@ -98,6 +98,10 @@ Routes: `GET library|status|search|doc`, `POST folders|index|upload|groups|run|g
 ## web-grab
 See [`web-grab/README.md`](../web-grab/README.md).
 
+**Open buttons.** In “Bring things in”, *Open the web-grab browser* starts `cartacolibri-browser` (it must sit in the same folder as `cartacolibri`) on the same library; under the OCR options, *Open LegatorOCR* starts `legatorocr-gui`, found next to the `legatorocr` program used for OCR (or through `CARTACOLIBRI_LEGATOROCR`, a `LegatorOCR` folder beside the program, or `PATH`). Both wait two seconds: if the program ends at once, the page shows its own last error lines (also kept in `launch.log` in the library folder) instead of saying “opening”. Missing programs are reported as not found. API: `POST /carta/browser/open`, `POST /carta/legatorocr/open` (same `X-Colibri-UI` and origin checks as every write route).
+
+**Long tasks.** The page puts no time limit on a task or a chat answer; only the engine's own limit counts (30 minutes by default), and a timer shows how long a task has run. A big model on a big group can take many minutes: ask about a smaller group or use a smaller model.
+
 ## More commands (power features)
 
 | Command | What it does |

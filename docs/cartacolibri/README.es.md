@@ -45,6 +45,10 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Novedades de la 0.2.0-alpha.8
 
+- **Botones que dicen la verdad y sin corte a los 10 minutos** — «Abrir el navegador web-grab» ahora comprueba que el navegador se abrió de verdad y, si no, muestra el motivo que dio. Un botón nuevo, «Abrir LegatorOCR», junto a las opciones de OCR, abre la ventana de LegatorOCR. Una tarea o un chat largo (un modelo grande sobre un grupo grande puede tardar muchos minutos) ya no lo corta la página a los 10 minutos con «The operation was aborted»: solo cuenta el límite del motor, y un cronómetro muestra cuánto lleva en marcha.
+
+## Novedades de la 0.2.0-alpha.3 a la alpha.7
+
 - **Filtros directamente en la casilla de búsqueda** — Escribe `ext:pdf`, `path:contratos`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` o `re:FAC-\d+` (expresión regular) junto a tus palabras y los resultados se acotan. Funcionan en la página web, en la línea de comandos y a través de la API.
 - **Búsqueda inteligente** — Marca «Búsqueda inteligente» y tu IA local añade algunos sinónimos y palabras afines (como un simple OR: las coincidencias exactas siguen primero). Las palabras añadidas se muestran bajo la casilla. Sin motor en marcha obtienes la búsqueda normal.
 - **Chat de pregunta única** — Marca «Cada pregunta por separado» y el chat olvida las preguntas anteriores: cada respuesta sale solo de tus documentos, con sus fuentes.
@@ -60,7 +64,6 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **OCR con LegatorOCR, «Borrar la selección», motivos de omisión legibles** — Los escaneos y las fotos ya se pueden leer con LegatorOCR, el mismo programa que usa Colibri Companion (tesseract sigue funcionando). Un botón nuevo «Borrar la selección», `cartacolibri forget` y una ✕ junto a los archivos omitidos los quitan para siempre de la biblioteca, sin tocar los archivos. Los motivos de omisión salen ahora en tu idioma y el límite de 80 MB se sube con CARTACOLIBRI_MAX_FILE_MB.
 - **Encuentra copias y lee tu biblioteca como una cronología** — «Duplicados» lista los documentos que son copias o casi copias, con su parecido. «Cronología» ordena en el tiempo todas las frases con fecha de tu biblioteca, con su documento. En la línea de comandos: `dupes`, `chronology`.
 - **Búsqueda por significado, medir la búsqueda, más formatos** — `embed` prepara la búsqueda por significado con el modelo de embeddings de tu motor local; luego `search --mode hybrid` encuentra textos que usan otras palabras que tu pregunta, y `eval` mide qué tan bien cada modo encuentra lo que esperas. Formatos nuevos: tar y tar.gz, hojas y presentaciones OpenDocument, archivos de Office con macros y los antiguos doc, xls y ppt mediante antiword, catdoc o LibreOffice. Las herramientas sobre toda la biblioteca (nombres y números, copias, conflictos, temas) pasaron de minutos a menos de un segundo con 20.000 documentos, y los filtros ahora ven toda la biblioteca.
-- **Botones que dicen la verdad y sin corte a los 10 minutos** — «Abrir el navegador web-grab» ahora comprueba que el navegador se abrió de verdad y, si no, muestra el motivo que dio. Un botón nuevo, «Abrir LegatorOCR», junto a las opciones de OCR, abre la ventana de LegatorOCR. Una tarea o un chat largo (un modelo grande sobre un grupo grande puede tardar muchos minutos) ya no lo corta la página a los 10 minutos con «The operation was aborted»: solo cuenta el límite del motor, y un cronómetro muestra cuánto lleva en marcha.
 
 ## Novedades de la 0.2.0-alpha.2
 

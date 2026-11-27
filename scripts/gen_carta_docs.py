@@ -181,8 +181,13 @@ P.POWER[3] = {l: P.POWER[3][l] + ' ' + A4.CHAT_EXTRA[l] for l in P.POWER[3]}
 import re as _re
 P.POWER += [{l: _re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'“\1”', t) for l, t in c.items()} for c in A4.POWER_ADD]
 P.CLI = C2.FIRST + [(C2.CHAT_NEW if c == C2.CHAT_OLD else c, d) for c, d in P.CLI] + C2.NEW
-X["h_new4"] = dict(A4.H_NEW)
-for _i, _n in enumerate(A4.NEWS, 1):
+# the newest release gets its own section; everything from alpha.3 to alpha.7 sits under its own heading
+NEWS8, NEWS4 = A4.NEWS[-1:], A4.NEWS[:-1]
+X["h_new8"] = dict(A4.H_NEW)
+X["h_new4"] = dict(A4.H_MID)
+for _i, _n in enumerate(NEWS8, 1):
+    X[f"n8w{_i}"] = {_l: f"**{_n[_l][0]}** — {_n[_l][1]}" for _l in LANGS}
+for _i, _n in enumerate(NEWS4, 1):
     X[f"n4w{_i}"] = {_l: f"**{_n[_l][0]}** — {_n[_l][1]}" for _l in LANGS}
 
 
@@ -219,7 +224,8 @@ def md_readme(lang, root=False):
                          for l in LANGS) if not root else " · ".join("<b>English</b>" if l == "en" else f"[{NAMES[l]}](docs/cartacolibri/README.{l}.md)" for l in LANGS)
     logo = "assets/cartacolibri-logo.png" if root else "../../assets/cartacolibri-logo.png"
     t_docs = t("docs")
-    news4 = "\n".join(f"- {t('n4w' + str(i))}" for i in range(1, len(A4.NEWS) + 1))
+    news8 = "\n".join(f"- {t('n8w' + str(i))}" for i in range(1, len(NEWS8) + 1))
+    news4 = "\n".join(f"- {t('n4w' + str(i))}" for i in range(1, len(NEWS4) + 1))
     news = "\n".join(f"- {t('nw' + str(i))}" for i in range(1, len(A2.NEWS) + 1))
     power, cli = md_power(lang)
     sec = f"## {P.H_SEC[lang]}\n\n" + (sec_text(lang, "SECURITY.md", "docs/threat-model.md") if root else sec_text(lang, "../../SECURITY.md", "../threat-model.md")) + "\n"
@@ -242,6 +248,10 @@ def md_readme(lang, root=False):
 - {t('f5')}
 
 {power}
+## {t('h_new8')}
+
+{news8}
+
 ## {t('h_new4')}
 
 {news4}
@@ -307,14 +317,17 @@ def site():
     names = json.dumps(NAMES, ensure_ascii=False)
     first_code = html.escape(B.FIRST_CODE.strip("`").removeprefix("bash\n").strip("\n"), quote=False)
     ids = ['tagline', 'intro', 'h_first', 'first_intro', 'first_note', 'h_demo', 'demo_sub', 'h_what', 'f1', 'f2', 'f3', 'f4', 'f5', 'h_power', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'h_cli', 'h_sec', 'sec', 'h_layers', 'layers',
-           'h_new4', 'n4w1', 'n4w2', 'n4w3', 'n4w4', 'n4w5', 'n4w6', 'n4w7', 'n4w8', 'n4w9', 'n4w10', 'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
+           'h_new8', *[f'n8w{i}' for i in range(1, len(NEWS8) + 1)], 'h_new4', *[f'n4w{i}' for i in range(1, len(NEWS4) + 1)], 'h_new', 'nw1', 'nw2', 'nw3', 'nw4', 'nw5', 'nw6', 'h_start', 'start1', 'start2', 'h_faq', 'h_trouble', 'trouble_intro', 'h_gloss', 'h_priv', 'h_status', 'status', 'h_lic', 'lic']
     import site_template as T
+    def grid(prefix, n):
+        cards = "".join(f'<div class="card p" id="{prefix}{i}"></div>' for i in range(1, n + 1))
+        return f'<div class="grid rv" id="{prefix}grid">{cards}</div></section>'
     for _n, _st in {**A2.STEPS, **A4.STEPS}.items():
         T.NEW[f"t{_n}"] = dict(_st["tab"]); T.NEW[f"c{_n}"] = dict(_st["cap"])
     miss = [(k, l) for k in T.NEW for l in LANGS if not T.NEW[k].get(l)]
     if miss: sys.exit(f"missing site translations: {miss}")
     new = json.dumps(T.NEW, ensure_ascii=False).replace("</", "<\\/")
-    return (T.TEMPLATE.replace("__DATA__", data).replace("__NAMES__", names).replace("__NEW__", new).replace("__IDS__", json.dumps(ids))
+    return (T.TEMPLATE.replace("__DATA__", data).replace("__NAMES__", names).replace("__NEW__", new).replace("__IDS__", json.dumps(ids)).replace("__N8GRID__", grid('n8w', len(NEWS8))).replace("__N4GRID__", grid('n4w', len(NEWS4)))
             .replace("__FIRST_CODE__", first_code).replace("__REPOHOST__", REPO.split("//")[1]).replace("__REPO__", REPO))
 
 

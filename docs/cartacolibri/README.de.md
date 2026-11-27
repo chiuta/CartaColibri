@@ -45,6 +45,10 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## Neu in 0.2.0-alpha.8
 
+- **Ehrliche Schaltflächen und kein Abbruch mehr nach 10 Minuten** — „Web-Grab-Browser öffnen“ prüft jetzt, ob sich der Browser wirklich geöffnet hat, und zeigt sonst den Grund an, den er nannte. Eine neue Schaltfläche „LegatorOCR öffnen“ bei den OCR-Optionen öffnet das LegatorOCR-Fenster. Eine lange Aufgabe oder ein langer Chat (ein großes Modell auf einer großen Gruppe kann viele Minuten brauchen) wird von der Seite nicht mehr nach 10 Minuten mit „The operation was aborted“ abgebrochen: nur die Grenze der Engine zählt, und eine Stoppuhr zeigt, wie lange es läuft.
+
+## Neu von 0.2.0-alpha.3 bis alpha.7
+
 - **Filter direkt im Suchfeld** — Tippe `ext:pdf`, `path:vertraege`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` oder `re:RE-\d+` (regulärer Ausdruck) neben deine Wörter, und die Treffer werden eingegrenzt. Sie funktionieren auf der Webseite, in der Kommandozeile und über die API.
 - **Intelligente Suche** — Hake „Intelligente Suche“ an, und deine lokale KI ergänzt ein paar Synonyme und verwandte Wörter (als einfaches OR, exakte Treffer stehen also weiter vorn). Die zusätzlichen Wörter erscheinen unter dem Feld. Ohne laufende Engine bekommst du die normale Suche.
 - **Chat mit Einzelfragen** — Hake „Jede Frage einzeln“ an, und der Chat vergisst frühere Fragen: Jede Antwort stammt nur aus deinen Dokumenten, mit ihren Quellen.
@@ -60,7 +64,6 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **OCR mit LegatorOCR, „Auswahl löschen“, lesbare Überspringgründe** — Scans und Fotos lassen sich jetzt mit LegatorOCR lesen, demselben Programm wie in Colibri Companion (Tesseract funktioniert weiterhin). Eine neue Schaltfläche „Auswahl löschen“, `cartacolibri forget` und ein ✕ neben übersprungenen Dateien nehmen sie dauerhaft aus der Bibliothek, ohne die Dateien anzufassen. Die Gründe fürs Überspringen erscheinen jetzt in deiner Sprache, und das 80-MB-Limit lässt sich mit CARTACOLIBRI_MAX_FILE_MB anheben.
 - **Kopien finden und die Bibliothek als Zeitleiste lesen** — „Duplikate“ listet Dokumente, die Kopien oder fast Kopien sind, mit ihrer Ähnlichkeit. „Chronologie“ ordnet alle datierten Sätze deiner Bibliothek zeitlich, mit ihrem Dokument. In der Kommandozeile: `dupes`, `chronology`.
 - **Suche nach Bedeutung, Suche messen, mehr Formate** — `embed` bereitet die Bedeutungssuche mit dem Embedding-Modell deiner lokalen Engine vor; danach findet `search --mode hybrid` Texte, die andere Wörter benutzen als deine Frage, und `eval` misst, wie gut jeder Modus findet, was du erwartest. Neue Formate: tar und tar.gz, OpenDocument-Tabellen und -Präsentationen, Office-Dateien mit Makros sowie alte doc, xls und ppt über antiword, catdoc oder LibreOffice. Werkzeuge über die ganze Bibliothek (Namen und Zahlen, Kopien, Widersprüche, Themen) brauchen bei 20.000 Dokumenten jetzt unter einer Sekunde statt Minuten, und Filter sehen jetzt die ganze Bibliothek.
-- **Ehrliche Schaltflächen und kein Abbruch mehr nach 10 Minuten** — „Web-Grab-Browser öffnen“ prüft jetzt, ob sich der Browser wirklich geöffnet hat, und zeigt sonst den Grund an, den er nannte. Eine neue Schaltfläche „LegatorOCR öffnen“ bei den OCR-Optionen öffnet das LegatorOCR-Fenster. Eine lange Aufgabe oder ein langer Chat (ein großes Modell auf einer großen Gruppe kann viele Minuten brauchen) wird von der Seite nicht mehr nach 10 Minuten mit „The operation was aborted“ abgebrochen: nur die Grenze der Engine zählt, und eine Stoppuhr zeigt, wie lange es läuft.
 
 ## Neu in 0.2.0-alpha.2
 

@@ -45,6 +45,10 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 
 ## New in 0.2.0-alpha.8
 
+- **Buttons that tell the truth, and no more 10-minute cut-off** — “Open the web-grab browser” now checks that the browser really opened and, if it did not, shows the reason it gave. A new “Open LegatorOCR” button next to the OCR options opens the LegatorOCR window. A long task or chat (a big model on a big group can take many minutes) is no longer stopped by the page after 10 minutes with “The operation was aborted”: only the engine’s own limit counts, and a timer shows how long it has been running.
+
+## New in 0.2.0-alpha.3 to alpha.7
+
 - **Filters right in the search box** — Type `ext:pdf`, `path:contracts`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` or `re:INV-\d+` (a regular expression) next to your words and the results narrow down. They work in the web page, on the command line and through the API.
 - **Smart search** — Tick “Smart search” and your local AI adds a few synonyms and related words (as a plain OR, so exact matches still rank first). The extra words are shown under the box. With no engine running, you simply get the normal search.
 - **Single-question chat** — Tick “Each question on its own” and the chat forgets earlier questions: every answer comes only from your documents, with its sources.
@@ -60,7 +64,6 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **OCR with LegatorOCR, “Delete selected”, readable skip reasons** — Scans and photos can now be read through LegatorOCR, the same program Colibri Companion uses (tesseract still works). A new “Delete selected” button, `cartacolibri forget` and a ✕ beside skipped files take them out of the library for good, without touching the files. The reasons a file was skipped now appear in your language, and the 80 MB size limit can be raised with CARTACOLIBRI_MAX_FILE_MB.
 - **Find copies, and read your library as a timeline** — “Duplicates” lists documents that are copies or near-copies of each other, with how alike they are. “Chronology” puts every dated sentence of your library in time order, with the document it comes from. On the command line: `dupes`, `chronology`.
 - **Search by meaning, measure your search, more formats** — `embed` prepares meaning search with your local engine’s embedding model; `search --mode hybrid` then finds texts that use other words than your question, and `eval` measures how well each mode finds what you expect. New formats: tar and tar.gz, OpenDocument sheets and slides, macro-enabled Office files, and old doc, xls and ppt through antiword, catdoc or LibreOffice. Whole-library tools (names and numbers, copies, conflicts, topics) went from minutes to under a second on 20,000 documents, and filters now see the whole library.
-- **Buttons that tell the truth, and no more 10-minute cut-off** — “Open the web-grab browser” now checks that the browser really opened and, if it did not, shows the reason it gave. A new “Open LegatorOCR” button next to the OCR options opens the LegatorOCR window. A long task or chat (a big model on a big group can take many minutes) is no longer stopped by the page after 10 minutes with “The operation was aborted”: only the engine’s own limit counts, and a timer shows how long it has been running.
 
 ## New in 0.2.0-alpha.2
 
