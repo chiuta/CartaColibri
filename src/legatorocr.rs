@@ -302,6 +302,16 @@ mod tests {
         let p = dir.join(PROGRAM);
         std::fs::write(&p, format!("#!/bin/sh\n{body}\n")).unwrap();
         std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // another test thread may fork while the file is still open for writing, which makes the
+        // first run fail with "Text file busy"; wait until the program can really be started
+        for _ in 0..100 {
+            match std::process::Command::new(&p).arg("--version").output() {
+                Err(e) if e.raw_os_error() == Some(26) => {
+                    std::thread::sleep(Duration::from_millis(20))
+                }
+                _ => break,
+            }
+        }
         p
     }
     const OK: &str = r#"
