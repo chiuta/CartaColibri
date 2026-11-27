@@ -138,6 +138,12 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.evaluate("()=>{document.querySelector('.scroll').scrollTop=0}")
             pg.wait_for_function("()=>[...document.querySelectorAll('.sb:not([hidden]) button')].some(b=>!b.disabled)", timeout=5000)
             pg.screenshot(path=f"{shots}/{lang}-scroll-buttons.png")
+            # the buttons must not cover anything in their area: no overlap with any control, link or table cell
+            hit = pg.evaluate("""()=>{const out=[];for(const b of document.querySelectorAll('.sb:not([hidden]) button')){const r=b.getBoundingClientRect();
+              for(const h of document.querySelectorAll('.scroll,.side,.drawer .bd')){if(!h.offsetParent)continue;
+                for(const e of h.querySelectorAll('button,a,input,select,textarea,label,td,th,li,p,h2,h3,h4,b,span')){const q=e.getBoundingClientRect();if(!q.width||!q.height)continue;
+                  if(q.left<r.right&&q.right>r.left&&q.top<r.bottom&&q.bottom>r.top)out.push(e.tagName+'.'+(e.textContent||'').slice(0,20))}}}return out.slice(0,5)}""")
+            assert not hit, f"scroll buttons cover: {hit}"
             pg.locator(".sb:not([hidden]) button >> nth=1").click()
             pg.wait_for_function("()=>document.querySelector('.scroll').scrollTop>0", timeout=5000)
             assert pg.evaluate("()=>[...document.querySelectorAll('.sb:not([hidden]) button')].every(b=>b.title&&b.title!=='sc_up'&&b.title!=='sc_down')"), "button labels not translated"

@@ -14,7 +14,7 @@
 @media(prefers-color-scheme:light){:root[data-theme=auto]{--bg:#f7f8fa;--surface:#fff;--s2:#f0f2f5;--s3:#e6e9ee;--line:#aab2c0;--ink:#1c2230;--mute:#566074;--blue:#2a5db8;--cyan:#0a6a7c;--amber:#8a5a00;--ok:#067647;--bad:#b42318;--sel:rgba(42,93,184,.16)}}
 :root[data-big="1"]{--fs:18px}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
-.sb[hidden]{display:none}.sb{position:fixed;z-index:40;display:flex;flex-direction:column;gap:6px;pointer-events:none}.sb button{pointer-events:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--s2);color:var(--ink);font-size:16px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.45)}.sb button:hover:not(:disabled){background:var(--cyan);color:#000}.sb button:disabled{opacity:.35;cursor:default}
+.sb[hidden]{display:none}.sb{position:fixed;z-index:40;display:flex;flex-direction:column;gap:6px;pointer-events:none}.sb button{pointer-events:auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--s2);color:var(--ink);font-size:16px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.45)}.sb button:hover:not(:disabled){background:var(--cyan);color:#000}.sb button:disabled{opacity:.35;cursor:default}
 /* scrollbars you can see and grab: full width, light thumb on a dark track (the browser default hides in dark themes) */
 *{scrollbar-width:auto;scrollbar-color:#8aa0d6 var(--s2)}
 body{background:var(--bg);color:var(--ink);font:var(--fs)/1.5 var(--font);display:grid;grid-template-columns:64px 1fr;overflow:hidden}
@@ -1154,12 +1154,14 @@ openBtn('#wgBrowser','#wgBrSt','browser/open','wg_open_ok');openBtn('#ocrOpen','
 function mk(h){const w=document.createElement('div');w.className='sb';w.hidden=true;const u=document.createElement('button'),d=document.createElement('button');u.type=d.type='button';u.textContent='▲';d.textContent='▼';
  u.onclick=()=>h.scrollBy({top:-Math.max(80,h.clientHeight*.85),behavior:'smooth'});d.onclick=()=>h.scrollBy({top:Math.max(80,h.clientHeight*.85),behavior:'smooth'});
  w.append(u,d);document.body.appendChild(w);const o={w,u,d};M.set(h,o);return o}
-function upd(){const live=new Set(document.querySelectorAll(HOSTS));for(const h of live){const o=M.get(h)||mk(h),r=h.getBoundingClientRect(),can=h.offsetParent!==null&&r.width>0&&h.scrollHeight-h.clientHeight>8&&r.bottom>60&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;
-  let show=can;if(can){const sbw=h.offsetWidth-h.clientWidth,x=Math.min(r.right,innerWidth)-sbw-46,y=Math.min(r.bottom,innerHeight)-98;o.w.style.left=x+'px';o.w.style.top=y+'px';
+/* the buttons live in their own 40px strip at the right edge of the area (extra padding), so they never cover a button, a link or text */
+function gut(h,o,on){if(on===!!o.on)return;o.on=on;if(on){o.pad=h.style.paddingRight;h.style.paddingRight=(parseFloat(getComputedStyle(h).paddingRight)+40)+'px'}else h.style.paddingRight=o.pad||''}
+function upd(){const live=new Set(document.querySelectorAll(HOSTS));for(const h of live){const o=M.get(h)||mk(h),r=h.getBoundingClientRect(),slack=h.scrollHeight-h.clientHeight,can=h.offsetParent!==null&&r.width>0&&slack>(o.on?0:8)&&r.bottom>60&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;
+  let show=can;if(can){const sbw=h.offsetWidth-h.clientWidth,x=Math.min(r.right,innerWidth)-sbw-37,y=Math.min(r.bottom,innerHeight)-88;o.w.style.left=x+'px';o.w.style.top=y+'px';
    o.u.title=o.u.ariaLabel=T('sc_up');o.d.title=o.d.ariaLabel=T('sc_down');o.u.disabled=h.scrollTop<=2;o.d.disabled=h.scrollTop+h.clientHeight>=h.scrollHeight-2;
    const e=document.elementFromPoint(x+18,y+39);show=!!e&&(h.contains(e)||o.w.contains(e))}
-  o.w.hidden=!show}
- for(const[h,o]of M)if(!live.has(h)){o.w.remove();M.delete(h)}}
+  o.w.hidden=!show;gut(h,o,show)}
+ for(const[h,o]of M)if(!live.has(h)){gut(h,o,false);o.w.remove();M.delete(h)}}
 let t=0;const go=()=>{cancelAnimationFrame(t);t=requestAnimationFrame(upd)};
 document.addEventListener('scroll',go,true);addEventListener('resize',go);setInterval(go,600);go()})();
 
