@@ -115,7 +115,8 @@ NEW = {
 }
 
 TEMPLATE = r"""<!doctype html>
-<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="author" content="Alexandru-Ionuț Chiuță, Alexandru Dumbrava">
+<html lang="en" data-theme="dark"><head><meta charset="utf-8">
+__FFF_COMPAT__<meta name="author" content="Alexandru-Ionuț Chiuță, Alexandru Dumbrava">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark light"><meta name="theme-color" content="#0b0e14">
 <title>CartaColibri — Local AI Library</title>
