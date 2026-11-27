@@ -43,11 +43,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatiza e liga** — `digest` repete uma pesquisa guardada e indica só as novidades (repete, junta a um ficheiro, resume ou guarda um ficheiro de e-mail); `mcp` permite que outras apps de IA pesquisem, leiam, perguntem, verifiquem e peçam dossiês na tua biblioteca, só em leitura.
 - **Cópias e datas** — “Duplicados” (documentos cópia ou quase-cópia, com a semelhança) e “Cronologia” (todas as frases com data por ordem no tempo).
 
-## Novidades da 0.2.0-alpha.8
+## Novidades da 0.2.0-alpha.9
 
-- **Botões que dizem a verdade e sem corte aos 10 minutos** — «Abrir o navegador web-grab» agora verifica que o navegador abriu mesmo e, se não, mostra o motivo que deu. Um botão novo, «Abrir o LegatorOCR», junto às opções de OCR, abre a janela do LegatorOCR. Uma tarefa ou um chat longo (um modelo grande num grupo grande pode demorar muitos minutos) já não é cortado pela página aos 10 minutos com «The operation was aborted»: só conta o limite do motor, e um cronómetro mostra há quanto tempo corre.
+- **O LegatorOCR é encontrado melhor e as digitalizações largas são lidas inteiras** — O CartaColibri agora procura o LegatorOCR ao seu lado, numa pasta `App` e nas pastas de um arquivo descompactado, e repara numa cópia acrescentada sem reiniciar. As digitalizações JPG largas já não são cortadas ao meio, por isso não se perdem linhas, e os PDF digitalizados passam pelo OCR mesmo com o poppler instalado. «Abrir o LegatorOCR» cria também uma pasta `from-legatorocr` que faz parte da biblioteca: guarda lá um PDF ou um texto e entra na biblioteca na indexação seguinte.
 
-## Novidades da 0.2.0-alpha.3 à alpha.7
+## Novidades da 0.2.0-alpha.3 à alpha.8
 
 - **Filtros diretamente na caixa de pesquisa** — Escreve `ext:pdf`, `path:contratos`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` ou `re:FAT-\d+` (expressão regular) junto às tuas palavras e os resultados estreitam-se. Funcionam na página web, na linha de comandos e através da API.
 - **Pesquisa inteligente** — Marca «Pesquisa inteligente» e a tua IA local acrescenta alguns sinónimos e palavras afins (como um simples OR: as correspondências exatas continuam à frente). As palavras acrescentadas aparecem debaixo da caixa. Sem motor ligado recebes a pesquisa normal.
@@ -64,6 +64,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **OCR com LegatorOCR, «Apagar os selecionados», motivos de omissão legíveis** — As digitalizações e as fotos já se podem ler com o LegatorOCR, o mesmo programa que o Colibri Companion usa (o tesseract continua a funcionar). Um botão novo «Apagar os selecionados», `cartacolibri forget` e um ✕ junto dos ficheiros ignorados tiram-nos em definitivo da biblioteca, sem tocar nos ficheiros. Os motivos de omissão aparecem agora na tua língua e o limite de 80 MB sobe-se com CARTACOLIBRI_MAX_FILE_MB.
 - **Encontra cópias e lê a biblioteca como uma cronologia** — «Duplicados» lista os documentos que são cópias ou quase-cópias, com a semelhança. «Cronologia» põe por ordem no tempo todas as frases com data da biblioteca, com o documento de origem. Na linha de comandos: `dupes`, `chronology`.
 - **Pesquisa por sentido, medir a pesquisa, mais formatos** — `embed` prepara a pesquisa por sentido com o modelo de embeddings do teu motor local; depois `search --mode hybrid` encontra textos que usam outras palavras que a tua pergunta, e `eval` mede quão bem cada modo encontra o que esperas. Formatos novos: tar e tar.gz, folhas e apresentações OpenDocument, ficheiros Office com macros e os antigos doc, xls e ppt através de antiword, catdoc ou LibreOffice. As ferramentas sobre toda a biblioteca (nomes e números, cópias, conflitos, assuntos) passaram de minutos a menos de um segundo com 20.000 documentos, e os filtros agora veem toda a biblioteca.
+- **Botões que dizem a verdade e sem corte aos 10 minutos** — «Abrir o navegador web-grab» agora verifica que o navegador abriu mesmo e, se não, mostra o motivo que deu. Um botão novo, «Abrir o LegatorOCR», junto às opções de OCR, abre a janela do LegatorOCR. Uma tarefa ou um chat longo (um modelo grande num grupo grande pode demorar muitos minutos) já não é cortado pela página aos 10 minutos com «The operation was aborted»: só conta o limite do motor, e um cronómetro mostra há quanto tempo corre.
 
 ## Novidades da 0.2.0-alpha.2
 
