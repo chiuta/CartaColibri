@@ -34,20 +34,35 @@ fn start() -> Srv {
         "# Meeting\nWe discussed delivery of the goods and the invoice.",
     )
     .unwrap();
-    let port = {
-        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        l.local_addr().unwrap().port()
-    };
     let h = home.to_string_lossy().into_owned();
-    let addr = format!("127.0.0.1:{port}");
-    std::thread::spawn(move || {
-        let _ = server::serve(&addr, Some(h), "http://127.0.0.1:9".into());
-    });
-    for _ in 0..100 {
-        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
+    // a free port is picked and released before the server binds it, so another test (or process) can take
+    // it in between: when the server stops at once, or never answers, try again on a new port
+    let mut port = 0;
+    for _attempt in 0..8 {
+        port = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            l.local_addr().unwrap().port()
+        };
+        let (addr, h) = (format!("127.0.0.1:{port}"), h.clone());
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let r = server::serve(&addr, Some(h), "http://127.0.0.1:9".into());
+            let _ = tx.send(r.is_ok());
+        });
+        let mut up = false;
+        for _ in 0..100 {
+            if rx.try_recv().is_ok() {
+                break; // the server returned: it could not start on this port
+            }
+            if TcpStream::connect(("127.0.0.1", port)).is_ok() {
+                up = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        if up {
             break;
         }
-        std::thread::sleep(Duration::from_millis(50));
     }
     Srv { _t: t, port, docs }
 }
