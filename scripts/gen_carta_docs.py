@@ -181,7 +181,7 @@ P.POWER[3] = {l: P.POWER[3][l] + ' ' + A4.CHAT_EXTRA[l] for l in P.POWER[3]}
 import re as _re
 P.POWER += [{l: _re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'“\1”', t) for l, t in c.items()} for c in A4.POWER_ADD]
 P.CLI = C2.FIRST + [(C2.CHAT_NEW if c == C2.CHAT_OLD else c, d) for c, d in P.CLI] + C2.NEW
-# the newest release gets its own section; everything from alpha.3 to alpha.8 sits under its own heading
+# the newest release gets its own section; everything from alpha.3 to alpha.9 sits under its own heading
 NEWS8, NEWS4 = A4.NEWS[-1:], A4.NEWS[:-1]
 X["h_new8"] = dict(A4.H_NEW)
 X["h_new4"] = dict(A4.H_MID)

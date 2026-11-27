@@ -43,11 +43,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizezi și conectezi** — `digest` reia o căutare salvată și raportează doar ce e nou (repetă, adaugă într-un fișier, rezumă sau salvează un fișier email); `mcp` lasă alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta, doar în citire.
 - **Copii și date** — “Duplicate” (documente copii sau aproape-copii, cu cât de asemănătoare sunt) și “Cronologie” (toate propozițiile cu dată, în ordine).
 
-## Noutăți în 0.2.0-alpha.9
+## Noutăți în 0.2.0-alpha.10
 
-- **LegatorOCR este găsit mai ușor, iar scanările late sunt citite întregi** — CartaColibri caută acum LegatorOCR lângă el, într-un folder `App` și în folderele unei arhive despachetate, și observă o copie adăugată fără repornire. Scanările JPG late nu mai sunt tăiate în două, deci nu se mai pierd linii, iar PDF-urile scanate sunt citite prin OCR chiar și cu poppler instalat. „Deschide LegatorOCR” creează și un folder `from-legatorocr` care face parte din bibliotecă: salvezi acolo un PDF sau un text și intră în bibliotecă la următoarea indexare.
+- **Salvezi din LegatorOCR direct în bibliotecă** — Când LegatorOCR este deschis din CartaColibri, meniul lui Fișier oferă acum „Salvează PDF în biblioteca CartaColibri”. PDF-ul ajunge în folderul `from-legatorocr` al bibliotecii, fără dialog de fișier (un nume existent primește -2, -3, … ca să nu se înlocuiască nimic), și este indexat împreună cu restul. Este nevoie de un LegatorOCR care conține noua intrare de meniu; cele mai vechi merg în continuare, doar că salvezi manual în acel folder.
 
-## Noutăți din 0.2.0-alpha.3 până la alpha.8
+## Noutăți din 0.2.0-alpha.3 până la alpha.9
 
 - **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` sau `re:FACT-\d+` (expresie regulată) lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
 - **Căutare inteligentă** — Bifează „Căutare inteligentă” și AI-ul tău local adaugă câteva sinonime și cuvinte înrudite (ca un simplu OR, deci potrivirile exacte rămân primele). Cuvintele în plus apar sub căsuță. Fără motor pornit primești pur și simplu căutarea normală.
@@ -65,6 +65,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Găsești copiile și citești biblioteca ca o cronologie** — „Duplicate” listează documentele care sunt copii sau aproape-copii, cu cât de asemănătoare sunt. „Cronologie” pune toate propozițiile cu dată din bibliotecă în ordine, cu documentul din care vin. În linia de comandă: `dupes`, `chronology`.
 - **Căutare după sens, măsurarea căutării, mai multe formate** — `embed` pregătește căutarea după sens cu modelul de embeddings al motorului tău local; apoi `search --mode hybrid` găsește texte care folosesc alte cuvinte decât întrebarea ta, iar `eval` măsoară cât de bine găsește fiecare mod ce te aștepți. Formate noi: tar și tar.gz, foi și prezentări OpenDocument, fișiere Office cu macrouri și vechile doc, xls și ppt prin antiword, catdoc sau LibreOffice. Uneltele pe toată biblioteca (nume și numere, copii, conflicte, subiecte) au trecut de la minute la sub o secundă la 20.000 de documente, iar filtrele văd acum toată biblioteca.
 - **Butoane care spun adevărul și fără oprirea după 10 minute** — „Deschide browserul web-grab” verifică acum că browserul s-a deschis cu adevărat și, dacă nu, arată motivul primit. Un buton nou, „Deschide LegatorOCR”, lângă opțiunile de OCR, deschide fereastra LegatorOCR. O sarcină sau un chat lung (un model mare pe un grup mare poate dura multe minute) nu mai e oprit de pagină după 10 minute cu „The operation was aborted”: contează doar limita motorului, iar un cronometru arată de cât timp rulează.
+- **LegatorOCR este găsit mai ușor, iar scanările late sunt citite întregi** — CartaColibri caută acum LegatorOCR lângă el, într-un folder `App` și în folderele unei arhive despachetate, și observă o copie adăugată fără repornire. Scanările JPG late nu mai sunt tăiate în două, deci nu se mai pierd linii, iar PDF-urile scanate sunt citite prin OCR chiar și cu poppler instalat. „Deschide LegatorOCR” creează și un folder `from-legatorocr` care face parte din bibliotecă: salvezi acolo un PDF sau un text și intră în bibliotecă la următoarea indexare.
 
 ## Noutăți în 0.2.0-alpha.2
 

@@ -1,6 +1,6 @@
 [package]
 name = "cartacolibri-browser"
-version = "0.2.0-alpha.9"
+version = "0.2.0-alpha.10"
 edition = "2024"
 description = "web-grab browser: a small Rust browser shell (system webview) that saves pages into your CartaColibri library and asks your local Colibrì about them"
 license = "MIT"
