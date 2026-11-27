@@ -49,6 +49,7 @@ textarea{width:100%;resize:vertical}
 .bar input[type=text]{flex:1;min-width:180px}
 .scroll{flex:1 1 0;overflow:auto;min-height:0}
 table{border-collapse:collapse;width:100%}th,td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th.srt{cursor:pointer;user-select:none}th.srt::after{content:' \2195';opacity:.35}th.srt[aria-sort=ascending]::after{content:' \25B2';opacity:1}th.srt[aria-sort=descending]::after{content:' \25BC';opacity:1}th.srt:focus-visible{outline:2px solid var(--accent,currentColor);outline-offset:-2px}
 th{position:sticky;top:0;background:var(--surface);font-size:.8em;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;z-index:1}
 td.n{text-align:right;white-space:nowrap;color:var(--mute)}td.p{color:var(--mute);word-break:break-all;font-size:.87em}
 tr.sel td{background:var(--sel)}tr:hover td{background:var(--s2)}tr[tabindex]:focus-visible{outline-offset:-3px}
@@ -183,7 +184,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
         <button class="linkbtn" id="dupBtn" hidden></button>
         <select id="libTag" data-al="f_tag"></select><label><input type="checkbox" id="libStar"> <span data-i="f_starred"></span></label><button class="btn sm" id="expLib" data-i="export"></button><button class="btn sm" id="cmpBtn" data-i="cmp_btn"></button><button class="btn sm bad" id="forgetBtn" data-i="forget_btn"></button><button class="btn sm" id="entBtn" data-i="ent_btn"></button><button class="btn sm" id="cfBtn" data-i="cf_btn"></button><button class="btn sm" id="nearBtn" data-i="dup_btn"></button><button class="btn sm" id="chrBtn" data-i="chr_btn"></button><button class="btn sm" id="tpBtn" data-i="tp_btn"></button><button class="btn sm" id="chBtn" data-i="ch_btn"></button><button class="btn sm" id="fcBtn" data-i="fc_btn"></button><button class="btn sm" id="dsBtn" data-i="ds_btn"></button></div>
       <div class="strip" id="strip" hidden></div>
-      <div class="scroll"><table id="libTable"><thead><tr><th><input type="checkbox" id="libAll" data-al="select_all"></th><th data-i="name"></th><th class="c-type" data-i="type"></th><th class="n c-size" data-i="size"></th><th class="c-path" data-i="path"></th><th><span class="vh" data-i="view"></span></th></tr></thead><tbody id="libRows"></tbody></table>
+      <div class="scroll"><table id="libTable"><thead><tr><th><input type="checkbox" id="libAll" data-al="select_all"></th><th class="srt" data-i="name" data-sort="name" tabindex="0"></th><th class="c-type srt" data-i="type" data-sort="type" tabindex="0"></th><th class="n c-size srt" data-i="size" data-sort="size" tabindex="0"></th><th class="c-path srt" data-i="path" data-sort="path" tabindex="0"></th><th><span class="vh" data-i="view"></span></th></tr></thead><tbody id="libRows"></tbody></table>
         <div class="empty" id="libEmpty">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>
           <h2 data-i="empty_lib_title"></h2><p data-i="empty_lib"></p>
@@ -213,7 +214,7 @@ kbd{background:var(--s3);border:1px solid var(--line);border-bottom-width:2px;bo
       <form class="bar" id="qform" role="search"><button class="btn sm" id="sideToggle2" type="button" aria-expanded="false" data-i="side_toggle" style="display:none"></button><input type="text" id="q" data-ph="query_ph" data-al="search" autocomplete="off"><button class="btn pri" id="go" type="submit" data-i="search"></button><span class="muted" id="resCount" role="status"></span><button class="btn sm" id="expRes" type="button" data-i="export"></button></form>
       <div class="row" style="margin:4px 0 0;flex-wrap:wrap"><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="smart"><span data-i="sm_label"></span></label><span class="muted" style="font-size:.85em" data-i="f_hint"></span></div>
       <div class="dym" id="dym" hidden></div>
-      <div class="scroll"><table id="resTable"><thead><tr><th><input type="checkbox" id="resAll" data-al="select_all"></th><th class="n" data-i="score"></th><th data-i="name"></th><th class="c-type" data-i="type"></th><th class="n c-size" data-i="size"></th><th class="c-path" data-i="path"></th></tr></thead><tbody id="resRows"></tbody></table><div class="empty" id="resEmpty"></div></div>
+      <div class="scroll"><table id="resTable"><thead><tr><th><input type="checkbox" id="resAll" data-al="select_all"></th><th class="n srt" data-i="score" data-sort="score" tabindex="0"></th><th class="srt" data-i="name" data-sort="name" tabindex="0"></th><th class="c-type srt" data-i="type" data-sort="type" tabindex="0"></th><th class="n c-size srt" data-i="size" data-sort="size" tabindex="0"></th><th class="c-path srt" data-i="path" data-sort="path" tabindex="0"></th></tr></thead><tbody id="resRows"></tbody></table><div class="empty" id="resEmpty"></div></div>
     </div>
   </section>
   <!-- STATS: numbers, timeline, backup, index health -->
@@ -413,6 +414,7 @@ create_index_sel:{en:'Create index from selected files',ro:'Creează index din f
 group_hint:{en:'A group is a reusable list of files you can point RAG-CARTA at.',ro:'Un grup e o listă reutilizabilă de fișiere pe care o poți da lui RAG-CARTA.',fr:'Un groupe est une liste de fichiers réutilisable que tu peux confier à RAG-CARTA.',it:'Un gruppo è un elenco riutilizzabile di file da dare a RAG-CARTA.',es:'Un grupo es una lista reutilizable de archivos que puedes pasar a RAG-CARTA.',pt:'Um grupo é uma lista reutilizável de ficheiros que podes dar ao RAG-CARTA.',de:'Eine Gruppe ist eine wiederverwendbare Dateiliste, die du RAG-CARTA übergeben kannst.',hu:'A csoport egy újrafelhasználható fájllista, amelyet átadhatsz a RAG-CARTÁ-nak.'},
 query_ph:{en:'Search words, "phrases", prefix*, AND / OR / NOT',ro:'Caută cuvinte, „expresii”, prefix*, AND / OR / NOT',fr:'Cherche des mots, « expressions », préfixe*, AND / OR / NOT',it:'Cerca parole, «frasi», prefisso*, AND / OR / NOT',es:'Busca palabras, «frases», prefijo*, AND / OR / NOT',pt:'Procura palavras, «frases», prefixo*, AND / OR / NOT',de:'Suche Wörter, „Phrasen“, Präfix*, AND / OR / NOT',hu:'Keress szavakat, „kifejezéseket”, előtag*, AND / OR / NOT'},
 search:{en:'Search',ro:'Caută',fr:'Chercher',it:'Cerca',es:'Buscar',pt:'Procurar',de:'Suchen',hu:'Keresés'},
+sort_hint:{en:'Click to sort; click again to reverse, once more to restore the original order',ro:'Clic pentru sortare; încă un clic inversează, încă unul revine la ordinea inițială',fr:'Clique pour trier ; un autre clic inverse, encore un pour revenir à l’ordre d’origine',it:'Clic per ordinare; un altro clic inverte, un altro ancora ripristina l’ordine originale',es:'Clic para ordenar; otro clic invierte, otro más restaura el orden original',pt:'Clique para ordenar; outro clique inverte, mais um repõe a ordem original',de:'Klicken zum Sortieren; erneut klicken kehrt um, noch einmal stellt die Ursprungsreihenfolge her',hu:'Kattints a rendezéshez; még egy kattintás megfordítja, még egy visszaállítja az eredeti sorrendet'},
 score:{en:'Score',ro:'Scor',fr:'Score',it:'Punteggio',es:'Puntuación',pt:'Pontuação',de:'Score',hu:'Pontszám'},
 results_n:{en:'results',ro:'rezultate',fr:'résultats',it:'risultati',es:'resultados',pt:'resultados',de:'Treffer',hu:'találat'},
 no_results:{en:'No matches.',ro:'Niciun rezultat.',fr:'Aucun résultat.',it:'Nessun risultato.',es:'Sin resultados.',pt:'Sem resultados.',de:'Keine Treffer.',hu:'Nincs találat.'},
@@ -877,8 +879,20 @@ function renderRoots(){const c={};S.lib.documents.forEach(d=>c[d.root]=(c[d.root
 const mt=p=>S.meta[p]||{tags:[],starred:false,has_note:false,opens:0};
 const tagsHtml=p=>mt(p).tags.map(t=>`<span class="tagc">${esc(t)}</span>`).join('');
 const starHtml=p=>mt(p).starred?'<span class="stm" aria-hidden="true">★</span><span class="vh">★ </span>':'';
+const SORTKEY={name:x=>base(x.path),type:x=>x.ext,size:x=>x.size,path:x=>x.path,score:x=>+x.score};
+S.sort={lib:null,res:null};
+function sorted(arr,tb){const s=S.sort[tb];if(!s)return arr;const f=SORTKEY[s.k],col=new Intl.Collator(LANG,{numeric:true,sensitivity:'base'});
+  return arr.slice().sort((a,b)=>{const A=f(a),B=f(b);let c=typeof A==='number'?A-B:col.compare(String(A),String(B));if(!c)c=col.compare(base(a.path),base(b.path));return c*s.d})}
+function markSort(tb){const t=$(tb==='lib'?'#libTable':'#resTable'),s=S.sort[tb];
+  t.querySelectorAll('th[data-sort]').forEach(th=>{th.setAttribute('aria-sort',s&&s.k===th.dataset.sort?(s.d>0?'ascending':'descending'):'none');th.title=T('sort_hint')})}
+function sortBy(tb,k){const s=S.sort[tb],first=(k==='size'||k==='score')?-1:1;
+  if(!s||s.k!==k)S.sort[tb]={k,d:first};else if(s.d===first)S.sort[tb]={k,d:-first};else S.sort[tb]=null;
+  tb==='lib'?renderLib():renderRes()}
+const sortHead=e=>{const th=e.target.closest&&e.target.closest('th[data-sort]');if(th)sortBy(th.closest('table').id==='libTable'?'lib':'res',th.dataset.sort);return !!th};
+document.addEventListener('click',e=>{if(!e.target.closest('input'))sortHead(e)});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('th[data-sort]')){e.preventDefault();sortHead(e)}});
 const libDocs=()=>S.lib.documents.filter(d=>{const m=mt(d.path);return(!S.libTag||m.tags.includes(S.libTag))&&(!S.libStar||m.starred)});
-function renderLib(){const all=S.lib.documents,d=libDocs();$('#libCount').textContent=d.length+' '+T('docs_n');$('#libEmpty').style.display=all.length?'none':'block';$('#libTable').style.display=d.length?'':'none';
+function renderLib(){const all=S.lib.documents,d=sorted(libDocs(),'lib');markSort('lib');$('#libCount').textContent=d.length+' '+T('docs_n');$('#libEmpty').style.display=all.length?'none':'block';$('#libTable').style.display=d.length?'':'none';
   $('#libRows').innerHTML=d.map(x=>`<tr class="${S.selLib.has(x.id)?'sel':''}"><td><input type="checkbox" data-l="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selLib.has(x.id)?'checked':''}></td><td>${starHtml(x.path)}${esc(base(x.path))}<div>${tagsHtml(x.path)}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td><td><button class="btn sm" data-v="${x.id}" data-n="${esc(base(x.path))}" aria-label="${esc(T('view')+' '+base(x.path))}">${T('view')}</button></td></tr>`).join('');
   $('#problems').innerHTML=S.lib.problems.length?`<div style="margin-bottom:4px">${esc(F('prob_n',{n:S.lib.problems.length}))}</div>`+S.lib.problems.map(p=>`<div title="${esc(p.reason)}">⚠ ${esc(base(p.path))} <button class="btn sm" data-fp="${esc(p.path)}" aria-label="${esc(T('forget_one'))}" title="${esc(T('forget_one'))}">✕</button><br><span style="opacity:.8">${esc(reasonT(p.reason))}</span></div>`).join(''):'—'}
 function renderGroups(){const g=S.lib.groups;
@@ -893,7 +907,7 @@ function emptySearch(){
   if(!S.lib.documents.length)return `<h2>${T('empty_lib_title')}</h2><p>${T('need_docs_first')}</p><button class="btn pri lg" id="goLib">${T('go_library')}</button>`;
   if(S.searched)return `<h2>${esc(F('no_results_title',{q:S.lastQ}))}</h2><p>${T('no_results_tips')}</p>${filtersOn()?`<button class="btn" data-clr="1">${T('clear_filters')}</button>`:''}${chipsHtml()}`;
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><h2>${T('empty_search_title')}</h2><p>${T('hint_fetch')}</p>${chipsHtml()}<p style="font-size:.87em">${T('syntax_tip')}</p>`}
-function renderRes(){const r=S.results;$('#resCount').textContent=r.length?r.length+' '+T('results_n'):'';
+function renderRes(){const r=sorted(S.results,'res');markSort('res');$('#resCount').textContent=r.length?r.length+' '+T('results_n'):'';
   $('#resTable').style.display=r.length?'':'none';const e=$('#resEmpty');e.style.display=r.length?'none':'block';if(!r.length)e.innerHTML=emptySearch();
   $('#resRows').innerHTML=r.map(x=>`<tr tabindex="0" class="${S.selRes.has(x.id)?'sel':''}" data-r="${x.id}" title="${esc(T('res_hint'))}"><td><input type="checkbox" data-c="${x.id}" aria-label="${esc(F('select_row',{x:base(x.path)}))}" ${S.selRes.has(x.id)?'checked':''}></td><td class="n">${esc(x.score)}</td><td>${starHtml(x.path)}${esc(base(x.path))}<div>${tagsHtml(x.path)}</div><div class="snip">${esc(x.snippet).replace(/\[([^\]]+)\]/g,'<b>$1</b>')}</div></td><td class="c-type">${esc(x.ext)}</td><td class="n c-size">${kb(x.size)}</td><td class="p c-path">${esc(x.path)}</td></tr>`).join('')}
 

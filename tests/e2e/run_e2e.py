@@ -148,6 +148,25 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.wait_for_function("()=>document.querySelector('.scroll').scrollTop>0", timeout=5000)
             assert pg.evaluate("()=>[...document.querySelectorAll('.sb:not([hidden]) button')].every(b=>b.title&&b.title!=='sc_up'&&b.title!=='sc_down')"), "button labels not translated"
             pg.reload(); pg.wait_for_selector("#libRows tr", timeout=15000)
+        with rep.check(L, "library columns sort", pg):
+            # name: A to Z, then Z to A, then the original order; size: biggest first on the first click; headers carry aria-sort
+            names = "()=>[...document.querySelectorAll('#libRows tr td:nth-child(2)')].map(t=>t.firstChild.textContent.trim().toLowerCase())"
+            sizes = "()=>[...document.querySelectorAll('#libRows tr td.c-size')].map(t=>{const m=t.textContent.match(/([0-9.]+)\\s*(KB|MB)/);return m?parseFloat(m[1])*(m[2]==='MB'?1024:1):0})"
+            first = pg.evaluate(names)
+            pg.click('#libTable th[data-sort=name]')
+            a = pg.evaluate(names)
+            assert a == sorted(a), f"not sorted A-Z: {a}"
+            assert pg.get_attribute('#libTable th[data-sort=name]', 'aria-sort') == 'ascending'
+            pg.click('#libTable th[data-sort=name]')
+            assert pg.evaluate(names) == sorted(a, reverse=True), "second click should reverse"
+            pg.click('#libTable th[data-sort=name]')
+            assert pg.evaluate(names) == first, "third click should restore the original order"
+            pg.click('#libTable th[data-sort=size]')
+            z = pg.evaluate(sizes)
+            assert z == sorted(z, reverse=True), f"size should be biggest first: {z}"
+            assert pg.get_attribute('#libTable th[data-sort=size]', 'aria-sort') == 'descending'
+            assert pg.get_attribute('#libTable th[data-sort=size]', 'title') not in (None, '', 'sort_hint')
+            pg.click('#libTable th[data-sort=size]'); pg.click('#libTable th[data-sort=size]')
         with rep.check(L, "search finds a doc", pg):
             pg.click('.rb[data-view=fetch]'); pg.fill("#q", QUERY[lang]); pg.press("#q", "Enter")
             pg.wait_for_selector("#resRows tr", timeout=10000)

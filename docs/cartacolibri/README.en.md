@@ -43,11 +43,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automate and connect** — `digest` re-runs a saved search and reports only what is new (repeat, append to a file, summarize, or save an e-mail file); `mcp` lets other AI apps search, read, ask, fact-check and look up dossiers in your library, read-only.
 - **Copies and dates** — “Duplicates” (documents that are copies or near-copies, with how alike they are) and “Chronology” (every dated sentence in time order).
 
-## New in 0.2.0-alpha.10
+## New in 0.2.0-alpha.11
 
-- **Save from LegatorOCR straight into your library** — When LegatorOCR is opened from CartaColibri, its File menu now offers “Save PDF to the CartaColibri library”. The PDF goes into the `from-legatorocr` folder of your library without a file dialog (an existing name gets -2, -3, … so nothing is replaced) and is indexed with the rest. This needs a LegatorOCR build that contains the new menu item; older ones still work, you just save into that folder by hand.
+- **Sort the library and the results by any column** — Click a column heading in the library list or in the search results to sort: name A to Z, type, size (biggest first) or location. A second click reverses the order, a third restores the original order (for results: by relevance). The arrow in the heading shows the direction, the headings work with the keyboard (Tab, then Enter or Space) and screen readers announce the order.
 
-## New in 0.2.0-alpha.3 to alpha.9
+## New in 0.2.0-alpha.3 to alpha.10
 
 - **Filters right in the search box** — Type `ext:pdf`, `path:contracts`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` or `re:INV-\d+` (a regular expression) next to your words and the results narrow down. They work in the web page, on the command line and through the API.
 - **Smart search** — Tick “Smart search” and your local AI adds a few synonyms and related words (as a plain OR, so exact matches still rank first). The extra words are shown under the box. With no engine running, you simply get the normal search.
@@ -66,6 +66,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Search by meaning, measure your search, more formats** — `embed` prepares meaning search with your local engine’s embedding model; `search --mode hybrid` then finds texts that use other words than your question, and `eval` measures how well each mode finds what you expect. New formats: tar and tar.gz, OpenDocument sheets and slides, macro-enabled Office files, and old doc, xls and ppt through antiword, catdoc or LibreOffice. Whole-library tools (names and numbers, copies, conflicts, topics) went from minutes to under a second on 20,000 documents, and filters now see the whole library.
 - **Buttons that tell the truth, and no more 10-minute cut-off** — “Open the web-grab browser” now checks that the browser really opened and, if it did not, shows the reason it gave. A new “Open LegatorOCR” button next to the OCR options opens the LegatorOCR window. A long task or chat (a big model on a big group can take many minutes) is no longer stopped by the page after 10 minutes with “The operation was aborted”: only the engine’s own limit counts, and a timer shows how long it has been running.
 - **LegatorOCR finds its way, and reads wide scans whole** — CartaColibri now looks for LegatorOCR beside itself, in an `App` folder and in the folders of an unpacked download, and notices a copy you add without restarting. Wide JPG scans are no longer cut in two, so no lines are lost, and scanned PDFs are read by OCR even when poppler is installed. “Open LegatorOCR” also makes a `from-legatorocr` folder that belongs to your library: save a PDF or text there and it joins the library at the next index.
+- **Save from LegatorOCR straight into your library** — When LegatorOCR is opened from CartaColibri, its File menu now offers “Save PDF to the CartaColibri library”. The PDF goes into the `from-legatorocr` folder of your library without a file dialog (an existing name gets -2, -3, … so nothing is replaced) and is indexed with the rest. This needs a LegatorOCR build that contains the new menu item; older ones still work, you just save into that folder by hand.
 
 ## New in 0.2.0-alpha.2
 

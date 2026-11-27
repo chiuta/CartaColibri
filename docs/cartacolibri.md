@@ -80,6 +80,10 @@ protocol is tested against fakes of Colibrì/Ollama/LM Studio, not against every
 If nothing matches, words are retried as stems (≈70 % of the word) so inflections still hit.
 Filters: `--ext pdf,txt`, `--min-kb`, `--max-kb`, `--path TEXT`, `--group NAME`. Score is a percentage of the best hit.
 
+## Sorting
+
+The library list and the search results sort by any column: click a heading (name A to Z, type, size with the biggest first, location; for results also the score). A second click reverses, a third restores the original order (library: the order of indexing; results: relevance). The heading shows ▲ or ▼, works with Tab and Enter/Space and carries `aria-sort`. Sorting only changes how the list is shown: selection, export and “top results” still use the original order.
+
 ## Groups
 `cartacolibri group set NAME PATH_OR_FOLDER_OR_GLOB…` (`--add` to extend, `from-search` to snapshot a query).
 
@@ -98,7 +102,7 @@ Routes: `GET library|status|search|doc`, `POST folders|index|upload|groups|run|g
 ## web-grab
 See [`web-grab/README.md`](../web-grab/README.md).
 
-**Open buttons.** In “Bring things in”, *Open the web-grab browser* starts `cartacolibri-browser` (it must sit in the same folder as `cartacolibri`) on the same library; under the OCR options, *Open LegatorOCR* starts `legatorocr-gui`, found next to the `legatorocr` program used for OCR (or through `CARTACOLIBRI_LEGATOROCR`, a `LegatorOCR` folder beside the program, or `PATH`). Both wait two seconds: if the program ends at once, the page shows its own last error lines (also kept in `launch.log` in the library folder) instead of saying “opening”. Missing programs are reported as not found. “Open LegatorOCR” also creates a `from-legatorocr` folder in the library folder, adds it to the library and passes it to LegatorOCR as `CARTACOLIBRI_INBOX`: a PDF or text saved there is indexed with the rest. A LegatorOCR build with the “Save PDF to the CartaColibri library” item in its File menu saves there with one click. LegatorOCR is looked for beside the program, in an `App` folder and in `LegatorOCR*` folders (also the unpacked `LegatorOCR-<version>-<target>`). API: `POST /carta/browser/open`, `POST /carta/legatorocr/open` (same `X-Colibri-UI` and origin checks as every write route).
+**Open buttons.** In “Bring things in”, *Open the web-grab browser* starts `cartacolibri-browser` (it must sit in the same folder as `cartacolibri`) on the same library; under the OCR options, *Open LegatorOCR* starts `legatorocr-gui`, found next to the `legatorocr` program used for OCR (or through `CARTACOLIBRI_LEGATOROCR`, a `LegatorOCR` folder beside the program, or `PATH`). Both wait two seconds: if the program ends at once, the page shows its own last error lines (also kept in `launch.log` in the library folder) instead of saying “opening”. Missing programs are reported as not found. “Open LegatorOCR” also creates a `from-legatorocr` folder in the library folder, adds it to the library and passes it to LegatorOCR as `CARTACOLIBRI_INBOX`: a PDF or text saved there is indexed with the rest. A LegatorOCR build with the “Save PDF to the CartaColibri library” and “Save project to the CartaColibri library” items in its File menu saves there with one click (the project goes into a `project-<name>` folder with `project.lgr` and copies of the scans). LegatorOCR is looked for beside the program, in an `App` folder and in `LegatorOCR*` folders (also the unpacked `LegatorOCR-<version>-<target>`). API: `POST /carta/browser/open`, `POST /carta/legatorocr/open` (same `X-Colibri-UI` and origin checks as every write route).
 
 **Long tasks.** The page puts no time limit on a task or a chat answer; only the engine's own limit counts (30 minutes by default), and a timer shows how long a task has run. A big model on a big group can take many minutes: ask about a smaller group or use a smaller model.
 
