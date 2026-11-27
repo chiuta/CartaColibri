@@ -9,3 +9,5 @@ With Colibri Companion's own engine (`corbul serve --packs DIR`), CartaColibri c
 - Not measured on real models yet.
 
 The shelf can be kept at half the size and compressed by starting corbul with `--packs-kv f16` and `--packs-compress` (F16 rounding on every row; the compression is lossless).
+
+If the sources do not fit the model's window, `--packs-shrink` (or `COLI_PACKS_SHRINK=1`) lets corbul shrink them to the rows that matter most instead of failing. Information is lost; see Colibri Companion's `docs/SHRINK-MAP.md`.

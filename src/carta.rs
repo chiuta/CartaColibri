@@ -125,6 +125,9 @@ pub struct Backend {
     /// task. Off by default (env COLI_PACKS=1 turns it on); any engine without the endpoint is
     /// detected once and the ordinary chat is used.
     pub packs: bool,
+    /// With packs: let corbul shrink sources that do not fit the model's window (`"shrink":"auto"`)
+    /// instead of failing. Information is lost. Off by default (env COLI_PACKS_SHRINK=1).
+    pub packs_shrink: bool,
 }
 
 /// Accepts `http://host:8000`, `http://host:8000/` and `http://host:8000/v1` alike.
@@ -174,6 +177,8 @@ impl Backend {
                 .or_else(|| companion_key(url)),
             packs: std::env::var("COLI_PACKS")
                 .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes")),
+            packs_shrink: std::env::var("COLI_PACKS_SHRINK")
+                .is_ok_and(|v| matches!(v.trim(), "1" | "true" | "yes")),
         }
     }
     pub fn mock() -> Backend {
@@ -187,7 +192,13 @@ impl Backend {
             max_tokens: 0,
             api_key: None,
             packs: false,
+            packs_shrink: false,
         }
+    }
+
+    pub fn with_packs_shrink(mut self, on: bool) -> Backend {
+        self.packs_shrink = on;
+        self
     }
 
     pub fn with_packs(mut self, on: bool) -> Backend {
@@ -414,6 +425,37 @@ fn pack_request(system: &str, user: &str) -> Option<(Vec<String>, String)> {
     Some((packs, tail))
 }
 
+/// The request body of `/v1/packs/complete`.
+fn packs_body(
+    packs: &[String],
+    tail: &str,
+    max_tokens: u32,
+    model: Option<&str>,
+    shrink: bool,
+) -> Value {
+    let mut body = json!({"packs": packs, "question": tail, "max_tokens": max_tokens});
+    if let Some(m) = model {
+        body["model"] = json!(m);
+    }
+    if shrink {
+        body["shrink"] = json!("auto");
+    }
+    body
+}
+
+#[cfg(test)]
+mod packs_body_tests {
+    use super::*;
+    #[test]
+    fn shrink_is_sent_only_when_asked() {
+        let p = vec!["a".to_string()];
+        assert!(packs_body(&p, "q", 8, None, false).get("shrink").is_none());
+        let b = packs_body(&p, "q", 8, Some("m"), true);
+        assert_eq!(b["shrink"], "auto");
+        assert_eq!(b["model"], "m");
+    }
+}
+
 impl Backend {
     /// `Some(result)` when `/v1/packs/complete` handled the call; `None` to use the ordinary chat.
     fn complete_packs(&self, system: &str, user: &str) -> Option<Result<String, String>> {
@@ -425,10 +467,13 @@ impl Backend {
             return None;
         }
         let (packs, tail) = pack_request(system, user)?;
-        let mut body = json!({"packs": packs, "question": tail, "max_tokens": self.max_tokens});
-        if let Some(m) = &self.model {
-            body["model"] = json!(m);
-        }
+        let body = packs_body(
+            &packs,
+            &tail,
+            self.max_tokens,
+            self.model.as_deref(),
+            self.packs_shrink,
+        );
         let agent = self.agent(self.timeout, false);
         let mut req = agent.post(&endpoint(&self.url, "/packs/complete"));
         if let Some(k) = &self.api_key {

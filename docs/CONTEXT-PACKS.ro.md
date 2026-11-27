@@ -9,3 +9,5 @@ Cu motorul propriu al lui Colibri Companion (`corbul serve --packs DIR`), CartaC
 - Nemăsurat încă pe modele reale.
 
 Raftul poate fi ținut la jumătate de mărime și comprimat pornind corbul cu `--packs-kv f16` și `--packs-compress` (rotunjire F16 pe fiecare rând; compresia nu pierde nimic).
+
+Dacă sursele nu încap în fereastra modelului, `--packs-shrink` (sau `COLI_PACKS_SHRINK=1`) lasă corbul să le micșoreze la rândurile cele mai importante, în loc să eșueze. Se pierde informație; vezi `docs/SHRINK-MAP.ro.md` din Colibri Companion.

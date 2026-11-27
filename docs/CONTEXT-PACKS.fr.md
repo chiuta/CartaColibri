@@ -9,3 +9,5 @@ Avec le moteur propre de Colibri Companion (`corbul serve --packs DIR`), CartaCo
 - Pas encore mesuré sur de vrais modèles.
 
 L'étagère peut être gardée à moitié taille et compressée en lançant corbul avec `--packs-kv f16` et `--packs-compress` (arrondi F16 sur chaque ligne ; la compression est sans perte).
+
+Si les sources ne tiennent pas dans la fenêtre du modèle, `--packs-shrink` (ou `COLI_PACKS_SHRINK=1`) laisse corbul les réduire aux lignes les plus importantes au lieu d'échouer. De l'information est perdue ; voir `docs/SHRINK-MAP.fr.md` de Colibri Companion.

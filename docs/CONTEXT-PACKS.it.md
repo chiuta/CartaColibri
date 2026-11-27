@@ -9,3 +9,5 @@ Con il motore proprio di Colibri Companion (`corbul serve --packs DIR`), CartaCo
 - Non ancora misurato su modelli reali.
 
 Lo scaffale si può tenere a metà dimensione e compresso avviando corbul con `--packs-kv f16` e `--packs-compress` (arrotondamento F16 su ogni riga; la compressione è senza perdite).
+
+Se le fonti non stanno nella finestra del modello, `--packs-shrink` (o `COLI_PACKS_SHRINK=1`) lascia che corbul le riduca alle righe più importanti invece di fallire. Si perde informazione; vedi `docs/SHRINK-MAP.it.md` di Colibri Companion.

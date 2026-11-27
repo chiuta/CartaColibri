@@ -9,3 +9,5 @@ A Colibri Companion saját motorjával (`corbul serve --packs DIR`) a CartaColib
 - Valódi modelleken még nem mértük.
 
 A polc fél méretben és tömörítve tartható, ha a corbult a `--packs-kv f16` és `--packs-compress` kapcsolóval indítod (F16-kerekítés minden soron; a tömörítés veszteségmentes).
+
+Ha a források nem férnek a modell ablakába, a `--packs-shrink` (vagy `COLI_PACKS_SHRINK=1`) engedi, hogy a corbul a legfontosabb sorokra zsugorítsa őket a hibázás helyett. Információ vész el; lásd a Colibri Companion `docs/SHRINK-MAP.hu.md` fájlját.

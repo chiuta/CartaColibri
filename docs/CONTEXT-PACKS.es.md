@@ -9,3 +9,5 @@ Con el motor propio de Colibri Companion (`corbul serve --packs DIR`), CartaColi
 - Aún no medido con modelos reales.
 
 El estante puede guardarse a mitad de tamaño y comprimido iniciando corbul con `--packs-kv f16` y `--packs-compress` (redondeo F16 en cada fila; la compresión no pierde nada).
+
+Si las fuentes no caben en la ventana del modelo, `--packs-shrink` (o `COLI_PACKS_SHRINK=1`) deja que corbul las reduzca a las filas más importantes en lugar de fallar. Se pierde información; véase `docs/SHRINK-MAP.es.md` de Colibri Companion.

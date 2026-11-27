@@ -9,3 +9,5 @@ Mit der eigenen Engine von Colibri Companion (`corbul serve --packs DIR`) kann C
 - Auf echten Modellen noch nicht gemessen.
 
 Das Regal lässt sich halb so groß und komprimiert halten, wenn corbul mit `--packs-kv f16` und `--packs-compress` gestartet wird (F16-Rundung in jeder Zeile; die Kompression ist verlustfrei).
+
+Passen die Quellen nicht in das Fenster des Modells, lässt `--packs-shrink` (oder `COLI_PACKS_SHRINK=1`) corbul sie auf die wichtigsten Zeilen verkleinern, statt zu scheitern. Dabei geht Information verloren; siehe `docs/SHRINK-MAP.de.md` von Colibri Companion.

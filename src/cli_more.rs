@@ -44,6 +44,9 @@ pub struct Model {
     /// with `corbul serve --packs`: reuse the work done on each source across calls (any other engine: ignored)
     #[arg(long)]
     pub packs: bool,
+    /// with `--packs`: let corbul shrink sources that do not fit the model's window instead of failing (loses information)
+    #[arg(long)]
+    pub packs_shrink: bool,
 }
 
 impl Model {
@@ -56,7 +59,7 @@ impl Model {
             Backend::gateway(&self.url, self.model.clone())
         };
         let be = if self.packs && !self.mock && self.provider.is_none() {
-            be.with_packs(true)
+            be.with_packs(true).with_packs_shrink(self.packs_shrink)
         } else {
             be
         };

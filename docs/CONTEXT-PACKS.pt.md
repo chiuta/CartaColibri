@@ -9,3 +9,5 @@ Com o motor próprio do Colibri Companion (`corbul serve --packs DIR`), o CartaC
 - Ainda não medido em modelos reais.
 
 A prateleira pode ficar a metade do tamanho e comprimida iniciando o corbul com `--packs-kv f16` e `--packs-compress` (arredondamento F16 em cada linha; a compressão não perde nada).
+
+Se as fontes não couberem na janela do modelo, `--packs-shrink` (ou `COLI_PACKS_SHRINK=1`) deixa o corbul reduzi-las às linhas mais importantes em vez de falhar. Perde-se informação; veja `docs/SHRINK-MAP.pt.md` do Colibri Companion.
