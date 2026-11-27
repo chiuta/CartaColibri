@@ -7,3 +7,5 @@ Avec le moteur propre de Colibri Companion (`corbul serve --packs DIR`), CartaCo
 - Tout moteur sans `/v1/packs/complete` (colibri, Ollama, services cloud) est détecté une fois et le chat ordinaire est utilisé. Les backends cloud `--provider` ne reçoivent jamais de paquets.
 - La réponse est une complétion de texte brut, sans le modèle de chat : les petits modèles ajustés aux instructions peuvent les suivre moins bien qu'en chat. Vérifiez avec `--verify`.
 - Pas encore mesuré sur de vrais modèles.
+
+L'étagère peut être gardée à moitié taille et compressée en lançant corbul avec `--packs-kv f16` et `--packs-compress` (arrondi F16 sur chaque ligne ; la compression est sans perte).

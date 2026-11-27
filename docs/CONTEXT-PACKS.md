@@ -7,3 +7,5 @@ With Colibri Companion's own engine (`corbul serve --packs DIR`), CartaColibri c
 - Any engine without `/v1/packs/complete` (colibri, Ollama, cloud services) is detected once and the ordinary chat is used. Cloud `--provider` backends never receive packs.
 - The answer is a plain-text completion, without the model's chat template: small instruction-tuned models may follow the instructions less well than in chat. Check with `--verify`.
 - Not measured on real models yet.
+
+The shelf can be kept at half the size and compressed by starting corbul with `--packs-kv f16` and `--packs-compress` (F16 rounding on every row; the compression is lossless).

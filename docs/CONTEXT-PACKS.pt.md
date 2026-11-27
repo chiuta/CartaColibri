@@ -7,3 +7,5 @@ Com o motor próprio do Colibri Companion (`corbul serve --packs DIR`), o CartaC
 - Qualquer motor sem `/v1/packs/complete` (colibri, Ollama, serviços na nuvem) é detetado uma vez e usa-se o chat normal. Os backends na nuvem `--provider` nunca recebem pacotes.
 - A resposta é uma completação de texto simples, sem o modelo de chat: modelos pequenos ajustados a instruções podem segui-las pior do que no chat. Verifique com `--verify`.
 - Ainda não medido em modelos reais.
+
+A prateleira pode ficar a metade do tamanho e comprimida iniciando o corbul com `--packs-kv f16` e `--packs-compress` (arredondamento F16 em cada linha; a compressão não perde nada).

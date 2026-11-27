@@ -7,3 +7,5 @@ Con el motor propio de Colibri Companion (`corbul serve --packs DIR`), CartaColi
 - Cualquier motor sin `/v1/packs/complete` (colibri, Ollama, servicios en la nube) se detecta una vez y se usa el chat normal. Los backends en la nube `--provider` nunca reciben paquetes.
 - La respuesta es un completado de texto plano, sin la plantilla de chat: los modelos pequeños ajustados a instrucciones pueden seguirlas peor que en chat. Comprueba con `--verify`.
 - Aún no medido con modelos reales.
+
+El estante puede guardarse a mitad de tamaño y comprimido iniciando corbul con `--packs-kv f16` y `--packs-compress` (redondeo F16 en cada fila; la compresión no pierde nada).

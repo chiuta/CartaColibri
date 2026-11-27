@@ -7,3 +7,5 @@ Con il motore proprio di Colibri Companion (`corbul serve --packs DIR`), CartaCo
 - Ogni motore senza `/v1/packs/complete` (colibri, Ollama, servizi cloud) viene riconosciuto una volta e si usa la chat normale. I backend cloud `--provider` non ricevono mai pacchetti.
 - La risposta è un completamento di testo semplice, senza il template di chat: i modelli piccoli addestrati sulle istruzioni possono seguirle peggio che in chat. Controlla con `--verify`.
 - Non ancora misurato su modelli reali.
+
+Lo scaffale si può tenere a metà dimensione e compresso avviando corbul con `--packs-kv f16` e `--packs-compress` (arrotondamento F16 su ogni riga; la compressione è senza perdite).

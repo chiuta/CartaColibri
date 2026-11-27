@@ -7,3 +7,5 @@ Cu motorul propriu al lui Colibri Companion (`corbul serve --packs DIR`), CartaC
 - Orice motor fără `/v1/packs/complete` (colibri, Ollama, servicii cloud) e detectat o dată și se folosește chatul obișnuit. Backend-urile cloud `--provider` nu primesc niciodată pachete.
 - Răspunsul e o completare de text simplu, fără șablonul de chat al modelului: modelele mici ajustate pe instrucțiuni pot urma instrucțiunile mai slab decât în chat. Verifică cu `--verify`.
 - Nemăsurat încă pe modele reale.
+
+Raftul poate fi ținut la jumătate de mărime și comprimat pornind corbul cu `--packs-kv f16` și `--packs-compress` (rotunjire F16 pe fiecare rând; compresia nu pierde nimic).

@@ -7,3 +7,5 @@ Mit der eigenen Engine von Colibri Companion (`corbul serve --packs DIR`) kann C
 - Jede Engine ohne `/v1/packs/complete` (colibri, Ollama, Cloud-Dienste) wird einmal erkannt, dann läuft der normale Chat. Cloud-Backends mit `--provider` bekommen nie Pakete.
 - Die Antwort ist eine reine Textvervollständigung ohne Chat-Vorlage: kleine instruktionsgetunte Modelle folgen den Anweisungen dort womöglich schlechter als im Chat. Mit `--verify` prüfen.
 - Auf echten Modellen noch nicht gemessen.
+
+Das Regal lässt sich halb so groß und komprimiert halten, wenn corbul mit `--packs-kv f16` und `--packs-compress` gestartet wird (F16-Rundung in jeder Zeile; die Kompression ist verlustfrei).
