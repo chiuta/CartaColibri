@@ -1304,7 +1304,14 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
                         .into(),
                 ));
             };
-            launch(&beside, &[std::ffi::OsString::from("--home"), lib.home.clone().into_os_string()], &lib.home)?;
+            launch(
+                &beside,
+                &[
+                    std::ffi::OsString::from("--home"),
+                    lib.home.clone().into_os_string(),
+                ],
+                &lib.home,
+            )?;
             json!({"ok": true})
         }
         ("POST", "legatorocr/open") => {
@@ -1350,7 +1357,12 @@ fn launch(
     let mut child = cmd.spawn().map_err(|e| {
         (
             500,
-            format!("could not start {}: {e}", bin.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
+            format!(
+                "could not start {}: {e}",
+                bin.file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default()
+            ),
         )
     })?;
     for _ in 0..20 {
@@ -1370,7 +1382,14 @@ fn launch(
                 .join(" | ");
             return Err((
                 500,
-                format!("it stopped right after starting ({st}){}", if tail.is_empty() { String::new() } else { format!(": {tail}") }),
+                format!(
+                    "it stopped right after starting ({st}){}",
+                    if tail.is_empty() {
+                        String::new()
+                    } else {
+                        format!(": {tail}")
+                    }
+                ),
             ));
         }
     }

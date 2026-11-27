@@ -86,7 +86,11 @@ pub fn locate() -> Option<PathBuf> {
 
 /// The LegatorOCR window (`legatorocr-gui`), looked for beside the `legatorocr` program that was found.
 pub fn locate_gui() -> Option<PathBuf> {
-    let name = if cfg!(windows) { format!("{PROGRAM}-gui.exe") } else { format!("{PROGRAM}-gui") };
+    let name = if cfg!(windows) {
+        format!("{PROGRAM}-gui.exe")
+    } else {
+        format!("{PROGRAM}-gui")
+    };
     let cli = locate()?;
     let gui = cli.parent()?.join(name);
     startable(&gui).then_some(gui)

@@ -822,7 +822,10 @@ fn legatorocr_window_opens_or_says_why_not() {
     // one test, one setting: this is the only test that reads the variable
     unsafe { std::env::set_var("CARTACOLIBRI_LEGATOROCR", &cli) };
     // the window program ends at once: the reason is passed on, not "opening"
-    put("legatorocr-gui", "#!/bin/sh\necho 'no display found' >&2\nexit 3\n");
+    put(
+        "legatorocr-gui",
+        "#!/bin/sh\necho 'no display found' >&2\nexit 3\n",
+    );
     let bad = post(&s, "/carta/legatorocr/open", json!({}));
     assert_eq!(bad.code, 500, "{}", bad.text());
     assert!(bad.text().contains("no display found"), "{}", bad.text());
