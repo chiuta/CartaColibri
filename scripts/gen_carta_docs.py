@@ -328,7 +328,9 @@ def site():
     if miss: sys.exit(f"missing site translations: {miss}")
     new = json.dumps(T.NEW, ensure_ascii=False).replace("</", "<\\/")
     return (T.TEMPLATE.replace("__DATA__", data).replace("__NAMES__", names).replace("__NEW__", new).replace("__IDS__", json.dumps(ids)).replace("__N8GRID__", grid('n8w', len(NEWS8))).replace("__N4GRID__", grid('n4w', len(NEWS4)))
-            .replace("__FIRST_CODE__", first_code).replace("__REPOHOST__", REPO.split("//")[1]).replace("__REPO__", REPO))
+            .replace("__FIRST_CODE__", first_code).replace("__REPOHOST__", REPO.split("//")[1]).replace("__REPO__", REPO)
+            # strat de compatibilitate cu browsere vechi (fff-compat, din hub: chiuta.github.io/tools/compat); se pune ultimul, ca să nu-i atingă înlocuirile de mai sus
+            .replace("__FFF_COMPAT__", open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fff-compat.html"), encoding="utf-8").read()))
 
 
 def check_beginner():
