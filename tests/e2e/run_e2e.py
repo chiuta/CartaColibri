@@ -148,6 +148,21 @@ def full_flow(browser, binp, lang, rep, fixdir, shots):
             pg.wait_for_function("()=>document.querySelector('.scroll').scrollTop>0", timeout=5000)
             assert pg.evaluate("()=>[...document.querySelectorAll('.sb:not([hidden]) button')].every(b=>b.title&&b.title!=='sc_up'&&b.title!=='sc_down')"), "button labels not translated"
             pg.reload(); pg.wait_for_selector("#libRows tr", timeout=15000)
+        with rep.check(L, "rename a document", pg):
+            # one selected row -> Rename asks for a name (a dialog) -> the list shows it and the file on disk has it
+            assert pg.locator("#libRows input[type=checkbox]:checked").count() == 0
+            row = pg.locator("#libRows tr", has=pg.locator("input[type=checkbox]")).first
+            row.locator("input[type=checkbox]").check()
+            old = pg.evaluate("()=>[...document.querySelectorAll('#libRows tr')].find(r=>r.querySelector('input:checked')).children[1].innerText.trim()")
+            pg.once("dialog", lambda d: d.accept("Redenumit de test"))
+            pg.click("#renBtn")
+            pg.wait_for_function("()=>document.querySelector('#libRows').innerText.includes('Redenumit de test')", timeout=8000)
+            row2 = pg.locator("#libRows tr", has_text="Redenumit de test").first
+            row2.locator("input[type=checkbox]").check()
+            pg.once("dialog", lambda d: d.accept(old.rsplit('.', 1)[0] if '.' in old else old))
+            pg.click("#renBtn")
+            pg.wait_for_function("(o)=>!document.querySelector('#libRows').innerText.includes('Redenumit de test')", timeout=8000)
+            pg.locator("#libRows input[type=checkbox]:checked").first.uncheck()
         with rep.check(L, "library columns sort", pg):
             # name: A to Z, then Z to A, then the original order; size: biggest first on the first click; headers carry aria-sort
             names = "()=>[...document.querySelectorAll('#libRows tr td:nth-child(2)')].map(t=>t.firstChild.textContent.trim().toLowerCase())"

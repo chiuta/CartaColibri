@@ -573,6 +573,72 @@ impl Library {
         }
         Ok(n)
     }
+    /// Rename the file of a document, in its own folder: the library entry (and any group that lists the
+    /// file) follows, so nothing has to be indexed again. A name without the file's extension gets it.
+    pub fn rename_doc(&self, id: i64, new_name: &str) -> Res<String> {
+        let (path, ext): (String, String) = self
+            .db
+            .query_row("SELECT path, ext FROM docs WHERE id=?", [id], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .map_err(|_| "that document is not in the library".to_string())?;
+        let mut name = new_name.trim().trim_end_matches(['.', ' ']).to_string();
+        if name.is_empty() {
+            return Err("type a name".into());
+        }
+        if name.chars().count() > 200
+            || name.chars().any(|c| {
+                c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
+            })
+        {
+            return Err("that name has characters a file name cannot have (/ \\ : * ? \" < > |) or is too long".into());
+        }
+        let dot = if ext.is_empty() || ext.starts_with('.') {
+            ext.clone()
+        } else {
+            format!(".{ext}")
+        };
+        if !dot.is_empty() && !name.to_lowercase().ends_with(&dot.to_lowercase()) {
+            name.push_str(&dot);
+        }
+        let from = Path::new(&path);
+        if !from.is_file() {
+            return Err("the file is no longer there".into());
+        }
+        let to = from.with_file_name(&name);
+        if to == from {
+            return Ok(path);
+        }
+        let same =
+            to.exists() && std::fs::canonicalize(&to).ok() == std::fs::canonicalize(from).ok();
+        if to.exists() && !same {
+            return Err("a file with that name already exists in that folder".into());
+        }
+        std::fs::rename(from, &to).map_err(|x| format!("cannot rename: {x}"))?;
+        let new_path = to.to_string_lossy().into_owned();
+        if let Err(x) = self.db.execute(
+            "UPDATE docs SET path=? WHERE id=?",
+            rusqlite::params![new_path, id],
+        ) {
+            let _ = std::fs::rename(&to, from);
+            return Err(e(x));
+        }
+        let mut g = self.groups();
+        let mut changed = false;
+        for grp in g.values_mut() {
+            for m in grp.members.iter_mut() {
+                if *m == path {
+                    *m = new_path.clone();
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            self.save_groups(&g)?;
+        }
+        Ok(new_path)
+    }
+
     /// The same by file path (also for files that were skipped as unreadable and have no document).
     pub fn forget_paths(&self, paths: &[String]) -> Res<usize> {
         let mut n = 0;

@@ -43,11 +43,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatizezi și conectezi** — `digest` reia o căutare salvată și raportează doar ce e nou (repetă, adaugă într-un fișier, rezumă sau salvează un fișier email); `mcp` lasă alte aplicații AI să caute, citească, întrebe, verifice fapte și ceară dosare din biblioteca ta, doar în citire.
 - **Copii și date** — “Duplicate” (documente copii sau aproape-copii, cu cât de asemănătoare sunt) și “Cronologie” (toate propozițiile cu dată, în ordine).
 
-## Noutăți în 0.2.0-alpha.11
+## Noutăți în 0.2.0-alpha.12
 
-- **Sortează biblioteca și rezultatele după orice coloană** — Apasă pe titlul unei coloane din lista bibliotecii sau din rezultatele căutării ca să sortezi: nume A–Z, tip, mărime (cele mai mari întâi) sau locație. Al doilea clic inversează ordinea, al treilea revine la ordinea inițială (la rezultate: după relevanță). Săgeata din titlu arată direcția, titlurile merg de la tastatură (Tab, apoi Enter sau Spațiu), iar cititoarele de ecran anunță ordinea.
+- **Ce salvează LegatorOCR intră singur în bibliotecă, iar documentele se pot redenumi** — Fișierele salvate de LegatorOCR în folderul `from-legatorocr` al bibliotecii sunt acum preluate automat: la câteva secunde după ce fișierul e complet, este indexat și apare în listă, iar un mesaj spune câte au sosit. Nu mai e nevoie să apeși „Actualizează indexul”. Un buton nou, Redenumește, lângă „Șterge selectatele”, redenumește chiar fișierul în folderul lui (extensia se păstrează, un nume deja luat e refuzat), iar intrarea din bibliotecă și grupurile care îl conțin urmează noul nume, deci nimic nu se indexează din nou.
 
-## Noutăți din 0.2.0-alpha.3 până la alpha.10
+## Noutăți din 0.2.0-alpha.3 până la alpha.11
 
 - **Filtre direct în căsuța de căutare** — Scrie `ext:pdf`, `path:contracte`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` sau `re:FACT-\d+` (expresie regulată) lângă cuvintele tale și rezultatele se restrâng. Merg în pagina web, în linia de comandă și prin API.
 - **Căutare inteligentă** — Bifează „Căutare inteligentă” și AI-ul tău local adaugă câteva sinonime și cuvinte înrudite (ca un simplu OR, deci potrivirile exacte rămân primele). Cuvintele în plus apar sub căsuță. Fără motor pornit primești pur și simplu căutarea normală.
@@ -67,6 +67,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Butoane care spun adevărul și fără oprirea după 10 minute** — „Deschide browserul web-grab” verifică acum că browserul s-a deschis cu adevărat și, dacă nu, arată motivul primit. Un buton nou, „Deschide LegatorOCR”, lângă opțiunile de OCR, deschide fereastra LegatorOCR. O sarcină sau un chat lung (un model mare pe un grup mare poate dura multe minute) nu mai e oprit de pagină după 10 minute cu „The operation was aborted”: contează doar limita motorului, iar un cronometru arată de cât timp rulează.
 - **LegatorOCR este găsit mai ușor, iar scanările late sunt citite întregi** — CartaColibri caută acum LegatorOCR lângă el, într-un folder `App` și în folderele unei arhive despachetate, și observă o copie adăugată fără repornire. Scanările JPG late nu mai sunt tăiate în două, deci nu se mai pierd linii, iar PDF-urile scanate sunt citite prin OCR chiar și cu poppler instalat. „Deschide LegatorOCR” creează și un folder `from-legatorocr` care face parte din bibliotecă: salvezi acolo un PDF sau un text și intră în bibliotecă la următoarea indexare.
 - **Salvezi din LegatorOCR direct în bibliotecă** — Când LegatorOCR este deschis din CartaColibri, meniul lui Fișier oferă acum „Salvează PDF în biblioteca CartaColibri”. PDF-ul ajunge în folderul `from-legatorocr` al bibliotecii, fără dialog de fișier (un nume existent primește -2, -3, … ca să nu se înlocuiască nimic), și este indexat împreună cu restul. Este nevoie de un LegatorOCR care conține noua intrare de meniu; cele mai vechi merg în continuare, doar că salvezi manual în acel folder.
+- **Sortează biblioteca și rezultatele după orice coloană** — Apasă pe titlul unei coloane din lista bibliotecii sau din rezultatele căutării ca să sortezi: nume A–Z, tip, mărime (cele mai mari întâi) sau locație. Al doilea clic inversează ordinea, al treilea revine la ordinea inițială (la rezultate: după relevanță). Săgeata din titlu arată direcția, titlurile merg de la tastatură (Tab, apoi Enter sau Spațiu), iar cititoarele de ecran anunță ordinea.
 
 ## Noutăți în 0.2.0-alpha.2
 

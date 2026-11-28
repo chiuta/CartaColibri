@@ -614,6 +614,8 @@ fn every_new_route_demands_the_ui_header() {
         ("GET", "tags"),
         ("GET", "docmeta?id=1"),
         ("POST", "open"),
+        ("POST", "rename"),
+        ("POST", "inbox/scan"),
         ("POST", "tags"),
         ("POST", "star"),
         ("POST", "note"),
@@ -854,4 +856,89 @@ fn legatorocr_window_opens_or_says_why_not() {
     assert_eq!(ok.code, 200, "{}", ok.text());
     unsafe { std::env::remove_var("CARTACOLIBRI_LEGATOROCR") };
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn rename_keeps_the_extension_and_the_library_entry() {
+    let (s, ids) = indexed();
+    let (name, id) = ids.iter().next().map(|(n, i)| (n.clone(), *i)).unwrap();
+    let ext = name.rsplit('.').next().unwrap().to_string();
+    // a name without the extension gets it; the file on disk follows
+    let r = post(
+        &s,
+        "/carta/rename",
+        json!({"id": id, "name": "  Nume nou  "}),
+    );
+    assert_eq!(r.code, 200, "{}", r.text());
+    let p = r.json()["path"].as_str().unwrap().to_string();
+    assert!(p.ends_with(&format!("Nume nou.{ext}")), "{p}");
+    assert!(std::path::Path::new(&p).is_file());
+    let lib = get(&s, "/carta/library").json();
+    let d = lib["documents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["id"] == id)
+        .unwrap();
+    assert_eq!(d["path"], p.as_str());
+    // names a file cannot have, an empty name and a name that is taken are refused
+    for bad in ["a/b", "a\\b", "x:y", "", "   ", ".."] {
+        let r = post(&s, "/carta/rename", json!({"id": id, "name": bad}));
+        assert_eq!(r.code, 400, "{bad:?}: {}", r.text());
+    }
+    if let Some((_, other)) = ids
+        .iter()
+        .find(|(n, i)| **i != id && n.ends_with(&format!(".{ext}")))
+    {
+        let r = post(
+            &s,
+            "/carta/rename",
+            json!({"id": other, "name": "Nume nou"}),
+        );
+        assert_eq!(r.code, 400, "{}", r.text());
+        assert!(r.text().contains("already exists"), "{}", r.text());
+    } else {
+        panic!("the fixtures need two documents with the same extension");
+    }
+    assert_eq!(
+        post(&s, "/carta/rename", json!({"id": 999999, "name": "x"})).code,
+        400
+    );
+}
+
+#[test]
+fn files_left_in_from_legatorocr_join_the_library_once_they_are_settled() {
+    let (s, _) = indexed();
+    let home = std::path::PathBuf::from(get(&s, "/carta/status").json()["home"].as_str().unwrap());
+    // no folder yet: nothing happens
+    let r = post(&s, "/carta/inbox/scan", json!({}));
+    assert_eq!(r.json()["changed"], false, "{}", r.text());
+    let dir = home.join("from-legatorocr");
+    std::fs::create_dir_all(&dir).unwrap();
+    let f = dir.join("scanat.txt");
+    std::fs::write(&f, "Un text scanat despre colibri si nectar.").unwrap();
+    // still being written (younger than two seconds): not looked at yet
+    assert_eq!(post(&s, "/carta/inbox/scan", json!({})).json()["added"], 0);
+    let old = std::time::SystemTime::now() - std::time::Duration::from_secs(30);
+    std::fs::File::options()
+        .write(true)
+        .open(&f)
+        .unwrap()
+        .set_modified(old)
+        .unwrap();
+    let r = post(&s, "/carta/inbox/scan", json!({})).json();
+    assert_eq!(r["added"], 1, "{r}");
+    let lib = get(&s, "/carta/library").json();
+    assert!(
+        lib["documents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["path"].as_str().unwrap().ends_with("scanat.txt"))
+    );
+    // nothing changed since: no work
+    assert_eq!(
+        post(&s, "/carta/inbox/scan", json!({})).json()["changed"],
+        false
+    );
 }

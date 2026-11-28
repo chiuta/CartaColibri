@@ -79,6 +79,66 @@ fn index_now(lib: &mut Library, roots: Option<&[String]>) -> Result<Stats, Strin
     run_job(lib, &key, roots)
 }
 
+/// What LegatorOCR saved into the library's `from-legatorocr` folder joins the library by itself: the page
+/// asks now and then, and only files that have stopped changing for two seconds are looked at.
+fn inbox_scan(lib: &mut Library) -> Result<Value, (u16, String)> {
+    type Sig = Vec<(String, u64, u64)>;
+    static SEEN: OnceLock<Mutex<HashMap<String, Sig>>> = OnceLock::new();
+    let dir = lib.home.join("from-legatorocr");
+    if !dir.is_dir() {
+        return Ok(json!({"changed": false, "added": 0, "updated": 0}));
+    }
+    let now = std::time::SystemTime::now();
+    let mut sig: Sig = Vec::new();
+    let mut young = false;
+    let mut todo = vec![(dir.clone(), 0u8)];
+    while let Some((d, depth)) = todo.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let p = e.path();
+            let Ok(m) = e.metadata() else {
+                continue;
+            };
+            if m.is_dir() && depth < 3 {
+                todo.push((p, depth + 1));
+            } else if m.is_file() {
+                let age = m.modified().ok().and_then(|t| now.duration_since(t).ok());
+                if age.is_none_or(|a| a.as_secs() < 2) {
+                    young = true;
+                } else {
+                    let t = m
+                        .modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map_or(0, |d| d.as_secs());
+                    sig.push((p.to_string_lossy().into_owned(), m.len(), t));
+                }
+            }
+        }
+    }
+    if young || sig.is_empty() {
+        // something is still being written (or there is nothing): look again at the next round
+        return Ok(json!({"changed": false, "waiting": young, "added": 0, "updated": 0}));
+    }
+    sig.sort();
+    let key = lib.home.to_string_lossy().into_owned();
+    let seen = SEEN.get_or_init(Default::default);
+    if lock(seen).get(&key) == Some(&sig) {
+        return Ok(json!({"changed": false, "added": 0, "updated": 0}));
+    }
+    let root = lib
+        .add_root(&dir.to_string_lossy())
+        .map_err(|m| (400u16, m))?;
+    if begin(&key).is_err() {
+        return Ok(json!({"changed": false, "busy": true, "added": 0, "updated": 0}));
+    }
+    let st = run_job(lib, &key, Some(&[root])).map_err(|m| (400u16, m))?;
+    lock(seen).insert(key, sig);
+    Ok(json!({"changed": true, "added": st.added, "updated": st.updated}))
+}
+
 fn progress_json(key: &str) -> Value {
     let j = lock(jobs()).get(key).cloned().unwrap_or_default();
     let st = j.stats.clone().unwrap_or_default();
@@ -528,6 +588,17 @@ fn inner(home: Option<&str>, r: &Req) -> Result<Value, (u16, String)> {
             lib.add_root(&p).map_err(bad)?;
             serde_json::to_value(index_now(&mut lib, Some(&[p])).map_err(bad)?).unwrap()
         }
+        ("POST", "rename") => {
+            let j = jbody(r.body).map_err(bad)?;
+            let id = j["id"]
+                .as_i64()
+                .ok_or((400, "give the document id".to_string()))?;
+            let path = lib
+                .rename_doc(id, s(&j, "name").map_err(bad)?)
+                .map_err(bad)?;
+            json!({"path": path})
+        }
+        ("POST", "inbox/scan") => inbox_scan(&mut lib)?,
         ("POST", "forget") => {
             // take the chosen documents (or skipped files, by path) out of the library and keep them out;
             // the files on disk are never touched

@@ -43,11 +43,11 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Automatiza e liga** — `digest` repete uma pesquisa guardada e indica só as novidades (repete, junta a um ficheiro, resume ou guarda um ficheiro de e-mail); `mcp` permite que outras apps de IA pesquisem, leiam, perguntem, verifiquem e peçam dossiês na tua biblioteca, só em leitura.
 - **Cópias e datas** — “Duplicados” (documentos cópia ou quase-cópia, com a semelhança) e “Cronologia” (todas as frases com data por ordem no tempo).
 
-## Novidades da 0.2.0-alpha.11
+## Novidades da 0.2.0-alpha.12
 
-- **Ordena a biblioteca e os resultados por qualquer coluna** — Clica no título de uma coluna na lista da biblioteca ou nos resultados para ordenar: nome de A a Z, tipo, tamanho (os maiores primeiro) ou localização. Um segundo clique inverte a ordem, um terceiro repõe a ordem original (nos resultados: por relevância). A seta no título mostra o sentido, os títulos funcionam com o teclado (Tab, depois Enter ou Espaço) e os leitores de ecrã anunciam a ordem.
+- **O que o LegatorOCR guarda entra sozinho na biblioteca, e os documentos podem ser renomeados** — Os ficheiros guardados pelo LegatorOCR na pasta `from-legatorocr` da biblioteca são agora recolhidos automaticamente: poucos segundos depois de o ficheiro estar completo, é indexado e aparece na lista, e uma mensagem diz quantos chegaram. Já não é preciso carregar em «Atualizar o índice». Um botão novo, Mudar o nome, junto a «Eliminar selecionados», muda o nome do próprio ficheiro na sua pasta (a extensão mantém-se, um nome já usado é recusado); a entrada da biblioteca e os grupos que o incluem acompanham, por isso nada é indexado de novo.
 
-## Novidades da 0.2.0-alpha.3 à alpha.10
+## Novidades da 0.2.0-alpha.3 à alpha.11
 
 - **Filtros diretamente na caixa de pesquisa** — Escreve `ext:pdf`, `path:contratos`, `size:>1mb`, `after:2025-01`, `before:2025-06-30` ou `re:FAT-\d+` (expressão regular) junto às tuas palavras e os resultados estreitam-se. Funcionam na página web, na linha de comandos e através da API.
 - **Pesquisa inteligente** — Marca «Pesquisa inteligente» e a tua IA local acrescenta alguns sinónimos e palavras afins (como um simples OR: as correspondências exatas continuam à frente). As palavras acrescentadas aparecem debaixo da caixa. Sem motor ligado recebes a pesquisa normal.
@@ -67,6 +67,7 @@ cartacolibri summarize "main points" --group Demo --mock   # step 3 - --mock = n
 - **Botões que dizem a verdade e sem corte aos 10 minutos** — «Abrir o navegador web-grab» agora verifica que o navegador abriu mesmo e, se não, mostra o motivo que deu. Um botão novo, «Abrir o LegatorOCR», junto às opções de OCR, abre a janela do LegatorOCR. Uma tarefa ou um chat longo (um modelo grande num grupo grande pode demorar muitos minutos) já não é cortado pela página aos 10 minutos com «The operation was aborted»: só conta o limite do motor, e um cronómetro mostra há quanto tempo corre.
 - **O LegatorOCR é encontrado melhor e as digitalizações largas são lidas inteiras** — O CartaColibri agora procura o LegatorOCR ao seu lado, numa pasta `App` e nas pastas de um arquivo descompactado, e repara numa cópia acrescentada sem reiniciar. As digitalizações JPG largas já não são cortadas ao meio, por isso não se perdem linhas, e os PDF digitalizados passam pelo OCR mesmo com o poppler instalado. «Abrir o LegatorOCR» cria também uma pasta `from-legatorocr` que faz parte da biblioteca: guarda lá um PDF ou um texto e entra na biblioteca na indexação seguinte.
 - **Guarda a partir do LegatorOCR diretamente na biblioteca** — Quando o LegatorOCR é aberto a partir do CartaColibri, o seu menu Ficheiro oferece agora «Guardar o PDF na biblioteca do CartaColibri». O PDF vai para a pasta `from-legatorocr` da biblioteca sem janela de diálogo (um nome existente recebe -2, -3, … para que nada seja substituído) e é indexado com o resto. É preciso uma versão do LegatorOCR que contenha o novo item de menu; as mais antigas continuam a funcionar, guardas apenas à mão nessa pasta.
+- **Ordena a biblioteca e os resultados por qualquer coluna** — Clica no título de uma coluna na lista da biblioteca ou nos resultados para ordenar: nome de A a Z, tipo, tamanho (os maiores primeiro) ou localização. Um segundo clique inverte a ordem, um terceiro repõe a ordem original (nos resultados: por relevância). A seta no título mostra o sentido, os títulos funcionam com o teclado (Tab, depois Enter ou Espaço) e os leitores de ecrã anunciam a ordem.
 
 ## Novidades da 0.2.0-alpha.2
 
